@@ -1,5 +1,6 @@
 [packages]
 absl-py = ">=1.4.0"
+ml-compiler-opt = ">=0.0.1.dev202306220007"
 
 [dev-packages]
 yapf = ">=0.33.0"
