@@ -22,7 +22,7 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
 
 
 def parse_and_build_from_description(description_file_path, base_dir,
-                                     corpus_dir):
+                                     corpus_base_dir):
   if not os.path.exists(base_dir):
     os.makedirs(base_dir)
   with open(description_file_path) as description_file:
@@ -34,6 +34,7 @@ def parse_and_build_from_description(description_file_path, base_dir,
     if not os.path.exists(build_dir):
       os.makedirs(build_dir)
     source_dir = os.path.join(base_dir, app_description["repo_name"])
+    corpus_dir = os.path.join(corpus_base_dir, app_description["repo_name"])
     if app_description["build_system"] == "cmake":
       configure_command_vector = cmake_builder.generate_configure_command(
           os.path.join(source_dir, app_description["cmake_root"]),
@@ -41,7 +42,6 @@ def parse_and_build_from_description(description_file_path, base_dir,
       build_command_vector = cmake_builder.generate_build_command([])
       cmake_builder.perform_build(configure_command_vector,
                                   build_command_vector, build_dir)
-      corpus_dir = os.path.join(corpus_dir, app_description["repo_name"])
       cmake_builder.extract_ir(build_dir, corpus_dir)
     else:
       raise ValueError(
