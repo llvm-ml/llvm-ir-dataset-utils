@@ -1,6 +1,11 @@
 """Module for building and extracting bitcode from applications using CMake"""
 
 import subprocess
+import json
+import os
+import multiprocessing
+
+from compiler_opt.tools import extract_ir_lib
 
 
 def generate_configure_command(root_path, options_dict):
@@ -28,3 +33,14 @@ def generate_build_command(targets):
 def perform_build(configure_command_vector, build_command_vector, build_dir):
   subprocess.run(configure_command_vector, cwd=build_dir, check=True)
   subprocess.run(build_command_vector, cwd=build_dir, check=True)
+
+
+def extract_ir(build_dir, corpus_dir):
+  with open(os.path.join(
+      build_dir, "./compile_commands.json")) as compilation_command_db_file:
+    objects = extract_ir_lib.load_from_compile_commands(
+        json.load(compilation_command_db_file), corpus_dir)
+  relative_output_paths = extract_ir_lib.run_extraction(
+      objects, multiprocessing.cpu_count(), "llvm-objcopy", "", None,
+      ".llvmcmd", ".llvmbc")
+  extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)

@@ -1,3 +1,0 @@
-[submodule "ml-compiler-opt"]
-	path = ml-compiler-opt
-	url = https://github.com/google/ml-compiler-opt.git
