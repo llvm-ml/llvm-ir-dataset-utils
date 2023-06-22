@@ -30,11 +30,10 @@ def parse_and_build_from_description(description_file_path, base_dir,
     download_source_code_git(app_description["git_repo"],
                              app_description["repo_name"],
                              app_description["commit_sha"], base_dir)
+    build_dir = os.path.join(base_dir, app_description["repo_name"] + "-build")
+    if not os.path.exists(build_dir):
+      os.makedirs(build_dir)
     if app_description["build_system"] == "cmake":
-      build_dir = os.path.join(base_dir,
-                               app_description["repo_name"] + "-build")
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
       source_dir = os.path.join(base_dir, app_description["repo_name"])
       configure_command_vector = cmake_builder.generate_configure_command(
           os.path.join(source_dir, app_description["cmake_root"]),
