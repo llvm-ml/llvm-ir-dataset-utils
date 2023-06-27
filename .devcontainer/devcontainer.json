@@ -1,0 +1,16 @@
+{
+    "name": "devcontainer for LLVM-ML",
+    "dockerFile": "Dockerfile",
+    "customizations": {
+        "vscode": {
+	    "extensions": [
+		"ms-vscode.cpptools",
+		"ms-python.python",
+		"ms-python.vscode-pylance"
+	    ]
+	}
+    },
+    "capAdd": ["SYS_PTRACE"],
+    "securityOpt": ["seccomp=unconfined"],
+    "postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh"
+}
