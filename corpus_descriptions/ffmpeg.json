@@ -1,0 +1,10 @@
+{
+    "repo_name": "FFmpeg",
+    "git_repo": "https://github.com/FFmpeg/FFmpeg",
+    "commit_sha": "98346606015c309305587457f0197013df64872c",
+    "build_system": "autoconf",
+    "autoconf_flags": {
+        "cc": "clang",
+        "cxx": "clang++"
+    }
+}

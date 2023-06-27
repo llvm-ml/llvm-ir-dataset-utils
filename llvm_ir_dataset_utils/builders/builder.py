@@ -8,6 +8,7 @@ from absl import logging
 
 from llvm_ir_dataset_utils.builders import cmake_builder
 from llvm_ir_dataset_utils.builders import manual_builder
+from llvm_ir_dataset_utils.builders import autoconf_builder
 
 
 def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
@@ -47,6 +48,13 @@ def parse_and_build_from_description(description_file_path, base_dir,
     elif app_description["build_system"] == "manual":
       manual_builder.perform_build(app_description["commands"], source_dir)
       manual_builder.extract_ir(source_dir, corpus_dir)
+    elif app_description["build_system"] == "autoconf":
+      configure_command_vector = autoconf_builder.generate_configure_command(
+          source_dir, app_description["autoconf_flags"])
+      build_command_vector = autoconf_builder.generate_build_command()
+      autoconf_builder.perform_build(configure_command_vector,
+                                     build_command_vector, build_dir)
+      autoconf_builder.extract_ir(build_dir, corpus_dir)
     else:
       raise ValueError(
           f"Build system {app_description['build_system']} is not supported")
