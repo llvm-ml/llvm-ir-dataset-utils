@@ -15,11 +15,14 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
   # currently just assuming that the requested commit is present
   if not os.path.exists(os.path.join(base_dir, repo_name)):
     git_command_vector = ["git", "clone", repo_url]
+    if commit_sha is None or commit_sha == '':
+      git_command_vector.append('--depth=1')
     logging.info(f"Cloning git repository {repo_url}")
     subprocess.run(git_command_vector, cwd=base_dir)
-  commit_checkout_vector = ["git", "checkout", commit_sha]
-  logging.info(f"Checking out commit SHA {commit_sha}")
-  subprocess.run(commit_checkout_vector, cwd=os.path.join(base_dir, repo_name))
+  if commit_sha is not None and commit_sha != '':
+    commit_checkout_vector = ["git", "checkout", commit_sha]
+    logging.info(f"Checked out commit SHA {commit_sha}")
+    subprocess.run(commit_checkout_vector, cwd=os.path.join(base_dir, repo_name))
 
 
 def parse_and_build_from_description(corpus_description, base_dir,
