@@ -17,6 +17,7 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
     git_command_vector = ["git", "clone", repo_url]
     if commit_sha is None or commit_sha == '':
       git_command_vector.append('--depth=1')
+    git_command_vector.append(repo_name)
     logging.info(f"Cloning git repository {repo_url}")
     subprocess.run(git_command_vector, cwd=base_dir)
   if commit_sha is not None and commit_sha != '':
