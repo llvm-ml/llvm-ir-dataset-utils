@@ -1,6 +1,5 @@
 """Module that parses application description, downloads source code, and invokes the correct builder"""
 
-import json
 import os
 import subprocess
 
@@ -23,38 +22,36 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
   subprocess.run(commit_checkout_vector, cwd=os.path.join(base_dir, repo_name))
 
 
-def parse_and_build_from_description(description_file_path, base_dir,
+def parse_and_build_from_description(corpus_description, base_dir,
                                      corpus_base_dir):
   if not os.path.exists(base_dir):
     os.makedirs(base_dir)
-  with open(description_file_path) as description_file:
-    app_description = json.load(description_file)
-    download_source_code_git(app_description["git_repo"],
-                             app_description["repo_name"],
-                             app_description["commit_sha"], base_dir)
-    build_dir = os.path.join(base_dir, app_description["repo_name"] + "-build")
-    if not os.path.exists(build_dir):
-      os.makedirs(build_dir)
-    source_dir = os.path.join(base_dir, app_description["repo_name"])
-    corpus_dir = os.path.join(corpus_base_dir, app_description["repo_name"])
-    if app_description["build_system"] == "cmake":
-      configure_command_vector = cmake_builder.generate_configure_command(
-          os.path.join(source_dir, app_description["cmake_root"]),
-          app_description["cmake_flags"])
-      build_command_vector = cmake_builder.generate_build_command([])
-      cmake_builder.perform_build(configure_command_vector,
-                                  build_command_vector, build_dir)
-      cmake_builder.extract_ir(build_dir, corpus_dir)
-    elif app_description["build_system"] == "manual":
-      manual_builder.perform_build(app_description["commands"], source_dir)
-      manual_builder.extract_ir(source_dir, corpus_dir)
-    elif app_description["build_system"] == "autoconf":
-      configure_command_vector = autoconf_builder.generate_configure_command(
-          source_dir, app_description["autoconf_flags"])
-      build_command_vector = autoconf_builder.generate_build_command()
-      autoconf_builder.perform_build(configure_command_vector,
-                                     build_command_vector, build_dir)
-      autoconf_builder.extract_ir(build_dir, corpus_dir)
-    else:
-      raise ValueError(
-          f"Build system {app_description['build_system']} is not supported")
+  download_source_code_git(corpus_description["git_repo"],
+                            corpus_description["repo_name"],
+                            corpus_description["commit_sha"], base_dir)
+  build_dir = os.path.join(base_dir, corpus_description["repo_name"] + "-build")
+  if not os.path.exists(build_dir):
+    os.makedirs(build_dir)
+  source_dir = os.path.join(base_dir, corpus_description["repo_name"])
+  corpus_dir = os.path.join(corpus_base_dir, corpus_description["repo_name"])
+  if corpus_description["build_system"] == "cmake":
+    configure_command_vector = cmake_builder.generate_configure_command(
+        os.path.join(source_dir, corpus_description["cmake_root"]),
+        corpus_description["cmake_flags"])
+    build_command_vector = cmake_builder.generate_build_command([])
+    cmake_builder.perform_build(configure_command_vector,
+                                build_command_vector, build_dir)
+    cmake_builder.extract_ir(build_dir, corpus_dir)
+  elif corpus_description["build_system"] == "manual":
+    manual_builder.perform_build(corpus_description["commands"], source_dir)
+    manual_builder.extract_ir(source_dir, corpus_dir)
+  elif corpus_description["build_system"] == "autoconf":
+    configure_command_vector = autoconf_builder.generate_configure_command(
+        source_dir, corpus_description["autoconf_flags"])
+    build_command_vector = autoconf_builder.generate_build_command()
+    autoconf_builder.perform_build(configure_command_vector,
+                                    build_command_vector, build_dir)
+    autoconf_builder.extract_ir(build_dir, corpus_dir)
+  else:
+    raise ValueError(
+        f"Build system {corpus_description['build_system']} is not supported")
