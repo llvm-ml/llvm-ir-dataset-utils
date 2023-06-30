@@ -1,12 +1,12 @@
-# llvm-ir-dataset-utils
+<h1 align='center'>LLVM-IR Dataset Utilities</h1>
 
 This repository contains utilities to construct large LLVM IR datasets from
 multiple sources.
 
-### Sources (Planned)
+### Sources (In Progress)
 
-* Individual projects that use common build systems
-* Rust crates
-* Julia packages
-* Spack packages
-
+- [x] Individual projects
+- [ ] Rust crates
+- [ ] Spack packages
+- [x] Autoconf
+- [x] Cmake
