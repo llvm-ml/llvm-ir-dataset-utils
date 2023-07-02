@@ -16,7 +16,7 @@ ARG ENABLE_LEGACY_RENEGOTIATION
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the base dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python-is-python3 wget curl lsb-release ca-certificates software-properties-common build-essential gnupg2 python3-pip git pkg-config libssl-dev gcc gfortran
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python-is-python3 wget curl lsb-release ca-certificates software-properties-common build-essential gnupg2 python3-pip git pkg-config libssl-dev gcc gfortran vim
 
 # Setup a custom certificate/SSL settings depending upon build arguments
 # Include README.md here so that the build doesn't fail if there is no custom
