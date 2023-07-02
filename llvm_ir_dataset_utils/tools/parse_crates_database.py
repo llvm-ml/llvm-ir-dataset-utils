@@ -8,6 +8,7 @@ import os
 import tarfile
 import sys
 from urllib import request
+from urllib import parse
 
 from absl import app
 from absl import flags
@@ -19,6 +20,16 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('repository_list', 'repository_list.txt',
                     'The path to write the repository list to.')
+
+
+def process_git_url(git_repo_url):
+  url_struct = parse.urlparse(git_repo_url)
+  if url_struct.netloc == 'github.com':
+    # Remove everything except for the first three components of the path
+    test = '/'.join(url_struct.path.split(os.sep)[:3])
+    return parse.urlunparse(url_struct._replace(path=test))
+  else:
+    return parse.urlunparse(url_struct)
 
 
 def main(_):
@@ -41,7 +52,7 @@ def main(_):
   with open(FLAGS.repository_list, 'w') as repository_list_file:
     for crate in crates_list:
       if crate["repository"] != '':
-        repository_list_file.write(crate["repository"] + '\n')
+        repository_list_file.write(process_git_url(crate["repository"]) + '\n')
 
 
 if __name__ == "__main__":
