@@ -10,3 +10,4 @@ multiple sources.
 - [ ] Spack packages
 - [x] Autoconf
 - [x] Cmake
+- [ ] Julia packages
