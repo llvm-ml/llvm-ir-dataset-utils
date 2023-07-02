@@ -1,0 +1,6 @@
+{
+    "repo_name": "azure-sdk-for-rust",
+    "git_repo": "https://github.com/Azure/azure-sdk-for-rust.git",
+    "build_system": "cargo",
+    "commit_sha": "7fe4da3b4388f6be5aa3049cb3e0658425ce3295"
+}

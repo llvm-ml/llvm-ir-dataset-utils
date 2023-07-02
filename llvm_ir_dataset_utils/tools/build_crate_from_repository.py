@@ -40,7 +40,7 @@ def main(_):
   elif FLAGS.repository_list is not None:
     with open(FLAGS.repository_list) as repository_list_file:
       crates_list = repository_list_file.read().splitlines()
-  
+
   for index, crate_to_build in enumerate(crates_list):
     corpus_description = {
         'git_repo': crate_to_build,
@@ -50,7 +50,7 @@ def main(_):
     }
 
     builder.parse_and_build_from_description(corpus_description, FLAGS.base_dir,
-                                            FLAGS.corpus_dir)
+                                             FLAGS.corpus_dir)
 
 
 if __name__ == '__main__':
