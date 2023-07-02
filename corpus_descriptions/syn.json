@@ -1,0 +1,6 @@
+{
+    "repo_name": "syn",
+    "git_repo": "https://github.com/dtolnay/syn",
+    "commit_sha": "782fd24671315587d0d3cda3e8603528ce650299",
+    "build_system": "cargo"
+}

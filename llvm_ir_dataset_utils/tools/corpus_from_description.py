@@ -23,8 +23,8 @@ flags.mark_flag_as_required("corpus_dir")
 def main(_):
   with open(FLAGS.corpus_description) as corpus_description_file:
     corpus_description = json.load(corpus_description_file)
-    builder.parse_and_build_from_description(corpus_description,
-                                            FLAGS.base_dir, FLAGS.corpus_dir)
+    builder.parse_and_build_from_description(corpus_description, FLAGS.base_dir,
+                                             FLAGS.corpus_dir)
 
 
 if __name__ == "__main__":

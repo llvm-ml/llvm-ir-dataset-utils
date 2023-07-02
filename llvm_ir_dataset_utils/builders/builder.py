@@ -8,6 +8,7 @@ from absl import logging
 from llvm_ir_dataset_utils.builders import cmake_builder
 from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
+from llvm_ir_dataset_utils.builders import cargo_builder
 
 
 def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
@@ -23,7 +24,8 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
   if commit_sha is not None and commit_sha != '':
     commit_checkout_vector = ["git", "checkout", commit_sha]
     logging.info(f"Checked out commit SHA {commit_sha}")
-    subprocess.run(commit_checkout_vector, cwd=os.path.join(base_dir, repo_name))
+    subprocess.run(
+        commit_checkout_vector, cwd=os.path.join(base_dir, repo_name))
 
 
 def parse_and_build_from_description(corpus_description, base_dir,
@@ -31,8 +33,8 @@ def parse_and_build_from_description(corpus_description, base_dir,
   if not os.path.exists(base_dir):
     os.makedirs(base_dir)
   download_source_code_git(corpus_description["git_repo"],
-                            corpus_description["repo_name"],
-                            corpus_description["commit_sha"], base_dir)
+                           corpus_description["repo_name"],
+                           corpus_description["commit_sha"], base_dir)
   build_dir = os.path.join(base_dir, corpus_description["repo_name"] + "-build")
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
@@ -43,8 +45,8 @@ def parse_and_build_from_description(corpus_description, base_dir,
         os.path.join(source_dir, corpus_description["cmake_root"]),
         corpus_description["cmake_flags"])
     build_command_vector = cmake_builder.generate_build_command([])
-    cmake_builder.perform_build(configure_command_vector,
-                                build_command_vector, build_dir)
+    cmake_builder.perform_build(configure_command_vector, build_command_vector,
+                                build_dir)
     cmake_builder.extract_ir(build_dir, corpus_dir)
   elif corpus_description["build_system"] == "manual":
     manual_builder.perform_build(corpus_description["commands"], source_dir)
@@ -54,8 +56,11 @@ def parse_and_build_from_description(corpus_description, base_dir,
         source_dir, corpus_description["autoconf_flags"])
     build_command_vector = autoconf_builder.generate_build_command()
     autoconf_builder.perform_build(configure_command_vector,
-                                    build_command_vector, build_dir)
+                                   build_command_vector, build_dir)
     autoconf_builder.extract_ir(build_dir, corpus_dir)
+  elif corpus_description["build_system"] == "cargo":
+    cargo_builder.build_all_targets(source_dir, build_dir)
+    cargo_builder.extract_ir(build_dir, corpus_dir)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
