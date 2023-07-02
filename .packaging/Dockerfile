@@ -2,17 +2,29 @@ ARG UBUNTU_VERSION=22.04
 ARG LLVM_VERSION=16
 ARG JULIA_MAJOR_VERSION=8
 ARG JULIA_MINOR_VERSION=3
+ARG CUSTOM_CERT
+ARG ENABLE_LEGACY_RENEGOTIATION
 
 FROM ubuntu:$UBUNTU_VERSION
 
 ARG LLVM_VERSION
 ARG JULIA_MAJOR_VERSION
 ARG JULIA_MINOR_VERSION
+ARG CUSTOM_CERT
+ARG ENABLE_LEGACY_RENEGOTIATION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python-is-python3 wget curl lsb-release ca-certificates software-properties-common build-essential gnupg2 python3-pip git pkg-config libssl-dev gcc gfortran
+
+# Setup a custom certificate/SSL settings depending upon build arguments
+# Include README.md here so that the build doesn't fail if there is no custom
+# certificate specified. Then we just delete it afterwards.
+COPY README.md $CUSTOM_CERT /usr/local/share/ca-certificates/
+RUN rm /usr/local/share/ca-certificates/README.md \
+  && update-ca-certificates
+RUN if [ -n "$ENABLE_LEGACY_RENEGOTIATION" ]; then echo "Options = UnsafeLegacyRenegotiation" >> /etc/ssl/openssl.cnf ; fi
 
 # Can this be converted into a native Ubuntu install as in the LLVM case
 ENV CARGO_HOME="/cargo"
