@@ -6,7 +6,7 @@ multiple sources.
 ### Sources (In Progress)
 
 - [x] Individual projects
-- [ ] Rust crates
+- [x] Rust crates
 - [ ] Spack packages
 - [x] Autoconf
 - [x] Cmake
