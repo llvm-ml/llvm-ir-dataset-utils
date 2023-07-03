@@ -50,7 +50,7 @@ def main(_):
     }
 
     builder.parse_and_build_from_description(corpus_description, FLAGS.base_dir,
-                                             FLAGS.corpus_dir)
+                                             FLAGS.corpus_dir, cleanup=True)
 
 
 if __name__ == '__main__':

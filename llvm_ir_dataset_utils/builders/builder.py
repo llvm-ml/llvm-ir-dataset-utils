@@ -5,6 +5,7 @@ import subprocess
 import json
 import pathlib
 import multiprocessing
+import shutil
 
 from absl import logging
 
@@ -46,8 +47,10 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir,
           stderr=git_log_file)
 
 
-def parse_and_build_from_description(corpus_description, base_dir,
-                                     corpus_base_dir):
+def parse_and_build_from_description(corpus_description,
+                                     base_dir,
+                                     corpus_base_dir,
+                                     cleanup=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["repo_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   if not os.path.exists(base_dir):
@@ -89,3 +92,6 @@ def parse_and_build_from_description(corpus_description, base_dir,
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
+  if cleanup:
+    shutil.rmtree(build_dir)
+    shutil.rmtree(os.path.join(base_dir, corpus_description["repo_name"]))
