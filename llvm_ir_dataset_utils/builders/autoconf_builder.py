@@ -1,7 +1,6 @@
 """Module for building and extracting bitcode from applications using autoconf"""
 
 import os
-import multiprocessing
 import subprocess
 
 from compiler_opt.tools import extract_ir_lib
@@ -14,8 +13,8 @@ def generate_configure_command(root_path, options_dict):
   return command_vector
 
 
-def generate_build_command():
-  command_vector = ["make", f"-j{multiprocessing.cpu_count()}"]
+def generate_build_command(threads):
+  command_vector = ["make", f"-j{threads}"]
   return command_vector
 
 
@@ -35,9 +34,10 @@ def perform_build(configure_command_vector, build_command_vector, build_dir):
   subprocess.run(build_command_vector, cwd=build_dir, check=True)
 
 
-def extract_ir(build_dir, corpus_dir):
+def extract_ir(build_dir, corpus_dir, threads):
   objects = extract_ir_lib.load_from_directory(build_dir, corpus_dir)
-  relative_output_paths = extract_ir_lib.run_extraction(
-      objects, multiprocessing.cpu_count(), "llvm-objcopy", None, None,
-      ".llvmcmd", ".llvmbc")
+  relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
+                                                        "llvm-objcopy", None,
+                                                        None, ".llvmcmd",
+                                                        ".llvmbc")
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)

@@ -4,6 +4,7 @@ import os
 import subprocess
 import json
 import pathlib
+import multiprocessing
 
 from absl import logging
 
@@ -11,6 +12,8 @@ from llvm_ir_dataset_utils.builders import cmake_builder
 from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
+
+THREADS = multiprocessing.cpu_count()
 
 
 def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
@@ -47,23 +50,24 @@ def parse_and_build_from_description(corpus_description, base_dir,
     configure_command_vector = cmake_builder.generate_configure_command(
         os.path.join(source_dir, corpus_description["cmake_root"]),
         corpus_description["cmake_flags"])
-    build_command_vector = cmake_builder.generate_build_command([])
+    build_command_vector = cmake_builder.generate_build_command([], THREADS)
     cmake_builder.perform_build(configure_command_vector, build_command_vector,
                                 build_dir)
-    cmake_builder.extract_ir(build_dir, corpus_dir)
+    cmake_builder.extract_ir(build_dir, corpus_dir, THREADS)
   elif corpus_description["build_system"] == "manual":
-    manual_builder.perform_build(corpus_description["commands"], source_dir)
-    manual_builder.extract_ir(source_dir, corpus_dir)
+    manual_builder.perform_build(corpus_description["commands"], source_dir,
+                                 THREADS)
+    manual_builder.extract_ir(source_dir, corpus_dir, THREADS)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
         source_dir, corpus_description["autoconf_flags"])
-    build_command_vector = autoconf_builder.generate_build_command()
+    build_command_vector = autoconf_builder.generate_build_command(THREADS)
     autoconf_builder.perform_build(configure_command_vector,
                                    build_command_vector, build_dir)
-    autoconf_builder.extract_ir(build_dir, corpus_dir)
+    autoconf_builder.extract_ir(build_dir, corpus_dir, THREADS)
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
-                                                corpus_dir)
+                                                corpus_dir, THREADS)
     cargo_builder.extract_ir(build_dir, corpus_dir)
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:

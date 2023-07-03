@@ -3,7 +3,6 @@
 import subprocess
 import json
 import os
-import multiprocessing
 
 from compiler_opt.tools import extract_ir_lib
 
@@ -24,8 +23,8 @@ def generate_configure_command(root_path, options_dict):
   return command_vector
 
 
-def generate_build_command(targets):
-  command_vector = ["ninja"]
+def generate_build_command(targets, threads):
+  command_vector = ["ninja", "-j", str(threads)]
   command_vector.extend(targets)
   return command_vector
 
@@ -35,12 +34,14 @@ def perform_build(configure_command_vector, build_command_vector, build_dir):
   subprocess.run(build_command_vector, cwd=build_dir, check=True)
 
 
-def extract_ir(build_dir, corpus_dir):
+def extract_ir(build_dir, corpus_dir, threads):
   with open(os.path.join(
       build_dir, "./compile_commands.json")) as compilation_command_db_file:
     objects = extract_ir_lib.load_from_compile_commands(
         json.load(compilation_command_db_file), corpus_dir)
-  relative_output_paths = extract_ir_lib.run_extraction(
-      objects, multiprocessing.cpu_count(), "llvm-objcopy", None, None,
-      ".llvmcmd", ".llvmbc", "", "directory")
+  relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
+                                                        "llvm-objcopy", None,
+                                                        None, ".llvmcmd",
+                                                        ".llvmbc", "",
+                                                        "directory")
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)

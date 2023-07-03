@@ -40,11 +40,12 @@ def get_build_log_path(corpus_dir, target):
                       target['name'] + '.' + target['kind'] + '.build.log')
 
 
-def build_all_targets(source_dir, build_dir, corpus_dir):
+def build_all_targets(source_dir, build_dir, corpus_dir, threads):
   targets_list = get_targets_from_manifest(source_dir)
   build_log = {'targets': []}
   for target in targets_list:
-    build_success = perform_build(source_dir, build_dir, corpus_dir, target)
+    build_success = perform_build(source_dir, build_dir, corpus_dir, target,
+                                  threads)
     build_log['targets'].append({
         'success': build_success,
         'build_log': get_build_log_path(corpus_dir, target),
@@ -53,7 +54,7 @@ def build_all_targets(source_dir, build_dir, corpus_dir):
   return build_log
 
 
-def perform_build(source_dir, build_dir, corpus_dir, target) -> bool:
+def perform_build(source_dir, build_dir, corpus_dir, target, threads) -> bool:
   logging.info(
       f"Building target {target['name']} of type {target['kind']} from package {target['package']}"
   )
@@ -61,7 +62,8 @@ def perform_build(source_dir, build_dir, corpus_dir, target) -> bool:
   build_env["CARGO_TARGET_DIR"] = build_dir
   build_command_vector = [
       "cargo", "rustc", "--all-features", "-p",
-      f"{target['package']}@{target['version']}"
+      f"{target['package']}@{target['version']}", "-j",
+      str(threads)
   ]
   if target['kind'] == "lib":
     build_command_vector.append("--lib")
