@@ -25,7 +25,10 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir):
       git_command_vector.append('--depth=1')
     git_command_vector.append(repo_name)
     logging.info(f"Cloning git repository {repo_url}")
-    subprocess.run(git_command_vector, cwd=base_dir)
+    environment = os.environ.copy()
+    environment['GIT_TERMINAL_PROMPT'] = '0'
+    environment['GIT_ASKPASS'] = 'echo'
+    subprocess.run(git_command_vector, cwd=base_dir, env=environment)
   if commit_sha is not None and commit_sha != '':
     commit_checkout_vector = ["git", "checkout", commit_sha]
     logging.info(f"Checked out commit SHA {commit_sha}")
