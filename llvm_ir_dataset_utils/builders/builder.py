@@ -2,6 +2,8 @@
 
 import os
 import subprocess
+import json
+import pathlib
 
 from absl import logging
 
@@ -40,6 +42,7 @@ def parse_and_build_from_description(corpus_description, base_dir,
     os.makedirs(build_dir)
   source_dir = os.path.join(base_dir, corpus_description["repo_name"])
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["repo_name"])
+  pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   if corpus_description["build_system"] == "cmake":
     configure_command_vector = cmake_builder.generate_configure_command(
         os.path.join(source_dir, corpus_description["cmake_root"]),
@@ -59,8 +62,12 @@ def parse_and_build_from_description(corpus_description, base_dir,
                                    build_command_vector, build_dir)
     autoconf_builder.extract_ir(build_dir, corpus_dir)
   elif corpus_description["build_system"] == "cargo":
-    cargo_builder.build_all_targets(source_dir, build_dir)
+    build_log = cargo_builder.build_all_targets(source_dir, build_dir,
+                                                corpus_dir)
     cargo_builder.extract_ir(build_dir, corpus_dir)
+    with open(os.path.join(corpus_dir, 'build_manifest.json'),
+              'w') as build_manifest:
+      json.dump(build_log, build_manifest, indent=2)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
