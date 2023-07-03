@@ -10,7 +10,7 @@ from compiler_opt.tools import extract_ir_lib
 def perform_build(commands_list, source_dir, threads):
   for command in commands_list:
     environment = os.environ.copy()
-    environment['JOBS'] = threads
+    environment['JOBS'] = str(threads)
     subprocess.run(command, cwd=source_dir, env=environment, shell=True)
 
 

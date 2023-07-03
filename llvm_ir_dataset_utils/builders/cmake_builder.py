@@ -42,6 +42,5 @@ def extract_ir(build_dir, corpus_dir, threads):
   relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
                                                         "llvm-objcopy", None,
                                                         None, ".llvmcmd",
-                                                        ".llvmbc", "",
-                                                        "directory")
+                                                        ".llvmbc")
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)

@@ -5,6 +5,6 @@
     "build_system": "manual",
     "commands": [
         "make CC=clang KCFLAGS='-Xclang -fembed-bitcode=all' allyesconfig",
-        "make CC=clang KCFLAGS='-Xclang -fembed-bitcode=all' -j${JOBS}"
+        "make CC=clang KCFLAGS='-Xclang -fembed-bitcode=all' -j128"
     ]
 }
