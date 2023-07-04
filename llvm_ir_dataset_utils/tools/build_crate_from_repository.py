@@ -4,6 +4,7 @@ import multiprocessing
 
 from absl import app
 from absl import flags
+from absl import logging
 import ray
 
 from llvm_ir_dataset_utils.builders import builder
@@ -17,6 +18,8 @@ flags.DEFINE_string(
     'base_dir', None,
     'The base directory to clone the source into and perform the build in.')
 flags.DEFINE_string('corpus_dir', None, 'The directory to place the corpus in.')
+flags.DEFINE_integer('thread_count', 8,
+                     'The number of threads to use per crate build.')
 
 flags.mark_flag_as_required('base_dir')
 flags.mark_flag_as_required('corpus_dir')
@@ -37,7 +40,7 @@ def _validate_input_columns(flags_dict):
 
 
 def main(_):
-  ray.init(num_cpus=multiprocessing.cpu_count())
+  ray.init()
   crates_list = []
   if FLAGS.repository is not None:
     crates_list.append(FLAGS.repository)
@@ -57,10 +60,20 @@ def main(_):
     # Default to eight threads per build currently as it achieves a reasonable
     # balance.
     build_futures.append(
-        builder.get_build_future(corpus_description, FLAGS.base_dir,
-                                 FLAGS.corpus_dir, 8, cleanup=True))
+        builder.get_build_future(
+            corpus_description,
+            FLAGS.base_dir,
+            FLAGS.corpus_dir,
+            FLAGS.thread_count,
+            cleanup=True))
 
-  ray.get(build_futures)
+  all_finished = []
+  while len(build_futures) > 0:
+    finished, build_futures = ray.wait(build_futures, timeout=5.0)
+    finished_data = ray.get(finished)
+    all_finished.extend(finished_data)
+    logging.info(
+        f'Just finished {len(finished_data)}, {len(all_finished)} done, {len(build_futures)} remaining')
 
 
 if __name__ == '__main__':
