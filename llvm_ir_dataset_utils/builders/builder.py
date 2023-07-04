@@ -45,7 +45,12 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir,
           stdout=git_log_file,
           stderr=git_log_file)
 
-def get_build_future(corpus_description, base_dir, corpus_dir, threads, cleanup=False):
+
+def get_build_future(corpus_description,
+                     base_dir,
+                     corpus_dir,
+                     threads,
+                     cleanup=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
       corpus_description, base_dir, corpus_dir, threads, cleanup)
 
@@ -99,5 +104,5 @@ def parse_and_build_from_description(corpus_description,
   if cleanup:
     shutil.rmtree(build_dir)
     source_dir = os.path.join(base_dir, corpus_description["repo_name"])
-    if(os.path.exists(source_dir)):
+    if (os.path.exists(source_dir)):
       shutil.rmtree(source_dir)

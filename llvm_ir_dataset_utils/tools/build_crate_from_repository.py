@@ -73,7 +73,8 @@ def main(_):
     finished_data = ray.get(finished)
     all_finished.extend(finished_data)
     logging.info(
-        f'Just finished {len(finished_data)}, {len(all_finished)} done, {len(build_futures)} remaining')
+        f'Just finished {len(finished_data)}, {len(all_finished)} done, {len(build_futures)} remaining'
+    )
 
 
 if __name__ == '__main__':

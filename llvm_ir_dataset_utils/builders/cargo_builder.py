@@ -61,8 +61,7 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads) -> bool:
   build_env = os.environ.copy()
   build_env["CARGO_TARGET_DIR"] = build_dir
   build_command_vector = [
-      "cargo", "rustc", "-p",
-      f"{target['package']}@{target['version']}", "-j",
+      "cargo", "rustc", "-p", f"{target['package']}@{target['version']}", "-j",
       str(threads)
   ]
   if target['kind'] == "lib":
