@@ -1,7 +1,10 @@
 """Tool to build a crate given just a repository."""
 
+import multiprocessing
+
 from absl import app
 from absl import flags
+import ray
 
 from llvm_ir_dataset_utils.builders import builder
 
@@ -34,6 +37,7 @@ def _validate_input_columns(flags_dict):
 
 
 def main(_):
+  ray.init(num_cpus=multiprocessing.cpu_count())
   crates_list = []
   if FLAGS.repository is not None:
     crates_list.append(FLAGS.repository)
@@ -41,6 +45,7 @@ def main(_):
     with open(FLAGS.repository_list) as repository_list_file:
       crates_list = repository_list_file.read().splitlines()
 
+  build_futures = []
   for index, crate_to_build in enumerate(crates_list):
     corpus_description = {
         'git_repo': crate_to_build,
@@ -49,8 +54,13 @@ def main(_):
         'build_system': 'cargo'
     }
 
-    builder.parse_and_build_from_description(corpus_description, FLAGS.base_dir,
-                                             FLAGS.corpus_dir, cleanup=True)
+    # Default to eight threads per build currently as it achieves a reasonable
+    # balance.
+    build_futures.append(
+        builder.get_build_future(corpus_description, FLAGS.base_dir,
+                                 FLAGS.corpus_dir, 8, cleanup=True))
+
+  ray.get(build_futures)
 
 
 if __name__ == '__main__':

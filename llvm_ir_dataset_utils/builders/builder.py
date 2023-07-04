@@ -8,13 +8,12 @@ import multiprocessing
 import shutil
 
 from absl import logging
+import ray
 
 from llvm_ir_dataset_utils.builders import cmake_builder
 from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
-
-THREADS = multiprocessing.cpu_count()
 
 
 def download_source_code_git(repo_url, repo_name, commit_sha, base_dir,
@@ -46,15 +45,20 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir,
           stdout=git_log_file,
           stderr=git_log_file)
 
+def get_build_future(corpus_description, base_dir, corpus_dir, threads, cleanup=False):
+  return parse_and_build_from_description.options(num_cpus=threads).remote(
+      corpus_description, base_dir, corpus_dir, threads, cleanup)
 
+
+@ray.remote(num_cpus=multiprocessing.cpu_count())
 def parse_and_build_from_description(corpus_description,
                                      base_dir,
                                      corpus_base_dir,
+                                     threads,
                                      cleanup=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["repo_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
-  if not os.path.exists(base_dir):
-    os.makedirs(base_dir)
+  pathlib.Path(base_dir).mkdir(exist_ok=True)
   download_source_code_git(corpus_description["git_repo"],
                            corpus_description["repo_name"],
                            corpus_description["commit_sha"], base_dir,
@@ -67,24 +71,24 @@ def parse_and_build_from_description(corpus_description,
     configure_command_vector = cmake_builder.generate_configure_command(
         os.path.join(source_dir, corpus_description["cmake_root"]),
         corpus_description["cmake_flags"])
-    build_command_vector = cmake_builder.generate_build_command([], THREADS)
+    build_command_vector = cmake_builder.generate_build_command([], threads)
     cmake_builder.perform_build(configure_command_vector, build_command_vector,
                                 build_dir)
-    cmake_builder.extract_ir(build_dir, corpus_dir, THREADS)
+    cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
     manual_builder.perform_build(corpus_description["commands"], source_dir,
-                                 THREADS)
-    manual_builder.extract_ir(source_dir, corpus_dir, THREADS)
+                                 threads)
+    manual_builder.extract_ir(source_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
         source_dir, corpus_description["autoconf_flags"])
-    build_command_vector = autoconf_builder.generate_build_command(THREADS)
+    build_command_vector = autoconf_builder.generate_build_command(threads)
     autoconf_builder.perform_build(configure_command_vector,
                                    build_command_vector, build_dir)
-    autoconf_builder.extract_ir(build_dir, corpus_dir, THREADS)
+    autoconf_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
-                                                corpus_dir, THREADS)
+                                                corpus_dir, threads)
     cargo_builder.extract_ir(build_dir, corpus_dir)
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:
@@ -94,4 +98,6 @@ def parse_and_build_from_description(corpus_description,
         f"Build system {corpus_description['build_system']} is not supported")
   if cleanup:
     shutil.rmtree(build_dir)
-    shutil.rmtree(os.path.join(base_dir, corpus_description["repo_name"]))
+    source_dir = os.path.join(base_dir, corpus_description["repo_name"])
+    if(os.path.exists(source_dir)):
+      shutil.rmtree(source_dir)
