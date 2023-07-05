@@ -81,7 +81,7 @@ def parse_and_build_from_description(corpus_description,
         corpus_description["cmake_flags"])
     build_command_vector = cmake_builder.generate_build_command([], threads)
     cmake_builder.perform_build(configure_command_vector, build_command_vector,
-                                build_dir)
+                                build_dir, corpus_dir)
     cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
     manual_builder.perform_build(corpus_description["commands"], source_dir,

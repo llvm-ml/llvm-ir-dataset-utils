@@ -29,9 +29,24 @@ def generate_build_command(targets, threads):
   return command_vector
 
 
-def perform_build(configure_command_vector, build_command_vector, build_dir):
-  subprocess.run(configure_command_vector, cwd=build_dir, check=True)
-  subprocess.run(build_command_vector, cwd=build_dir, check=True)
+def perform_build(configure_command_vector, build_command_vector, build_dir,
+                  corpus_dir):
+  configure_log_path = os.path.join(corpus_dir, 'configure.log')
+  with open(configure_log_path, 'w') as configure_log_file:
+    subprocess.run(
+        configure_command_vector,
+        cwd=build_dir,
+        check=True,
+        stderr=configure_log_file,
+        stdout=configure_log_file)
+  build_log_path = os.path.join(corpus_dir, 'build.log')
+  with open(build_log_path, 'w') as build_log_file:
+    subprocess.run(
+        build_command_vector,
+        cwd=build_dir,
+        check=True,
+        stderr=build_log_file,
+        stdout=build_log_file)
 
 
 def extract_ir(build_dir, corpus_dir, threads):
