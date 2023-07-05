@@ -1,7 +1,5 @@
 """Tool to build a crate given just a repository."""
 
-import multiprocessing
-
 from absl import app
 from absl import flags
 from absl import logging
@@ -20,6 +18,9 @@ flags.DEFINE_string(
 flags.DEFINE_string('corpus_dir', None, 'The directory to place the corpus in.')
 flags.DEFINE_integer('thread_count', 8,
                      'The number of threads to use per crate build.')
+flags.DEFINE_string('cargo_home', '/cargo', 'The default cargo directory.')
+flags.DEFINE_string('rustup_home', '/rustup',
+                    'The default rustup home directory.')
 
 flags.mark_flag_as_required('base_dir')
 flags.mark_flag_as_required('corpus_dir')
@@ -57,14 +58,18 @@ def main(_):
         'build_system': 'cargo'
     }
 
-    # Default to eight threads per build currently as it achieves a reasonable
-    # balance.
+    additional_build_env_variables = {
+        'RUSTUP_HOME': FLAGS.rustup_home,
+        'CARGO_HOME': FLAGS.cargo_home
+    }
+
     build_futures.append(
         builder.get_build_future(
             corpus_description,
             FLAGS.base_dir,
             FLAGS.corpus_dir,
             FLAGS.thread_count,
+            additional_build_env_variables,
             cleanup=True))
 
   all_finished = []

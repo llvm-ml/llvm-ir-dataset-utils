@@ -40,12 +40,13 @@ def get_build_log_path(corpus_dir, target):
                       target['name'] + '.' + target['kind'] + '.build.log')
 
 
-def build_all_targets(source_dir, build_dir, corpus_dir, threads):
+def build_all_targets(source_dir, build_dir, corpus_dir, threads,
+                      extra_env_variables):
   targets_list = get_targets_from_manifest(source_dir)
   build_log = {'targets': []}
   for target in targets_list:
     build_success = perform_build(source_dir, build_dir, corpus_dir, target,
-                                  threads)
+                                  threads, extra_env_variables)
     build_log['targets'].append({
         'success': build_success,
         'build_log': get_build_log_path(corpus_dir, target),
@@ -54,12 +55,14 @@ def build_all_targets(source_dir, build_dir, corpus_dir, threads):
   return build_log
 
 
-def perform_build(source_dir, build_dir, corpus_dir, target, threads) -> bool:
+def perform_build(source_dir, build_dir, corpus_dir, target, threads,
+                  extra_env_variables) -> bool:
   logging.info(
       f"Building target {target['name']} of type {target['kind']} from package {target['package']}"
   )
   build_env = os.environ.copy()
   build_env["CARGO_TARGET_DIR"] = build_dir
+  build_env.update(extra_env_variables)
   build_command_vector = [
       "cargo", "rustc", "-p", f"{target['package']}@{target['version']}", "-j",
       str(threads)

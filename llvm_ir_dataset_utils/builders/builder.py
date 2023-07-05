@@ -50,9 +50,11 @@ def get_build_future(corpus_description,
                      base_dir,
                      corpus_dir,
                      threads,
+                     extra_env_variables,
                      cleanup=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
-      corpus_description, base_dir, corpus_dir, threads, cleanup)
+      corpus_description, base_dir, corpus_dir, threads, extra_env_variables,
+      cleanup)
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
@@ -60,6 +62,7 @@ def parse_and_build_from_description(corpus_description,
                                      base_dir,
                                      corpus_base_dir,
                                      threads,
+                                     extra_env_variables,
                                      cleanup=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["repo_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
@@ -93,7 +96,8 @@ def parse_and_build_from_description(corpus_description,
     autoconf_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
-                                                corpus_dir, threads)
+                                                corpus_dir, threads,
+                                                extra_env_variables)
     cargo_builder.extract_ir(build_dir, corpus_dir)
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:

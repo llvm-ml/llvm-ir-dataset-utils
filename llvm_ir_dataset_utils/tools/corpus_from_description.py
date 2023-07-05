@@ -1,9 +1,11 @@
 """Tool that builds a bitcode corpus from a description"""
 
 import json
+import multiprocessing
 
 from absl import app
 from absl import flags
+import ray
 
 from llvm_ir_dataset_utils.builders import builder
 
@@ -21,10 +23,13 @@ flags.mark_flag_as_required("corpus_dir")
 
 
 def main(_):
+  ray.init()
   with open(FLAGS.corpus_description) as corpus_description_file:
     corpus_description = json.load(corpus_description_file)
-    builder.parse_and_build_from_description(corpus_description, FLAGS.base_dir,
-                                             FLAGS.corpus_dir)
+    build_future = builder.get_build_future(corpus_description, FLAGS.base_dir,
+                                            FLAGS.corpus_dir,
+                                            multiprocessing.cpu_count(), {})
+    ray.get(build_future)
 
 
 if __name__ == "__main__":
