@@ -1,0 +1,8 @@
+{
+    "repo_name": "cpuinfo",
+    "git_repo": "https://github.com/pytorch/cpuinfo",
+    "commit_sha": "5366f69c0f998e943a338f282b774c6a4386b005",
+    "build_system": "cmake",
+    "cmake_flags": {},
+    "cmake_root": "./"
+}
