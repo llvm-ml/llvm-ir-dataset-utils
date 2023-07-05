@@ -1,7 +1,12 @@
 {
+    "sources": [
+        {
+            "type": "git",
+            "repo_url": "https://github.com/python/cpython",
+            "commit_sha": "d8f87cdf94a6533c5cf2d25e09e6fa3eb06720b9"
+        }
+    ],
     "repo_name": "cpython",
-    "git_repo": "https://github.com/python/cpython",
-    "commit_sha": "d8f87cdf94a6533c5cf2d25e09e6fa3eb06720b9",
     "build_system": "autoconf",
     "autoconf_flags": {}
 }

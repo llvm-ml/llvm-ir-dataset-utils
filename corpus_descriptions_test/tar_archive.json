@@ -1,9 +1,8 @@
 {
     "sources": [
         {
-            "type": "git",
-            "repo_url": "https://gitlab.com/OldManProgrammer/unix-tree",
-            "commit_sha": "84fa3ddff51b30835a0f9c4a9e4c9225970f9aff"
+            "type": "tar",
+            "archive_url": "https://github.com/Old-Man-Programmer/tree/archive/refs/tags/2.1.1.tar.gz"
         }
     ],
     "folder_name": "tree",

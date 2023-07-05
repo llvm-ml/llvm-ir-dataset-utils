@@ -57,9 +57,12 @@ def main(_):
   build_futures = []
   for index, crate_to_build in enumerate(crates_list):
     corpus_description = {
-        'git_repo': crate_to_build,
-        'repo_name': f'build-{index}',
-        'commit_sha': '',
+        'sources': [{
+            'type': 'git',
+            'repo_url': crate_to_build,
+            'commit_sha': ''
+        }],
+        'folder_name': f'build-{index}',
         'build_system': 'cargo'
     }
 
