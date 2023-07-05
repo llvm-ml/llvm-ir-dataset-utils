@@ -44,7 +44,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libelf-dev \
   bc \
   cpio \
-  htop
+  htop \
+  jq
 
 # Setup a custom certificate/SSL settings depending upon build arguments
 # Include README.md here so that the build doesn't fail if there is no custom
