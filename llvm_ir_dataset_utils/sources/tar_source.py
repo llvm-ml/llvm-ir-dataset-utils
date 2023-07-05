@@ -6,6 +6,7 @@ import tempfile
 import shutil
 from urllib import request
 
+from absl import logging
 
 def download_source_code(archive_url, base_dir, source_folder_name):
   try:
@@ -17,9 +18,10 @@ def download_source_code(archive_url, base_dir, source_folder_name):
         source_tar_archive.extractall(download_dir)
       os.remove(file_download_path)
       real_source_folder_name = os.path.join(download_dir,
-                                            os.listdir(download_dir)[0])
+                                             os.listdir(download_dir)[0])
       shutil.move(real_source_folder_name,
                   os.path.join(base_dir, source_folder_name))
     return True
   except:
+    logging.warning(f'Downloading tar archive {archive_url} failed.')
     return False

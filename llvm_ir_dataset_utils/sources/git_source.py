@@ -38,4 +38,5 @@ def download_source_code(repo_url, repo_name, commit_sha, base_dir, corpus_dir):
               check=True)
         return True
       except:
+        logging.warning(f'Cloning and checking out git repository ${repo_url} failed.')
         return False

@@ -49,19 +49,24 @@ def main(_):
     crates_list.append(FLAGS.repository)
   elif FLAGS.repository_list is not None:
     with open(FLAGS.repository_list) as repository_list_file:
-      crates_list_raw = json.load(repository_list_file)
-      for crate_raw in crates_list_raw:
-        if crate_raw['repository'] is not None:
-          crates_list.append(crate_raw['repository'])
+      crates_list = json.load(repository_list_file)
 
   build_futures = []
   for index, crate_to_build in enumerate(crates_list):
+    sources = []
+    if crate_to_build['repository'] is not None:
+      sources.append({
+        'type': 'git',
+        'repo_url': crate_to_build['repository'],
+        'commit_sha': ''
+      })
+    if crate_to_build['tar_archive'] is not None:
+      sources.append({
+        'type': 'tar',
+        'archive_url': crate_to_build['tar_archive']
+      })
     corpus_description = {
-        'sources': [{
-            'type': 'git',
-            'repo_url': crate_to_build,
-            'commit_sha': ''
-        }],
+        'sources': sources,
         'folder_name': f'build-{index}',
         'build_system': 'cargo'
     }
