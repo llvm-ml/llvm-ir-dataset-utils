@@ -5,6 +5,7 @@ import multiprocessing
 
 from absl import app
 from absl import flags
+from absl import logging
 import ray
 
 from llvm_ir_dataset_utils.builders import builder
@@ -29,7 +30,9 @@ def main(_):
     build_future = builder.get_build_future(corpus_description, FLAGS.base_dir,
                                             FLAGS.corpus_dir,
                                             multiprocessing.cpu_count(), {})
+    logging.info('Starting build.')
     ray.get(build_future)
+    logging.info('Build finished.')
 
 
 if __name__ == "__main__":

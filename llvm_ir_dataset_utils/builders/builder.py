@@ -92,7 +92,7 @@ def parse_and_build_from_description(corpus_description,
         source_dir, corpus_description["autoconf_flags"])
     build_command_vector = autoconf_builder.generate_build_command(threads)
     autoconf_builder.perform_build(configure_command_vector,
-                                   build_command_vector, build_dir)
+                                   build_command_vector, build_dir, corpus_dir)
     autoconf_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,

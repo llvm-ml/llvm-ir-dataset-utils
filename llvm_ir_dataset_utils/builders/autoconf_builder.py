@@ -18,20 +18,32 @@ def generate_build_command(threads):
   return command_vector
 
 
-def perform_build(configure_command_vector, build_command_vector, build_dir):
+def perform_build(configure_command_vector, build_command_vector, build_dir,
+                  corpus_dir):
   configure_env = os.environ.copy()
   configure_env["CC"] = "clang"
   configure_env["CXX"] = "clang++"
   configure_env["CFLAGS"] = "-Xclang -fembed-bitcode=all"
   configure_env["CXXFLAGS"] = "-Xclang -fembed-bitcode=all"
   configure_command = " ".join(configure_command_vector)
-  subprocess.run(
-      configure_command,
-      cwd=build_dir,
-      env=configure_env,
-      check=True,
-      shell=True)
-  subprocess.run(build_command_vector, cwd=build_dir, check=True)
+  configure_log_path = os.path.join(corpus_dir, 'configure.log')
+  with open(configure_log_path, 'w') as configure_log_file:
+    subprocess.run(
+        configure_command,
+        cwd=build_dir,
+        env=configure_env,
+        check=True,
+        shell=True,
+        stdout=configure_log_file,
+        stderr=configure_log_file)
+  build_log_path = os.path.join(corpus_dir, 'build.log')
+  with open(build_log_path, 'w') as build_log_file:
+    subprocess.run(
+        build_command_vector,
+        cwd=build_dir,
+        check=True,
+        stdout=build_log_file,
+        stderr=build_log_file)
 
 
 def extract_ir(build_dir, corpus_dir, threads):
