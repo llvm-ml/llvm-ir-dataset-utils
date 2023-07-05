@@ -1,5 +1,9 @@
 """Tool to build a crate given just a repository."""
 
+import json
+
+import sys
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -47,7 +51,10 @@ def main(_):
     crates_list.append(FLAGS.repository)
   elif FLAGS.repository_list is not None:
     with open(FLAGS.repository_list) as repository_list_file:
-      crates_list = repository_list_file.read().splitlines()
+      crates_list_raw = json.load(repository_list_file)
+      for crate_raw in crates_list_raw:
+        if crate_raw['repository'] is not None:
+          crates_list.append(crate_raw['repository'])
 
   build_futures = []
   for index, crate_to_build in enumerate(crates_list):
