@@ -36,14 +36,14 @@ def download_source_code_git(repo_url, repo_name, commit_sha, base_dir,
           stdout=git_log_file,
           stderr=git_log_file,
           env=environment)
-    if commit_sha is not None and commit_sha != '':
-      commit_checkout_vector = ["git", "checkout", commit_sha]
-      logging.info(f"Checked out commit SHA {commit_sha}")
-      subprocess.run(
-          commit_checkout_vector,
-          cwd=os.path.join(base_dir, repo_name),
-          stdout=git_log_file,
-          stderr=git_log_file)
+      if commit_sha is not None and commit_sha != '':
+        commit_checkout_vector = ["git", "checkout", commit_sha]
+        logging.info(f"Checked out commit SHA {commit_sha}")
+        subprocess.run(
+            commit_checkout_vector,
+            cwd=os.path.join(base_dir, repo_name),
+            stdout=git_log_file,
+            stderr=git_log_file)
 
 
 def get_build_future(corpus_description,
