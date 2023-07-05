@@ -86,7 +86,6 @@ def main(_):
       crate_source_dict[
           'tar_archive'] = f'https://crates.io/api/v1/crates/{crate["name"]}/{crate_version}/download'
     else:
-      print('Hit failure case')
       crate_source_dict['tar_archive'] = None
     source_list.append(crate_source_dict)
   with open(FLAGS.repository_list, 'w') as repository_list_file:
