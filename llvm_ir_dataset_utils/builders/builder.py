@@ -85,7 +85,7 @@ def parse_and_build_from_description(corpus_description,
     cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
     manual_builder.perform_build(corpus_description["commands"], source_dir,
-                                 threads)
+                                 threads, corpus_dir)
     manual_builder.extract_ir(source_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(

@@ -7,11 +7,19 @@ import os
 from compiler_opt.tools import extract_ir_lib
 
 
-def perform_build(commands_list, source_dir, threads):
+def perform_build(commands_list, source_dir, threads, corpus_dir):
   for command in commands_list:
     environment = os.environ.copy()
     environment['JOBS'] = str(threads)
-    subprocess.run(command, cwd=source_dir, env=environment, shell=True)
+    build_config_file_path = os.path.join(corpus_dir, 'build.log')
+    with open(build_config_file_path, 'w') as build_config_file:
+      subprocess.run(
+          command,
+          cwd=source_dir,
+          env=environment,
+          shell=True,
+          stderr=build_config_file,
+          stdout=build_config_file)
 
 
 def extract_ir(build_dir, corpus_dir, threads):
