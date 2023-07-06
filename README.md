@@ -7,7 +7,8 @@ multiple sources.
 
 - [x] Individual projects
 - [x] Rust crates
-- [ ] Spack packages
+- [x] Spack packages
 - [x] Autoconf
 - [x] Cmake
 - [ ] Julia packages
+- [ ] Zig packages
