@@ -12,6 +12,7 @@ from llvm_ir_dataset_utils.builders import cmake_builder
 from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
+from llvm_ir_dataset_utils.builders import spack_builder
 from llvm_ir_dataset_utils.sources import source
 
 
@@ -70,6 +71,15 @@ def parse_and_build_from_description(corpus_description,
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:
       json.dump(build_log, build_manifest, indent=2)
+  elif corpus_description["build_system"] == "spack":
+    build_command_vector = spack_builder.generate_build_command(
+        {}, {}, corpus_description["spack_package"])
+    spack_builder.perform_build(corpus_description["spack_package"],
+                                build_command_vector, corpus_dir)
+    spack_builder.extract_ir(corpus_description["spack_package"], corpus_dir,
+                             threads)
+    if cleanup:
+      spack_builder.cleanup(corpus_description["spack_package"])
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")

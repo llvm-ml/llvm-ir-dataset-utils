@@ -1,0 +1,6 @@
+{
+    "sources": [],
+    "folder_name": "zlib",
+    "build_system": "spack",
+    "spack_package": "zlib"
+}
