@@ -87,6 +87,7 @@ def parse_and_build_from_description(corpus_description,
         f"Build system {corpus_description['build_system']} is not supported")
   if cleanup:
     shutil.rmtree(build_dir)
-    source_dir = os.path.join(base_dir, corpus_description["folder_name"])
     if (os.path.exists(source_dir)):
       shutil.rmtree(source_dir)
+    if (os.path.exists(build_dir)):
+      shutil.rmtree(build_dir)
