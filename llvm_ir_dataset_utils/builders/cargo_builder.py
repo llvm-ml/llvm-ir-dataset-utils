@@ -9,7 +9,7 @@ from absl import logging
 from compiler_opt.tools import make_corpus_lib
 
 
-def get_targets_from_manifest(source_dir):
+def get_packages_from_manifest(source_dir):
   command_vector = ["cargo", "metadata", "--no-deps"]
   try:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
@@ -21,8 +21,9 @@ def get_targets_from_manifest(source_dir):
         cwd=source_dir) as process:
       out, err = process.communicate()
       manifest = json.loads(out.decode("utf-8"))
-    targets = []
+    packages = {}
     for package in manifest["packages"]:
+      targets = []
       for target in package["targets"]:
         targets.append({
             "name": target["name"],
@@ -30,7 +31,8 @@ def get_targets_from_manifest(source_dir):
             "package": package["name"],
             "version": package["version"]
         })
-    return targets
+      packages[package["name"]] = targets
+    return packages
   except:
     return []
 
@@ -42,16 +44,17 @@ def get_build_log_path(corpus_dir, target):
 
 def build_all_targets(source_dir, build_dir, corpus_dir, threads,
                       extra_env_variables):
-  targets_list = get_targets_from_manifest(source_dir)
+  package_list = get_packages_from_manifest(source_dir)
   build_log = {'targets': []}
-  for target in targets_list:
-    build_success = perform_build(source_dir, build_dir, corpus_dir, target,
-                                  threads, extra_env_variables)
-    build_log['targets'].append({
-        'success': build_success,
-        'build_log': get_build_log_path(corpus_dir, target),
-        'name': target['name'] + '.' + target['kind']
-    })
+  for package in package_list:
+    for target in package_list[package]:
+      build_success = perform_build(source_dir, build_dir, corpus_dir, target,
+                                    threads, extra_env_variables)
+      build_log['targets'].append({
+          'success': build_success,
+          'build_log': get_build_log_path(corpus_dir, target),
+          'name': target['name'] + '.' + target['kind']
+      })
   return build_log
 
 
@@ -90,7 +93,7 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
           check=True,
           stdout=build_log_file,
           stderr=build_log_file)
-  except Exception as e:
+  except:
     logging.warn(
         f"Failed to build target {target['name']} of type {target['kind']} from package {target['package']}"
     )
