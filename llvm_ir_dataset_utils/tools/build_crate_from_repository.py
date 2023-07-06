@@ -56,14 +56,14 @@ def main(_):
     sources = []
     if crate_to_build['repository'] is not None:
       sources.append({
-        'type': 'git',
-        'repo_url': crate_to_build['repository'],
-        'commit_sha': ''
+          'type': 'git',
+          'repo_url': crate_to_build['repository'],
+          'commit_sha': ''
       })
     if crate_to_build['tar_archive'] is not None:
       sources.append({
-        'type': 'tar',
-        'archive_url': crate_to_build['tar_archive']
+          'type': 'tar',
+          'archive_url': crate_to_build['tar_archive']
       })
     corpus_description = {
         'sources': sources,

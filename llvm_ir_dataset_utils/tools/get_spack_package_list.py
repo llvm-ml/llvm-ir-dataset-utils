@@ -16,6 +16,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('package_list', 'package_list.txt',
                     'The path to write the package list to.')
 
+
 def main(_):
   logging.info('Getting packages.')
   packages = spack.repo.all_package_names(include_virtuals=True)
@@ -33,7 +34,7 @@ def main(_):
         pkg.build_system_class == 'AutotoolsPackage' or
         pkg.build_system_class == 'MesonPackage'):
       output_package_list.append(pkg.name)
-  
+
   logging.info('Writing filtered packages to file.')
   with open(FLAGS.package_list, 'w') as package_list_file:
     for package in output_package_list:
