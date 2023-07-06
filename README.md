@@ -11,4 +11,4 @@ multiple sources.
 - [x] Autoconf
 - [x] Cmake
 - [ ] Julia packages
-- [ ] Zig packages
+
