@@ -3,8 +3,12 @@
 import subprocess
 import os
 import json
+import multiprocessing
+import shutil
 
 from absl import logging
+
+import ray
 
 from compiler_opt.tools import make_corpus_lib
 
@@ -43,23 +47,48 @@ def get_build_log_path(corpus_dir, target):
 
 
 def build_all_targets(source_dir, build_dir, corpus_dir, threads,
-                      extra_env_variables):
+                      extra_env_variables, cleanup):
   package_list = get_packages_from_manifest(source_dir)
   build_log = {'targets': []}
+  package_futures = []
   for package in package_list:
-    for target in package_list[package]:
-      build_success = perform_build(source_dir, build_dir, corpus_dir, target,
-                                    threads, extra_env_variables)
-      build_log['targets'].append({
-          'success': build_success,
-          'build_log': get_build_log_path(corpus_dir, target),
-          'name': target['name'] + '.' + target['kind']
-      })
+    package_build_dir = build_dir + '-' + package
+    package_futures.append(
+        build_package_future(source_dir, package_build_dir, corpus_dir,
+                             package_list[package], threads,
+                             extra_env_variables, cleanup))
+  package_build_logs = ray.get(package_futures)
+  for package_build_log in package_build_logs:
+    build_log['targets'].extend(package_build_log)
+  return build_log
+
+
+def build_package_future(source_dir, build_dir, corpus_dir, targets, threads,
+                         extra_env_variables, cleanup):
+  return build_package.options(num_cpus=threads).remote(source_dir, build_dir,
+                                                        corpus_dir, targets,
+                                                        threads,
+                                                        extra_env_variables,
+                                                        cleanup)
+
+
+@ray.remote(num_cpus=multiprocessing.cpu_count())
+def build_package(source_dir, build_dir, corpus_dir, targets, threads,
+                  extra_env_variables, cleanup):
+  build_log = []
+  for target in targets:
+    build_log.append(
+        perform_build(source_dir, build_dir, corpus_dir, target, threads,
+                      extra_env_variables))
+  extract_ir(build_dir, corpus_dir)
+  if cleanup:
+    if os.path.exists(build_dir):
+      shutil.rmtree(build_dir)
   return build_log
 
 
 def perform_build(source_dir, build_dir, corpus_dir, target, threads,
-                  extra_env_variables) -> bool:
+                  extra_env_variables):
   logging.info(
       f"Building target {target['name']} of type {target['kind']} from package {target['package']}"
   )
@@ -97,11 +126,16 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
     logging.warn(
         f"Failed to build target {target['name']} of type {target['kind']} from package {target['package']}"
     )
-    return False
+    build_success = False
   logging.info(
       f"Finished building target {target['name']} of type {target['kind']} from package {target['package']}"
   )
-  return True
+  build_success = True
+  return {
+      'success': build_success,
+      'build_log': get_build_log_path(corpus_dir, target),
+      'name': target['name'] + '.' + target['kind']
+  }
 
 
 def extract_ir(build_dir, corpus_dir):

@@ -66,8 +66,8 @@ def parse_and_build_from_description(corpus_description,
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
                                                 corpus_dir, threads,
-                                                extra_env_variables)
-    cargo_builder.extract_ir(build_dir, corpus_dir)
+                                                extra_env_variables,
+                                                cleanup)
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:
       json.dump(build_log, build_manifest, indent=2)
