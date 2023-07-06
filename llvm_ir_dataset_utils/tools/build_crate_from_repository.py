@@ -14,9 +14,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('repository', None, 'The repository url to clone from.')
 flags.DEFINE_string('repository_list', None,
                     'Path to a file containing a list of repositories.')
-flags.DEFINE_string(
-    'base_dir', None,
-    'The base directory to clone the source into and perform the build in.')
+flags.DEFINE_string('source_dir', None,
+                    'The directory to download source code into.')
+flags.DEFINE_string('build_dir', None,
+                    'The base directory to and perform builds in.')
 flags.DEFINE_string('corpus_dir', None, 'The directory to place the corpus in.')
 flags.DEFINE_integer('thread_count', 8,
                      'The number of threads to use per crate build.')
@@ -24,7 +25,8 @@ flags.DEFINE_string('cargo_home', '/cargo', 'The default cargo directory.')
 flags.DEFINE_string('rustup_home', '/rustup',
                     'The default rustup home directory.')
 
-flags.mark_flag_as_required('base_dir')
+flags.mark_flag_as_required('source_dir')
+flags.mark_flag_as_required('build_dir')
 flags.mark_flag_as_required('corpus_dir')
 
 
@@ -79,7 +81,8 @@ def main(_):
     build_futures.append(
         builder.get_build_future(
             corpus_description,
-            FLAGS.base_dir,
+            FLAGS.source_dir,
+            FLAGS.build_dir,
             FLAGS.corpus_dir,
             FLAGS.thread_count,
             additional_build_env_variables,

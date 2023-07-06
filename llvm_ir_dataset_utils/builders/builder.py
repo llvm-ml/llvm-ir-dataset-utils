@@ -17,33 +17,36 @@ from llvm_ir_dataset_utils.sources import source
 
 
 def get_build_future(corpus_description,
-                     base_dir,
+                     source_base_dir,
+                     build_base_dir,
                      corpus_dir,
                      threads,
                      extra_env_variables,
                      cleanup=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
-      corpus_description, base_dir, corpus_dir, threads, extra_env_variables,
-      cleanup)
+      corpus_description, source_base_dir, build_base_dir, corpus_dir, threads,
+      extra_env_variables, cleanup)
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
 def parse_and_build_from_description(corpus_description,
-                                     base_dir,
+                                     source_base_dir,
+                                     build_base_dir,
                                      corpus_base_dir,
                                      threads,
                                      extra_env_variables,
                                      cleanup=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["folder_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
-  pathlib.Path(base_dir).mkdir(exist_ok=True)
-  source.download_source(corpus_description['sources'], base_dir, corpus_dir,
-                         corpus_description['folder_name'])
-  build_dir = os.path.join(base_dir,
+  pathlib.Path(source_base_dir).mkdir(exist_ok=True)
+  pathlib.Path(build_base_dir).mkdir(exist_ok=True)
+  source.download_source(corpus_description['sources'], source_base_dir,
+                         corpus_dir, corpus_description['folder_name'])
+  build_dir = os.path.join(build_base_dir,
                            corpus_description["folder_name"] + "-build")
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
-  source_dir = os.path.join(base_dir, corpus_description["folder_name"])
+  source_dir = os.path.join(source_base_dir, corpus_description["folder_name"])
   if corpus_description["build_system"] == "cmake":
     configure_command_vector = cmake_builder.generate_configure_command(
         os.path.join(source_dir, corpus_description["cmake_root"]),
@@ -66,8 +69,7 @@ def parse_and_build_from_description(corpus_description,
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
                                                 corpus_dir, threads,
-                                                extra_env_variables,
-                                                cleanup)
+                                                extra_env_variables, cleanup)
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:
       json.dump(build_log, build_manifest, indent=2)
