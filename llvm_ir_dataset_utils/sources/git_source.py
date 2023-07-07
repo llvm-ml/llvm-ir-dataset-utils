@@ -44,8 +44,8 @@ def download_source_code(repo_url, repo_name, commit_sha, base_dir, corpus_dir):
   else:
     success = True
   return {
-    'type': 'git',
-    'repo_url': repo_url,
-    'commit_sha': commit_sha,
-    'success': success
+      'type': 'git',
+      'repo_url': repo_url,
+      'commit_sha': commit_sha,
+      'success': success
   }

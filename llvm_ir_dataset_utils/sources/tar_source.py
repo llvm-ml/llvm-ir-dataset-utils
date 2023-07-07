@@ -4,6 +4,7 @@ import os
 import tarfile
 import tempfile
 import shutil
+import urllib.error
 from urllib import request
 
 from absl import logging
@@ -23,11 +24,7 @@ def download_source_code(archive_url, base_dir, source_folder_name):
       shutil.move(real_source_folder_name,
                   os.path.join(base_dir, source_folder_name))
     success = True
-  except:
+  except urllib.error.URLError:
     logging.warning(f'Downloading tar archive {archive_url} failed.')
-    success =  False
-  return {
-    'type': 'tar',
-    'archive_url': archive_url,
-    'success': success
-  }
+    success = False
+  return {'type': 'tar', 'archive_url': archive_url, 'success': success}
