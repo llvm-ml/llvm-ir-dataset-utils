@@ -39,7 +39,7 @@ def download_source_code(repo_url, repo_name, commit_sha, base_dir, corpus_dir):
         success = True
       except subprocess.SubprocessError:
         logging.warning(
-            f'Cloning and checking out git repository ${repo_url} failed.')
+            f'Cloning and checking out git repository {repo_url} failed.')
         success = False
   else:
     success = True
