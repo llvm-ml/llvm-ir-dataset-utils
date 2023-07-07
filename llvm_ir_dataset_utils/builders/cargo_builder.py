@@ -27,8 +27,7 @@ def get_spec_from_id(id):
 
 def get_packages_from_manifest(source_dir):
   command_vector = ["cargo", "metadata", "--no-deps"]
-  #try:
-  if True:
+  try:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
     # somewhere
     with subprocess.Popen(
@@ -50,8 +49,8 @@ def get_packages_from_manifest(source_dir):
         })
       packages[package["name"]] = targets
     return packages
-  #except:
-  #  return []
+  except:
+    return []
 
 
 def get_build_log_path(corpus_dir, target):
