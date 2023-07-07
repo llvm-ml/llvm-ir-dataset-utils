@@ -25,18 +25,14 @@ def get_spec_from_id(id):
   #    the beginning of the post split string.
   return id.split('(')[1][5:-1]
 
+
 def get_packages_from_manifest(source_dir):
   command_vector = ["cargo", "metadata", "--no-deps"]
   try:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
     # somewhere
-    with subprocess.Popen(
-        command_vector,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=source_dir) as process:
-      out, err = process.communicate()
-      manifest = json.loads(out.decode("utf-8"))
+    out = subprocess.check_output(command_vector, cwd=source_dir)
+    manifest = json.loads(out.decode("utf-8"))
     packages = {}
     for package in manifest["packages"]:
       targets = []
@@ -49,7 +45,7 @@ def get_packages_from_manifest(source_dir):
         })
       packages[package["name"]] = targets
     return packages
-  except:
+  except subprocess.SubprocessError:
     return []
 
 
@@ -122,8 +118,14 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
   elif target['kind'] == "example":
     build_command_vector.extend(["--example", target['name']])
   else:
-    logging.warn("Unrecognized target type, not building.")
-    return False
+    logging.warn(
+        f'{target["name"]} has unrecognized target type {target["kind"]} in package {target["package"]}'
+    )
+    return {
+        'success': False,
+        'build_log': None,
+        'name': target['name'] + '.' + target['kind']
+    }
   build_command_vector.extend(["--", '--emit=llvm-bc'])
   try:
     with open(get_build_log_path(corpus_dir, target), 'w') as build_log_file:
@@ -134,15 +136,16 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
           check=True,
           stdout=build_log_file,
           stderr=build_log_file)
-  except:
+  except subprocess.SubprocessError:
     logging.warn(
         f"Failed to build target {target['name']} of type {target['kind']} from package {target['package']}"
     )
     build_success = False
-  logging.info(
-      f"Finished building target {target['name']} of type {target['kind']} from package {target['package']}"
-  )
-  build_success = True
+  else:
+    logging.info(
+        f"Finished building target {target['name']} of type {target['kind']} from package {target['package']}"
+    )
+    build_success = True
   return {
       'success': build_success,
       'build_log': get_build_log_path(corpus_dir, target),
