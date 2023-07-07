@@ -13,9 +13,22 @@ import ray
 from compiler_opt.tools import make_corpus_lib
 
 
+def get_spec_from_id(id):
+  # We're taking in a string like
+  # my-package 0.1.0 (path+file:///path/to/my-package) and we want to be  able
+  # to get file:///path/to/my-package from it, so we perform the following
+  # process:
+  # 1. .split('(') - Split at the first parenthese to get rid of the space
+  #    separated package and id.
+  # 2. [1] - Get the section after the split that we want.
+  # 3. [5:-1] - Remove the parenthese at the end and the path+ section at
+  #    the beginning of the post split string.
+  return id.split('(')[1][5:-1]
+
 def get_packages_from_manifest(source_dir):
   command_vector = ["cargo", "metadata", "--no-deps"]
-  try:
+  #try:
+  if True:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
     # somewhere
     with subprocess.Popen(
@@ -32,13 +45,13 @@ def get_packages_from_manifest(source_dir):
         targets.append({
             "name": target["name"],
             "kind": target["kind"][0],
-            "package": package["name"],
-            "version": package["version"]
+            "spec": get_spec_from_id(package['id']),
+            "package": package['name']
         })
       packages[package["name"]] = targets
     return packages
-  except:
-    return []
+  #except:
+  #  return []
 
 
 def get_build_log_path(corpus_dir, target):
@@ -96,7 +109,7 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
   build_env["CARGO_TARGET_DIR"] = build_dir
   build_env.update(extra_env_variables)
   build_command_vector = [
-      "cargo", "rustc", "-p", f"{target['package']}@{target['version']}", "-j",
+      "cargo", "rustc", "-p", f"{target['spec']}", "-j",
       str(threads)
   ]
   if target['kind'] == "lib":
