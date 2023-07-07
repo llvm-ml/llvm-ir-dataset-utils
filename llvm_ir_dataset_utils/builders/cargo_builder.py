@@ -27,7 +27,8 @@ def get_packages_from_manifest(source_dir):
   try:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
     # somewhere
-    out = subprocess.check_output(command_vector, cwd=source_dir)
+    out = subprocess.check_output(
+        command_vector, cwd=source_dir, stderr=subprocess.PIPE)
     manifest = json.loads(out.decode("utf-8"))
     packages = {}
     for package in manifest["packages"]:
