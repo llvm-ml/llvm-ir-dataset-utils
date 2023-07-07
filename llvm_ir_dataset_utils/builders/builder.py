@@ -40,7 +40,7 @@ def parse_and_build_from_description(corpus_description,
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   pathlib.Path(source_base_dir).mkdir(exist_ok=True)
   pathlib.Path(build_base_dir).mkdir(exist_ok=True)
-  source.download_source(corpus_description['sources'], source_base_dir,
+  source_logs = source.download_source(corpus_description['sources'], source_base_dir,
                          corpus_dir, corpus_description['folder_name'])
   build_dir = os.path.join(build_base_dir,
                            corpus_description["folder_name"] + "-build")
@@ -70,6 +70,7 @@ def parse_and_build_from_description(corpus_description,
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,
                                                 corpus_dir, threads,
                                                 extra_env_variables, cleanup)
+    build_log['sources'] = source_logs
     with open(os.path.join(corpus_dir, 'build_manifest.json'),
               'w') as build_manifest:
       json.dump(build_log, build_manifest, indent=2)

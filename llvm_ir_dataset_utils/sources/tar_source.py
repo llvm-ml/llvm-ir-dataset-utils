@@ -22,7 +22,12 @@ def download_source_code(archive_url, base_dir, source_folder_name):
                                              os.listdir(download_dir)[0])
       shutil.move(real_source_folder_name,
                   os.path.join(base_dir, source_folder_name))
-    return True
+    success = True
   except:
     logging.warning(f'Downloading tar archive {archive_url} failed.')
-    return False
+    success =  False
+  return {
+    'type': 'tar',
+    'archive_url': archive_url,
+    'success': success
+  }
