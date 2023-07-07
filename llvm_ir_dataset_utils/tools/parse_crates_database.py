@@ -36,6 +36,7 @@ def process_git_url(git_repo_url):
   else:
     return parse.urlunparse(url_struct)
 
+
 def dedeuplicate_repositories(crates_list):
   repository_dict = {}
   new_crates_list = []
@@ -50,6 +51,7 @@ def dedeuplicate_repositories(crates_list):
       repository_dict[crate['repository']] = True
       new_crates_list.append(crate)
   return new_crates_list
+
 
 def main(_):
   with tempfile.TemporaryDirectory() as download_dir:
