@@ -36,6 +36,20 @@ def process_git_url(git_repo_url):
   else:
     return parse.urlunparse(url_struct)
 
+def dedeuplicate_repositories(crates_list):
+  repository_dict = {}
+  new_crates_list = []
+  # We're making the assumption here that if multiple crates point to the
+  # same repository, all of them can be built from that repository.
+  # TODO(boomanaiden154): Investigate further whether or not this assumption
+  # makes sense.
+  for crate in crates_list:
+    if crate['repository'] == None:
+      new_crates_list.append(crate)
+    elif crate['repository'] not in repository_dict:
+      repository_dict[crate['repository']] = True
+      new_crates_list.append(crate)
+  return new_crates_list
 
 def main(_):
   with tempfile.TemporaryDirectory() as download_dir:
@@ -74,7 +88,7 @@ def main(_):
           if version_entry['crate_id'] not in versions_map or versions_map[
               version_entry['crate_id']] < version_entry['num']:
             versions_map[version_entry['crate_id']] = version_entry['num']
-  logging.info('Writing the repository list.')
+  logging.info('Generating and deduplicating repository list.')
   source_list = []
   for crate in crates_list:
     crate_source_dict = {
@@ -88,6 +102,8 @@ def main(_):
     else:
       crate_source_dict['tar_archive'] = None
     source_list.append(crate_source_dict)
+  source_list = dedeuplicate_repositories(source_list)
+  logging.info(f'Writing {len(source_list)} crate sources.')
   with open(FLAGS.repository_list, 'w') as repository_list_file:
     json.dump(source_list, repository_list_file, indent=2)
 
