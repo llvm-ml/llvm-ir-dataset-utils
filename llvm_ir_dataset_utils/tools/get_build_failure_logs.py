@@ -22,9 +22,8 @@ def main(_):
     with open(build_manifest_file_path) as build_manifest_file:
       build_manifest = json.load(build_manifest_file)
     for target in build_manifest['targets']:
-      if target['success'] == False:
+      if target['success'] == False and target['build_log'] is not None:
         print(target['name'] + ',' + target['build_log'])
-
 
 if __name__ == '__main__':
   app.run(main)
