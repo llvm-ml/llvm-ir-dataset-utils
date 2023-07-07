@@ -102,7 +102,8 @@ def parse_and_build_from_description(corpus_description,
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
   if cleanup:
-    shutil.rmtree(build_dir)
+    if(os.path.exists(build_dir)):
+      shutil.rmtree(build_dir)
     if (os.path.exists(source_dir)):
       shutil.rmtree(source_dir)
     if (os.path.exists(build_dir)):
