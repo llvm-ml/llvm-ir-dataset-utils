@@ -14,16 +14,12 @@ from compiler_opt.tools import make_corpus_lib
 
 
 def get_spec_from_id(id):
-  # We're taking in a string like
-  # my-package 0.1.0 (path+file:///path/to/my-package) and we want to be  able
-  # to get file:///path/to/my-package from it, so we perform the following
-  # process:
-  # 1. .split('(') - Split at the first parenthese to get rid of the space
-  #    separated package and id.
-  # 2. [1] - Get the section after the split that we want.
-  # 3. [5:-1] - Remove the parenthese at the end and the path+ section at
-  #    the beginning of the post split string.
-  return id.split('(')[1][5:-1]
+  sections = id.split('(')
+  file_path = sections[1][5:-1]
+  name_version = sections[0].split(' ')
+  name = name_version[0]
+  version = name_version[1]
+  return f'{file_path}#{name}@{version}'
 
 
 def get_packages_from_manifest(source_dir):
