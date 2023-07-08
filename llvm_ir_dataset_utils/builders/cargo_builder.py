@@ -27,7 +27,7 @@ def get_spec_from_id(id):
 def get_packages_from_manifest(source_dir):
   command_vector = ["cargo", "metadata", "--no-deps"]
   if not os.path.exists(source_dir):
-    return
+    return []
   try:
     # TODO(boomanaiden154): Dump the stderr of the metadata command to a log
     # somewhere
