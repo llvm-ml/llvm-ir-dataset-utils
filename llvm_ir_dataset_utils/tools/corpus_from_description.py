@@ -21,6 +21,8 @@ flags.DEFINE_string("build_dir", None,
 flags.DEFINE_string("corpus_dir", None, "The base directory to put the corpus")
 flags.DEFINE_bool('cleanup', False, 'Whether or not to cleanup the source and '
                   'build directories after finishing a build.')
+flags.DEFINE_integer('thread_count', multiprocessing.cpu_count(), 'The number '
+                     'of threads to use per job.')
 
 flags.mark_flag_as_required("corpus_description")
 flags.mark_flag_as_required("source_dir")
@@ -35,7 +37,7 @@ def main(_):
     build_future = builder.get_build_future(corpus_description,
                                             FLAGS.source_dir, FLAGS.build_dir,
                                             FLAGS.corpus_dir,
-                                            multiprocessing.cpu_count(), {},
+                                            FLAGS.thread_count, {},
                                             FLAGS.cleanup)
     logging.info('Starting build.')
     ray.get(build_future)
