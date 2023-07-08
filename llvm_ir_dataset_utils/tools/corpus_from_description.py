@@ -19,8 +19,9 @@ flags.DEFINE_string("source_dir", None,
 flags.DEFINE_string("build_dir", None,
                     "The base directory to perform the build in")
 flags.DEFINE_string("corpus_dir", None, "The base directory to put the corpus")
-flags.DEFINE_bool('cleanup', False, 'Whether or not to cleanup the source and '
-                  'build directories after finishing a build.')
+flags.DEFINE_bool(
+    'cleanup', False, 'Whether or not to cleanup the source and '
+    'build directories after finishing a build.')
 flags.DEFINE_integer('thread_count', multiprocessing.cpu_count(), 'The number '
                      'of threads to use per job.')
 

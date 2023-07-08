@@ -25,5 +25,6 @@ def main(_):
       if target['success'] == False and target['build_log'] is not None:
         print(target['name'] + ',' + target['build_log'])
 
+
 if __name__ == '__main__':
   app.run(main)
