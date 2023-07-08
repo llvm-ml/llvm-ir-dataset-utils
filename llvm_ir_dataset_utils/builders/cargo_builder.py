@@ -12,6 +12,8 @@ import ray
 
 from compiler_opt.tools import make_corpus_lib
 
+BUILD_TIMEOUT = 900
+
 
 def get_spec_from_id(id):
   sections = id.split('(')
@@ -132,7 +134,8 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
           env=build_env,
           check=True,
           stdout=build_log_file,
-          stderr=build_log_file)
+          stderr=build_log_file,
+          timeout=BUILD_TIMEOUT)
   except subprocess.SubprocessError:
     logging.warn(
         f"Failed to build target {target['name']} of type {target['kind']} from package {target['package']}"
