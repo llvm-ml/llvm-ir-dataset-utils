@@ -5,6 +5,7 @@ import json
 import pathlib
 import multiprocessing
 import shutil
+import glob
 
 from absl import logging
 
@@ -16,6 +17,14 @@ from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
 from llvm_ir_dataset_utils.builders import spack_builder
 from llvm_ir_dataset_utils.sources import source
+
+
+def get_corpus_size(corpus_dir):
+  total_size = 0
+  for bitcode_file in glob.glob(
+      os.path.join(corpus_dir, '**/*.bc'), recursive=True):
+    total_size += os.path.getsize(bitcode_file)
+  return total_size
 
 
 def get_build_future(corpus_description,
@@ -86,6 +95,7 @@ def parse_and_build_from_description(corpus_description,
       ray.get(build_future)
     else:
       build_log['sources'] = source_logs
+      build_log['size'] = get_corpus_size(corpus_dir)
       with open(os.path.join(corpus_dir, 'build_manifest.json'),
                 'w') as build_manifest:
         json.dump(build_log, build_manifest, indent=2)
