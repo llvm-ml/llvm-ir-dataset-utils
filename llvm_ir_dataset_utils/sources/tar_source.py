@@ -4,7 +4,6 @@ import os
 import tarfile
 import tempfile
 import shutil
-import urllib.error
 from urllib import request
 
 from absl import logging

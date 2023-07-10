@@ -5,6 +5,8 @@ Note: This must be run with `spack-python` or `spack python` rather than your
 default python interpreter.
 """
 
+import json
+
 from absl import app
 from absl import logging
 from absl import flags
@@ -33,12 +35,14 @@ def main(_):
         pkg.build_system_class == 'MakefilePackage' or
         pkg.build_system_class == 'AutotoolsPackage' or
         pkg.build_system_class == 'MesonPackage'):
-      output_package_list.append(pkg.name)
+      output_package_list.append({
+        'name': pkg.name,
+        'dependencies': list(pkg.dependencies.keys())
+      })
 
-  logging.info('Writing filtered packages to file.')
+  logging.info(f'Writing {len(output_package_list)} filtered packages to file.')
   with open(FLAGS.package_list, 'w') as package_list_file:
-    for package in output_package_list:
-      package_list_file.write(f'{package}\n')
+    json.dump(output_package_list, package_list_file, indent=2)
 
 
 if __name__ == '__main__':

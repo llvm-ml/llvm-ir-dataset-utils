@@ -15,7 +15,7 @@ def generate_build_command(install_options_dict, compile_options_dict,
   # Syntax: spack install <flags> <package to build> <compiler+options>
   command_vector = [
       "spack", "install", "--keep-stage", "--overwrite", "-y",
-      "--use-buildcache", "never,never,auto"
+      "--use-buildcache", "package:never,dependencies:only"
   ]
 
   # Provide further flags provided to the installation comand
