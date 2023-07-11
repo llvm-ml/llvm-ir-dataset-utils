@@ -3,7 +3,7 @@
 This repository contains utilities to construct large LLVM IR datasets from
 multiple sources.
 
-### Sources (In Progress)
+### Sources
 
 - [x] Individual projects
 - [x] Rust crates
@@ -11,4 +11,5 @@ multiple sources.
 - [x] Autoconf
 - [x] Cmake
 - [ ] Julia packages
+- [ ] Swift packages
 
