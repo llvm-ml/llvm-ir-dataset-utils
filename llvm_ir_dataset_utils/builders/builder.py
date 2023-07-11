@@ -101,7 +101,7 @@ def parse_and_build_from_description(corpus_description,
         json.dump(build_log, build_manifest, indent=2)
   elif corpus_description["build_system"] == "spack":
     build_command_vector = spack_builder.generate_build_command(
-        {}, {}, corpus_description["spack_package"])
+        corpus_description["spack_package"])
     spack_builder.perform_build(corpus_description["spack_package"],
                                 build_command_vector, corpus_dir)
     spack_builder.extract_ir(corpus_description["spack_package"], corpus_dir,

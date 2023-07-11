@@ -9,33 +9,12 @@ from absl import logging
 from compiler_opt.tools import extract_ir_lib
 
 
-def generate_build_command(install_options_dict, compile_options_dict,
-                           package_to_build):
-
-  # Syntax: spack install <flags> <package to build> <compiler+options>
+def generate_build_command(package_to_build):
   command_vector = [
-      "spack", "install", "--keep-stage", "--overwrite", "-y",
-      "--use-buildcache", "package:never,dependencies:only"
+      'spack', 'install', '--keep-stage', '--overwrite', '-y',
+      '--use-buildcache', 'package:never,dependencies:only', '-j', '16'
   ]
-
-  # Provide further flags provided to the installation comand
-  for option in install_options_dict:
-    command_vector.append(f"{option}={install_options_dict[option]}")
-
-  # Insert the package to build
-  command_vector.append(package_to_build)
-
-  # Default compiler configuration to allow for bitcode extraction
-  # '%clang' forces the entire build chain to use LLVM compilation
-  command_vector.append("%clang")
-  # Providing flags for the different compilers, and linker option
-  command_vector.append("cflags=\"-Xclang -fembed-bitcode=all\"")
-  command_vector.append("cppflags=\"-Xclang -fembed-bitcode=all\"")
-
-  # Provide further flags to the compilation command
-  for option in compile_options_dict:
-    command_vector.append(f"{option}={compile_options_dict[option]}")
-
+  command_vector.extend(package_to_build.split(' '))
   return command_vector
 
 
@@ -49,9 +28,11 @@ def perform_build(package_name, assembled_build_command, corpus_dir):
           stdout=build_log_file,
           stderr=build_log_file,
           check=True)
-  except:
+  except subprocess.SubprocessError:
     logging.warn(f"Failed to build spack package {package_name}")
+    return False
   logging.info(f"Finished build spack package {package_name}")
+  return True
 
 
 def extract_ir(package_name, corpus_dir, threads):
