@@ -33,10 +33,13 @@ def build_package(dependency_futures, package, corpus_dir):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
     if dependency_future != True:
-      logging.warning(f'Some dependencies failed to build for package {package["name"]}, not building.')
+      logging.warning(
+          f'Some dependencies failed to build for package {package["name"]}, not building.'
+      )
       return False
   build_command = spack_builder.generate_build_command(package['spec'])
-  build_result = spack_builder.perform_build(package['name'], build_command, corpus_dir)
+  build_result = spack_builder.perform_build(package['name'], build_command,
+                                             corpus_dir)
   if build_result:
     spack_builder.extract_ir(package['name'], corpus_dir, 16)
     logging.warning(f'Finished building {package["name"]}')
