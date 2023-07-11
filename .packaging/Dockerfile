@@ -45,7 +45,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bc \
   cpio \
   htop \
-  jq
+  jq \
+  file
 
 # Setup a custom certificate/SSL settings depending upon build arguments
 # Include README.md here so that the build doesn't fail if there is no custom
@@ -79,11 +80,6 @@ ENV PATH=${PATH}:${SPACK_ROOT}/bin
 RUN git clone https://github.com/spack/spack.git ${SPACK_ROOT} \
     && git --git-dir=${SPACK_ROOT}/.git --work-tree=${SPACK_ROOT} checkout develop \
     && . ${SPACK_ROOT}/share/spack/setup-env.sh
-
-# Add Spack build cache (AWS)
-ENV FORCE_UNSAFE_CONFIGURE=1
-RUN spack mirror add binary_mirror https://binaries.spack.io/develop
-RUN spack buildcache keys --install --trust
 
 # Install Julia
 RUN curl \
