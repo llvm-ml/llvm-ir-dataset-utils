@@ -21,13 +21,16 @@ flags.DEFINE_string('package_list', None, 'The list of spack packages and '
 flags.DEFINE_string('package_name', None, 'The name of an individual package '
                     'to build.')
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus.')
+flags.DEFINE_integer('thread_count', 16,
+                     'The number of threads to use per job.')
 
 flags.mark_flag_as_required('package_list')
 flags.mark_flag_as_required('corpus_dir')
 
 
 @ray.remote
-def build_package(dependency_futures, package, package_hash, corpus_dir):
+def build_package(dependency_futures, package, package_hash, corpus_dir,
+                  threads):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
     if dependency_future != True:
@@ -35,7 +38,7 @@ def build_package(dependency_futures, package, package_hash, corpus_dir):
           f'Some dependencies failed to build for package {package["name"]}, not building.'
       )
       return False
-  build_command = spack_builder.generate_build_command(package['spec'])
+  build_command = spack_builder.generate_build_command(package['spec'], threads)
   build_result = spack_builder.perform_build(package['name'], build_command,
                                              corpus_dir)
   if build_result:
@@ -47,7 +50,7 @@ def build_package(dependency_futures, package, package_hash, corpus_dir):
   return build_result
 
 
-def get_package_future(package_dict, current_package_futures, package):
+def get_package_future(package_dict, current_package_futures, package, threads):
   if package in current_package_futures:
     return current_package_futures[package]
   dependency_futures = []
@@ -56,11 +59,12 @@ def get_package_future(package_dict, current_package_futures, package):
       dependency_futures.append(current_package_futures[dependency])
     else:
       dependency_futures.append(
-          get_package_future(package_dict, current_package_futures, dependency))
+          get_package_future(package_dict, current_package_futures, dependency,
+                             threads))
   corpus_dir = os.path.join(FLAGS.corpus_dir, package_dict[package]['name'])
   pathlib.Path(corpus_dir).mkdir(parents=True, exist_ok=True)
-  build_future = build_package.remote(dependency_futures, package_dict[package],
-                                      package, corpus_dir)
+  build_future = build_package.options(num_cpus=threads).remote(
+      dependency_futures, package_dict[package], package, corpus_dir, threads)
   current_package_futures[package] = build_future
   return build_future
 
@@ -80,11 +84,12 @@ def main(_):
         break
     if package is None:
       raise ValueError('At least one package must be specified to be built.')
-    build_future = get_package_future(package_dict, build_futures_dict, package)
+    build_future = get_package_future(package_dict, build_futures_dict, package,
+                                      FLAGS.thread_count)
   else:
     for package in package_dict:
       build_future = get_package_future(package_dict, build_futures_dict,
-                                        package)
+                                        package, FLAGS.thread_count)
       build_futures.append(build_future)
       build_futures_dict[package] = build_future
 

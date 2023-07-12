@@ -103,7 +103,7 @@ def parse_and_build_from_description(corpus_description,
     # TODO(boomanaiden154): This needs a lot of updating with how spack specs
     # are implemented now.
     build_command_vector = spack_builder.generate_build_command(
-        corpus_description["spack_package"])
+        corpus_description["spack_package"], threads)
     spack_builder.perform_build(corpus_description["spack_package"],
                                 build_command_vector, corpus_dir)
     spack_builder.extract_ir(corpus_description["spack_package"], corpus_dir,

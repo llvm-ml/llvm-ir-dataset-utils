@@ -14,10 +14,10 @@ def get_spec_command_vector_section(spec):
   return spec.split(' ')
 
 
-def generate_build_command(package_to_build):
+def generate_build_command(package_to_build, threads):
   command_vector = [
       'spack', 'install', '--keep-stage', '--overwrite', '-y',
-      '--use-buildcache', 'package:never,dependencies:only', '-j', '16',
+      '--use-buildcache', 'package:never,dependencies:only', '-j', f'{threads}',
       '--no-check-signature'
   ]
   command_vector.extend(get_spec_command_vector_section(package_to_build))
