@@ -60,6 +60,7 @@ def parse_and_build_from_description(corpus_description,
                            corpus_description["folder_name"] + "-build")
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
+  build_log = {}
   source_dir = os.path.join(source_base_dir, corpus_description["folder_name"])
   if corpus_description["build_system"] == "cmake":
     configure_command_vector = cmake_builder.generate_configure_command(

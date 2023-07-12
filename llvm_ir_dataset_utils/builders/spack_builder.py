@@ -116,7 +116,7 @@ def build_package(dependency_futures,
       logging.warning(
           f'Some dependencies failed to build for package {package_name}, not building.'
       )
-      return False
+      return {'targets': {'package': False}}
   build_command = generate_build_command(package_spec, threads)
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
