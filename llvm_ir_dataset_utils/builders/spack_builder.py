@@ -66,10 +66,10 @@ def extract_ir(package_hash, corpus_dir, threads):
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
 
 
-def push_to_buildcache(package_spec):
+def push_to_buildcache(package_spec, buildcache_dir):
   command_vector = [
       'spack', 'buildcache', 'push', '--unsigned', '--allow-root',
-      '/tmp/buildcache'
+      buildcache_dir
   ]
   command_vector.extend(get_spec_command_vector_section(package_spec))
   subprocess.run(
@@ -108,6 +108,7 @@ def build_package(dependency_futures,
                   package_hash,
                   corpus_dir,
                   threads,
+                  buildcache_dir,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
@@ -119,7 +120,7 @@ def build_package(dependency_futures,
   build_command = generate_build_command(package_spec, threads)
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
-    push_to_buildcache(package_spec)
+    push_to_buildcache(package_spec, buildcache_dir)
     extract_ir(package_hash, corpus_dir, threads)
     if cleanup_build:
       cleanup(package_name, package_spec, corpus_dir, package_hash)

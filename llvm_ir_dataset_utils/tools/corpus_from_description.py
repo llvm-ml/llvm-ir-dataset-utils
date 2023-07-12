@@ -19,6 +19,10 @@ flags.DEFINE_string("source_dir", None,
 flags.DEFINE_string("build_dir", None,
                     "The base directory to perform the build in")
 flags.DEFINE_string("corpus_dir", None, "The base directory to put the corpus")
+flags.DEFINE_string(
+    "buildcache_dir", "/tmp/buildcache",
+    "The directory of the spack build cache to store packages in. Only used "
+    "the spack builder.")
 flags.DEFINE_bool(
     'cleanup', False, 'Whether or not to cleanup the source and '
     'build directories after finishing a build.')
@@ -35,6 +39,7 @@ def main(_):
   ray.init()
   with open(FLAGS.corpus_description) as corpus_description_file:
     corpus_description = json.load(corpus_description_file)
+    extra_builder_arguments = {'buildcache_dir': FLAGS.buildcache_dir}
     build_future = builder.get_build_future(
         corpus_description,
         FLAGS.source_dir,
@@ -42,7 +47,7 @@ def main(_):
         FLAGS.corpus_dir,
         FLAGS.thread_count, {},
         cleanup=FLAGS.cleanup,
-        extra_builder_arguments={})
+        extra_builder_arguments=extra_builder_arguments)
     logging.info('Starting build.')
     ray.get(build_future)
     logging.info('Build finished.')

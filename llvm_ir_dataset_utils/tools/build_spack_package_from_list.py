@@ -24,6 +24,9 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'build_dir', '/tmp/build', 'The build dir to pass along to '
     'the builder. This is not used by the spack builder.')
+flags.DEFINE_string(
+    'buildcache_dir', '/tmp/buildcache',
+    'The directory of the spack buildcache to store built packages in.')
 flags.DEFINE_integer('thread_count', 16,
                      'The number of threads to use per job.')
 
@@ -50,7 +53,10 @@ def get_package_future(package_dict, current_package_futures, package, threads):
       'package_hash': package,
       'sources': []
   }
-  extra_builder_arguments = {'dependency_futures': dependency_futures}
+  extra_builder_arguments = {
+      'dependency_futures': dependency_futures,
+      'buildcache_dir': FLAGS.buildcache_dir
+  }
   build_future = builder.get_build_future(corpus_description, '/tmp/source',
                                           '/tmp/build', FLAGS.corpus_dir,
                                           threads, {}, extra_builder_arguments,

@@ -101,11 +101,10 @@ def parse_and_build_from_description(corpus_description,
       dependency_futures = extra_builder_arguments['dependency_futures']
     else:
       dependency_futures = []
-    build_log = spack_builder.build_package(dependency_futures,
-                                            corpus_description['package_name'],
-                                            corpus_description['package_spec'],
-                                            corpus_description['package_hash'],
-                                            corpus_dir, threads, cleanup)
+    build_log = spack_builder.build_package(
+        dependency_futures, corpus_description['package_name'],
+        corpus_description['package_spec'], corpus_description['package_hash'],
+        corpus_dir, threads, extra_builder_arguments['buildcache_dir'], cleanup)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
