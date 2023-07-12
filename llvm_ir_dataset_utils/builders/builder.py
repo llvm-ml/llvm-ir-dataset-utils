@@ -100,6 +100,8 @@ def parse_and_build_from_description(corpus_description,
                 'w') as build_manifest:
         json.dump(build_log, build_manifest, indent=2)
   elif corpus_description["build_system"] == "spack":
+    # TODO(boomanaiden154): This needs a lot of updating with how spack specs
+    # are implemented now.
     build_command_vector = spack_builder.generate_build_command(
         corpus_description["spack_package"])
     spack_builder.perform_build(corpus_description["spack_package"],
@@ -107,7 +109,8 @@ def parse_and_build_from_description(corpus_description,
     spack_builder.extract_ir(corpus_description["spack_package"], corpus_dir,
                              threads)
     if cleanup:
-      spack_builder.cleanup(corpus_description["spack_package"])
+      spack_builder.cleanup(corpus_description["spack_package"],
+                            corpus_description["spack_package"], corpus_dir)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")

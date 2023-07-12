@@ -40,7 +40,7 @@ def build_package(dependency_futures, package, corpus_dir):
                                              corpus_dir)
   if build_result:
     spack_builder.push_to_buildcache(package['spec'])
-    spack_builder.cleanup(package['spec'], corpus_dir)
+    spack_builder.cleanup(package['name'], package['spec'], corpus_dir)
     spack_builder.extract_ir(package['name'], corpus_dir, 16)
     logging.warning(f'Finished building {package["name"]}')
   return build_result
