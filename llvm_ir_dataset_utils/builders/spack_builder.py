@@ -82,16 +82,17 @@ def cleanup(package_spec, corpus_dir):
         check=True,
         stdout=uninstall_log_file,
         stderr=uninstall_log_file)
-  # TODO(boomanaiden154): Verify experimentally that this doesn't garbage
-  # collect packages that are currently being used to build packages.
-  gc_command_vector = ['spack', 'gc', '-y']
-  gc_log_path = os.path.join(corpus_dir, 'gc.log')
-  with open(gc_log_path, 'w') as gc_log_file:
-    subprocess.run(
-        gc_command_vector,
-        check=True,
-        stdout=gc_log_file,
-        stderr=gc_log_file)
+  try:
+    gc_command_vector = ['spack', 'gc', '-y']
+    gc_log_path = os.path.join(corpus_dir, 'gc.log')
+    with open(gc_log_path, 'w') as gc_log_file:
+      subprocess.run(
+          gc_command_vector,
+          check=True,
+          stdout=gc_log_file,
+          stderr=gc_log_file)
+  except subprocess.SubprocessError:
+    logging.warning('Failed to garbage collect.')
   # TODO(boomanaiden154): Write script to get stage directory and delete it
   # directly so that we don't have to delete them all and potentially interfere
   # with other builds that are occurring at the same time.
