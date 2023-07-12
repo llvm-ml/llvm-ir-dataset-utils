@@ -94,6 +94,7 @@ def cleanup(package_name, package_spec, corpus_dir, package_hash):
       subprocess.run(
           gc_command_vector, check=True, stdout=gc_log_file, stderr=gc_log_file)
   except subprocess.SubprocessError:
-    logging.warning('Failed to garbage collect.')
+    logging.warning(
+        f'Failed to garbage collect while cleaning up package {package_name}.')
   spack_build_directory = get_spack_stage_directory(package_hash)
   shutil.rmtree(spack_build_directory)
