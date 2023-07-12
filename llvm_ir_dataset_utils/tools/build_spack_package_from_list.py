@@ -28,8 +28,6 @@ flags.mark_flag_as_required('corpus_dir')
 
 @ray.remote
 def build_package(dependency_futures, package, corpus_dir):
-  # TODO(boomanaiden154): Check if dependency_futures are real or actually
-  # futures that we need to call ray.get() on.
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
     if dependency_future != True:
@@ -41,6 +39,8 @@ def build_package(dependency_futures, package, corpus_dir):
   build_result = spack_builder.perform_build(package['name'], build_command,
                                              corpus_dir)
   if build_result:
+    spack_builder.push_to_buildcache(package['spec'])
+    spack_builder.cleanup(package['spec'])
     spack_builder.extract_ir(package['name'], corpus_dir, 16)
     logging.warning(f'Finished building {package["name"]}')
   return build_result
@@ -92,3 +92,4 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
+

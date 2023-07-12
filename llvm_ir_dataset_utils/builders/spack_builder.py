@@ -9,12 +9,17 @@ from absl import logging
 from compiler_opt.tools import extract_ir_lib
 
 
+def get_spec_command_vector_section(spec):
+  return spec.split(' ')
+
+
 def generate_build_command(package_to_build):
   command_vector = [
       'spack', 'install', '--keep-stage', '--overwrite', '-y',
-      '--use-buildcache', 'package:never,dependencies:only', '-j', '16'
+      '--use-buildcache', 'package:never,dependencies:only', '-j', '16',
+      '--no-check-signature'
   ]
-  command_vector.extend(package_to_build.split(' '))
+  command_vector.extend(get_spec_command_vector_section(package_to_build))
   return command_vector
 
 
@@ -54,16 +59,40 @@ def extract_ir(package_name, corpus_dir, threads):
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
 
 
-def cleanup(package_name):
-  uninstall_command_vector = ["spack", "uninstall", package_name]
+def push_to_buildcache(package_spec):
+  command_vector = [
+      'spack', 'buildcache', 'push', '--unsigned', '--allow-root',
+      '/tmp/buildcache'
+  ]
+  command_vector.extend(get_spec_command_vector_section(package_spec))
   subprocess.run(
-      uninstall_command_vector,
+      command_vector,
       check=True,
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE)
-  clean_command_vector = ["spack", "clean", "--stage"]
-  subprocess.run(
-      clean_command_vector,
-      check=True,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE)
+
+
+def cleanup(package_spec, corpus_dir):
+  uninstall_command_vector = ['spack', 'uninstall', '-y']
+  uninstall_command_vector.extend(get_spec_command_vector_section(package_spec))
+  uninstall_log_path = os.path.join(corpus_dir, 'uninstall.log')
+  with open(uninstall_log_path, 'w') as uninstall_log_file:
+    subprocess.run(
+        uninstall_command_vector,
+        check=True,
+        stdout=uninstall_log_file,
+        stderr=uninstall_log_file)
+  # TODO(boomanaiden154): Verify experimentally that this doesn't garbage
+  # collect packages that are currently being used to build packages.
+  gc_command_vector = ['spack', 'gc', '-y']
+  gc_log_path = os.path.join(corpus_dir, 'gc.log')
+  with open(gc_log_path, 'w') as gc_log_file:
+    subprocess.run(
+        gc_command_vector,
+        check=True,
+        stdout=gc_log_file,
+        stderr=gc_log_file)
+  # TODO(boomanaiden154): Write script to get stage directory and delete it
+  # directly so that we don't have to delete them all and potentially interfere
+  # with other builds that are occurring at the same time.
+
