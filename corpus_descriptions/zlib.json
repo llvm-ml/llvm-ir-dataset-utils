@@ -2,5 +2,7 @@
     "sources": [],
     "folder_name": "zlib",
     "build_system": "spack",
-    "spack_package": "zlib"
+    "package_name": "zlib",
+    "package_spec": "zlib@=1.2.13%clang@=16.0.6 cflags=\"-Xclang -fembed-bitcode=all\" cxxflags=\"-Xclang -fembed-bitcode=all\" +optimize+pic+shared build_system=makefile arch=linux-ubuntu22.04-zen2",
+    "package_hash": "5t2nwpjpuuzabowtj5bw2jaezmdzx7md"
 }

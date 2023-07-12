@@ -7,6 +7,8 @@ import shutil
 
 from absl import logging
 
+import ray
+
 from compiler_opt.tools import extract_ir_lib
 
 
@@ -98,3 +100,28 @@ def cleanup(package_name, package_spec, corpus_dir, package_hash):
         f'Failed to garbage collect while cleaning up package {package_name}.')
   spack_build_directory = get_spack_stage_directory(package_hash)
   shutil.rmtree(spack_build_directory)
+
+
+def build_package(dependency_futures,
+                  package_name,
+                  package_spec,
+                  package_hash,
+                  corpus_dir,
+                  threads,
+                  cleanup_build=False):
+  dependency_futures = ray.get(dependency_futures)
+  for dependency_future in dependency_futures:
+    if dependency_future != True:
+      logging.warning(
+          f'Some dependencies failed to build for package {package_name}, not building.'
+      )
+      return False
+  build_command = generate_build_command(package_spec, threads)
+  build_result = perform_build(package_name, build_command, corpus_dir)
+  if build_result:
+    push_to_buildcache(package_spec)
+    extract_ir(package_hash, corpus_dir, threads)
+    if cleanup_build:
+      cleanup(package_name, package_spec, corpus_dir, package_hash)
+    logging.warning(f'Finished building {package_name}')
+  return build_result

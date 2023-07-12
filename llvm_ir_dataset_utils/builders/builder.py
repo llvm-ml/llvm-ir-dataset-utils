@@ -33,10 +33,11 @@ def get_build_future(corpus_description,
                      corpus_dir,
                      threads,
                      extra_env_variables,
+                     extra_builder_arguments={},
                      cleanup=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
       corpus_description, source_base_dir, build_base_dir, corpus_dir, threads,
-      extra_env_variables, cleanup)
+      extra_env_variables, extra_builder_arguments, cleanup)
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
@@ -46,6 +47,7 @@ def parse_and_build_from_description(corpus_description,
                                      corpus_base_dir,
                                      threads,
                                      extra_env_variables,
+                                     extra_builder_arguments={},
                                      cleanup=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["folder_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
@@ -100,17 +102,15 @@ def parse_and_build_from_description(corpus_description,
                 'w') as build_manifest:
         json.dump(build_log, build_manifest, indent=2)
   elif corpus_description["build_system"] == "spack":
-    # TODO(boomanaiden154): This needs a lot of updating with how spack specs
-    # are implemented now.
-    build_command_vector = spack_builder.generate_build_command(
-        corpus_description["spack_package"], threads)
-    spack_builder.perform_build(corpus_description["spack_package"],
-                                build_command_vector, corpus_dir)
-    spack_builder.extract_ir(corpus_description["spack_package"], corpus_dir,
-                             threads)
-    if cleanup:
-      spack_builder.cleanup(corpus_description["spack_package"],
-                            corpus_description["spack_package"], corpus_dir)
+    if 'dependency_futures' in extra_builder_arguments:
+      dependency_futures = extra_builder_arguments['dependency_futures']
+    else:
+      dependency_futures = []
+    spack_builder.build_package(dependency_futures,
+                                corpus_description['package_name'],
+                                corpus_description['package_spec'],
+                                corpus_description['package_hash'], corpus_dir,
+                                threads, cleanup)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")

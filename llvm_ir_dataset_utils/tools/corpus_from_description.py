@@ -35,11 +35,14 @@ def main(_):
   ray.init()
   with open(FLAGS.corpus_description) as corpus_description_file:
     corpus_description = json.load(corpus_description_file)
-    build_future = builder.get_build_future(corpus_description,
-                                            FLAGS.source_dir, FLAGS.build_dir,
-                                            FLAGS.corpus_dir,
-                                            FLAGS.thread_count, {},
-                                            FLAGS.cleanup)
+    build_future = builder.get_build_future(
+        corpus_description,
+        FLAGS.source_dir,
+        FLAGS.build_dir,
+        FLAGS.corpus_dir,
+        FLAGS.thread_count, {},
+        cleanup=FLAGS.cleanup,
+        extra_builder_arguments={})
     logging.info('Starting build.')
     ray.get(build_future)
     logging.info('Build finished.')

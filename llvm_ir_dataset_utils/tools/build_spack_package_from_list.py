@@ -3,16 +3,13 @@ of spack packages and their dependencies.
 """
 
 import json
-import os
-import pathlib
 
 from absl import app
 from absl import flags
-from absl import logging
 
 import ray
 
-from llvm_ir_dataset_utils.builders import spack_builder
+from llvm_ir_dataset_utils.builders import builder
 
 FLAGS = flags.FLAGS
 
@@ -21,33 +18,17 @@ flags.DEFINE_string('package_list', None, 'The list of spack packages and '
 flags.DEFINE_string('package_name', None, 'The name of an individual package '
                     'to build.')
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus.')
+flags.DEFINE_string(
+    'source_dir', 'tmp/source', 'The source dir to pass along '
+    'to the builder. This is not used by the spack builder.')
+flags.DEFINE_string(
+    'build_dir', '/tmp/build', 'The build dir to pass along to '
+    'the builder. This is not used by the spack builder.')
 flags.DEFINE_integer('thread_count', 16,
                      'The number of threads to use per job.')
 
 flags.mark_flag_as_required('package_list')
 flags.mark_flag_as_required('corpus_dir')
-
-
-@ray.remote
-def build_package(dependency_futures, package, package_hash, corpus_dir,
-                  threads):
-  dependency_futures = ray.get(dependency_futures)
-  for dependency_future in dependency_futures:
-    if dependency_future != True:
-      logging.warning(
-          f'Some dependencies failed to build for package {package["name"]}, not building.'
-      )
-      return False
-  build_command = spack_builder.generate_build_command(package['spec'], threads)
-  build_result = spack_builder.perform_build(package['name'], build_command,
-                                             corpus_dir)
-  if build_result:
-    spack_builder.push_to_buildcache(package['spec'])
-    spack_builder.extract_ir(package_hash, corpus_dir, 16)
-    spack_builder.cleanup(package['name'], package['spec'], corpus_dir,
-                          package_hash)
-    logging.warning(f'Finished building {package["name"]}')
-  return build_result
 
 
 def get_package_future(package_dict, current_package_futures, package, threads):
@@ -61,10 +42,19 @@ def get_package_future(package_dict, current_package_futures, package, threads):
       dependency_futures.append(
           get_package_future(package_dict, current_package_futures, dependency,
                              threads))
-  corpus_dir = os.path.join(FLAGS.corpus_dir, package_dict[package]['name'])
-  pathlib.Path(corpus_dir).mkdir(parents=True, exist_ok=True)
-  build_future = build_package.options(num_cpus=threads).remote(
-      dependency_futures, package_dict[package], package, corpus_dir, threads)
+  corpus_description = {
+      'build_system': 'spack',
+      'folder_name': package_dict[package]['name'],
+      'package_name': package_dict[package]['name'],
+      'package_spec': package_dict[package]['spec'],
+      'package_hash': package,
+      'sources': []
+  }
+  extra_builder_arguments = {'dependency_futures': dependency_futures}
+  build_future = builder.get_build_future(corpus_description, '/tmp/source',
+                                          '/tmp/build', FLAGS.corpus_dir,
+                                          threads, {}, extra_builder_arguments,
+                                          True)
   current_package_futures[package] = build_future
   return build_future
 
