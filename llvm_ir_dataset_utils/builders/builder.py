@@ -95,12 +95,7 @@ def parse_and_build_from_description(corpus_description,
                                       build_base_dir, corpus_base_dir, threads,
                                       extra_env_variables, cleanup)
       ray.get(build_future)
-    else:
-      build_log['sources'] = source_logs
-      build_log['size'] = get_corpus_size(corpus_dir)
-      with open(os.path.join(corpus_dir, 'build_manifest.json'),
-                'w') as build_manifest:
-        json.dump(build_log, build_manifest, indent=2)
+      return {}
   elif corpus_description["build_system"] == "spack":
     if 'dependency_futures' in extra_builder_arguments:
       dependency_futures = extra_builder_arguments['dependency_futures']
@@ -121,4 +116,9 @@ def parse_and_build_from_description(corpus_description,
       shutil.rmtree(source_dir)
     if (os.path.exists(build_dir)):
       shutil.rmtree(build_dir)
+  build_log['sources'] = source_logs
+  build_log['size'] = get_corpus_size(corpus_dir)
+  with open(os.path.join(corpus_dir, 'build_manifest.json'),
+            'w') as build_manifest:
+    json.dump(build_log, build_manifest, indent=2)
   return build_log
