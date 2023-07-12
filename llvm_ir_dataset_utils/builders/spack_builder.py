@@ -111,7 +111,7 @@ def build_package(dependency_futures,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
-    if dependency_future != True:
+    if dependency_future['targets']['package'] != True:
       logging.warning(
           f'Some dependencies failed to build for package {package_name}, not building.'
       )
@@ -124,4 +124,8 @@ def build_package(dependency_futures,
     if cleanup_build:
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     logging.warning(f'Finished building {package_name}')
-  return build_result
+  return {
+    'targets': {
+      'package': build_result
+    }
+  }
