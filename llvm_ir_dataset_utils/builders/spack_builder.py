@@ -124,8 +124,4 @@ def build_package(dependency_futures,
     if cleanup_build:
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     logging.warning(f'Finished building {package_name}')
-  return {
-    'targets': {
-      'package': build_result
-    }
-  }
+  return {'targets': {'package': build_result}}
