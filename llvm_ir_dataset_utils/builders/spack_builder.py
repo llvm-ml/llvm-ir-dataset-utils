@@ -41,20 +41,20 @@ def perform_build(package_name, assembled_build_command, corpus_dir):
   return True
 
 
-def get_spack_stage_directory(package_name):
+def get_spack_stage_directory(package_hash):
   # TODO(boomanaiden154): It feels like tempfile.gettempdir() might be a little
   # bit flaky. Do some investigation on whether this is the case/alternatives.
   spack_build_directory = os.path.join(tempfile.gettempdir(), 'spack-stage')
   spack_stages = os.listdir(spack_build_directory)
   for spack_stage_dir in spack_stages:
-    if package_name in spack_stage_dir:
+    if package_hash in spack_stage_dir:
       break
   # spack_stage_dir now contains the name of the directory
   return os.path.join(spack_build_directory, spack_stage_dir)
 
 
-def extract_ir(package_name, corpus_dir, threads):
-  stage_directory = get_spack_stage_directory(package_name)
+def extract_ir(package_hash, corpus_dir, threads):
+  stage_directory = get_spack_stage_directory(package_hash)
   build_directory = os.path.join(stage_directory, 'spack-src')
   objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
   relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
@@ -77,7 +77,7 @@ def push_to_buildcache(package_spec):
       stderr=subprocess.PIPE)
 
 
-def cleanup(package_name, package_spec, corpus_dir):
+def cleanup(package_name, package_spec, corpus_dir, package_hash):
   uninstall_command_vector = ['spack', 'uninstall', '-y']
   uninstall_command_vector.extend(get_spec_command_vector_section(package_spec))
   uninstall_log_path = os.path.join(corpus_dir, 'uninstall.log')
@@ -95,5 +95,5 @@ def cleanup(package_name, package_spec, corpus_dir):
           gc_command_vector, check=True, stdout=gc_log_file, stderr=gc_log_file)
   except subprocess.SubprocessError:
     logging.warning('Failed to garbage collect.')
-  spack_build_directory = get_spack_stage_directory(package_name)
+  spack_build_directory = get_spack_stage_directory(package_hash)
   shutil.rmtree(spack_build_directory)

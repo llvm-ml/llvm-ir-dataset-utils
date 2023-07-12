@@ -27,7 +27,7 @@ flags.mark_flag_as_required('corpus_dir')
 
 
 @ray.remote
-def build_package(dependency_futures, package, corpus_dir):
+def build_package(dependency_futures, package, package_hash, corpus_dir):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
     if dependency_future != True:
@@ -40,8 +40,9 @@ def build_package(dependency_futures, package, corpus_dir):
                                              corpus_dir)
   if build_result:
     spack_builder.push_to_buildcache(package['spec'])
-    spack_builder.cleanup(package['name'], package['spec'], corpus_dir)
-    spack_builder.extract_ir(package['name'], corpus_dir, 16)
+    spack_builder.extract_ir(package_hash, corpus_dir, 16)
+    spack_builder.cleanup(package['name'], package['spec'], corpus_dir,
+                          package_hash)
     logging.warning(f'Finished building {package["name"]}')
   return build_result
 
@@ -59,7 +60,7 @@ def get_package_future(package_dict, current_package_futures, package):
   corpus_dir = os.path.join(FLAGS.corpus_dir, package_dict[package]['name'])
   pathlib.Path(corpus_dir).mkdir(parents=True, exist_ok=True)
   build_future = build_package.remote(dependency_futures, package_dict[package],
-                                      corpus_dir)
+                                      package, corpus_dir)
   current_package_futures[package] = build_future
   return build_future
 
