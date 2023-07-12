@@ -87,13 +87,9 @@ def cleanup(package_spec, corpus_dir):
     gc_log_path = os.path.join(corpus_dir, 'gc.log')
     with open(gc_log_path, 'w') as gc_log_file:
       subprocess.run(
-          gc_command_vector,
-          check=True,
-          stdout=gc_log_file,
-          stderr=gc_log_file)
+          gc_command_vector, check=True, stdout=gc_log_file, stderr=gc_log_file)
   except subprocess.SubprocessError:
     logging.warning('Failed to garbage collect.')
   # TODO(boomanaiden154): Write script to get stage directory and delete it
   # directly so that we don't have to delete them all and potentially interfere
   # with other builds that are occurring at the same time.
-
