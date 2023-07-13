@@ -57,10 +57,14 @@ def get_package_future(package_dict, current_package_futures, package, threads):
       'dependency_futures': dependency_futures,
       'buildcache_dir': FLAGS.buildcache_dir
   }
-  build_future = builder.get_build_future(corpus_description, '/tmp/source',
-                                          '/tmp/build', FLAGS.corpus_dir,
-                                          threads, {}, extra_builder_arguments,
-                                          True)
+  build_future = builder.get_build_future(
+      corpus_description,
+      '/tmp/source',
+      '/tmp/build',
+      FLAGS.corpus_dir,
+      threads, {},
+      extra_builder_arguments=extra_builder_arguments,
+      cleanup=True)
   current_package_futures[package] = build_future
   return build_future
 

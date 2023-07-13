@@ -36,8 +36,14 @@ def get_build_future(corpus_description,
                      extra_builder_arguments={},
                      cleanup=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
-      corpus_description, source_base_dir, build_base_dir, corpus_dir, threads,
-      extra_env_variables, extra_builder_arguments, cleanup)
+      corpus_description,
+      source_base_dir,
+      build_base_dir,
+      corpus_dir,
+      threads,
+      extra_env_variables,
+      extra_builder_arguments=extra_builder_arguments,
+      cleanup=cleanup)
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
@@ -102,6 +108,9 @@ def parse_and_build_from_description(corpus_description,
       dependency_futures = extra_builder_arguments['dependency_futures']
     else:
       dependency_futures = []
+    logging.warning(
+        f'Got {len(dependency_futures)} dependencies for package {corpus_description["package_name"]}'
+    )
     build_log = spack_builder.build_package(
         dependency_futures, corpus_description['package_name'],
         corpus_description['package_spec'], corpus_description['package_hash'],
