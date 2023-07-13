@@ -47,7 +47,7 @@ def get_package_future(package_dict, current_package_futures, package, threads):
                              threads))
   corpus_description = {
       'build_system': 'spack',
-      'folder_name': package_dict[package]['name'],
+      'folder_name': f'{package_dict[package]["name"]}-{package}',
       'package_name': package_dict[package]['name'],
       'package_spec': package_dict[package]['spec'],
       'package_hash': package,
