@@ -26,11 +26,14 @@ def generate_build_command(package_to_build, threads):
   return command_vector
 
 
+def get_build_log_path(corpus_dir):
+  return os.path.join(corpus_dir, 'spack_build.log')
+
+
 def perform_build(package_name, assembled_build_command, corpus_dir):
   logging.info(f"Spack building package {package_name}")
   try:
-    with open(os.path.join(corpus_dir, 'spack_build.log'),
-              'w') as build_log_file:
+    with open(get_build_log_path(corpus_dir), 'w') as build_log_file:
       subprocess.run(
           assembled_build_command,
           stdout=build_log_file,
@@ -102,6 +105,16 @@ def cleanup(package_name, package_spec, corpus_dir, package_hash):
   shutil.rmtree(spack_build_directory)
 
 
+def construct_build_log(build_success, package_name, build_log_path):
+  return {
+      'targets': [{
+          'name': package_name,
+          'build_log': build_log_path,
+          'success': build_success
+      }]
+  }
+
+
 def build_package(dependency_futures,
                   package_name,
                   package_spec,
@@ -112,11 +125,11 @@ def build_package(dependency_futures,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
-    if dependency_future['targets']['package'] != True:
+    if dependency_future['targets'][0]['success'] != True:
       logging.warning(
           f'Some dependencies failed to build for package {package_name}, not building.'
       )
-      return {'targets': {'package': False}}
+      return construct_build_log(False, package_name, None)
   build_command = generate_build_command(package_spec, threads)
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
@@ -125,4 +138,4 @@ def build_package(dependency_futures,
     if cleanup_build:
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     logging.warning(f'Finished building {package_name}')
-  return {'targets': {'package': build_result}}
+  return construct_build_log(True, package_name, get_build_log_path(corpus_dir))
