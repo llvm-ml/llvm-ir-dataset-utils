@@ -138,4 +138,5 @@ def build_package(dependency_futures,
     if cleanup_build:
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     logging.warning(f'Finished building {package_name}')
-  return construct_build_log(True, package_name, get_build_log_path(corpus_dir))
+  return construct_build_log(build_result, package_name,
+                             get_build_log_path(corpus_dir))
