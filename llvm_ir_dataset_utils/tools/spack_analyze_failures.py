@@ -58,8 +58,7 @@ def main(_):
     for failure_row in build_failures_reader:
       # Exclude failures that happen because a dependency fails to build.
       if failure_row[2] != 'NULL':
-        path = failure_row[0].split(':')[0]
-        package_name_hash = os.path.basename(path)
+        package_name_hash = os.path.dirname(failure_row[2])
         package_hash = package_name_hash.split('-')[-1]
         package_hash_failures.append(package_hash)
 
