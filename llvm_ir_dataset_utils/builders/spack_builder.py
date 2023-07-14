@@ -11,6 +11,8 @@ import ray
 
 from compiler_opt.tools import extract_ir_lib
 
+SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 2
+
 
 def get_spec_command_vector_section(spec):
   return spec.split(' ')
@@ -19,7 +21,8 @@ def get_spec_command_vector_section(spec):
 def generate_build_command(package_to_build, threads):
   command_vector = [
       'spack', 'install', '--keep-stage', '--overwrite', '-y',
-      '--use-buildcache', 'package:never,dependencies:only', '-j', f'{threads}',
+      '--use-buildcache', 'package:never,dependencies:only', '-j',
+      f'{SPACK_THREAD_OVERSUBSCRIPTION_FACTOR * threads}',
       '--no-check-signature'
   ]
   command_vector.extend(get_spec_command_vector_section(package_to_build))
