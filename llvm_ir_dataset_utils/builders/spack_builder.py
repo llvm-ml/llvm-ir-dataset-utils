@@ -23,7 +23,7 @@ def generate_build_command(package_to_build, threads):
       'spack', 'install', '--keep-stage', '--overwrite', '-y',
       '--use-buildcache', 'package:never,dependencies:only', '-j',
       f'{SPACK_THREAD_OVERSUBSCRIPTION_FACTOR * threads}',
-      '--no-check-signature'
+      '--no-check-signature', '--deprecated'
   ]
   command_vector.extend(get_spec_command_vector_section(package_to_build))
   return command_vector
