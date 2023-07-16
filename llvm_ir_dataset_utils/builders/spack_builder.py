@@ -62,8 +62,7 @@ def get_spack_stage_directory(package_hash):
 
 
 def extract_ir(package_hash, corpus_dir, threads):
-  stage_directory = get_spack_stage_directory(package_hash)
-  build_directory = os.path.join(stage_directory, 'spack-src')
+  build_directory = get_spack_stage_directory(package_hash)
   objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
   relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
                                                         "llvm-objcopy", None,
