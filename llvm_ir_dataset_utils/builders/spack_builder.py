@@ -54,21 +54,28 @@ def get_spack_stage_directory(package_hash):
   # bit flaky. Do some investigation on whether this is the case/alternatives.
   spack_build_directory = os.path.join(tempfile.gettempdir(), 'spack-stage')
   spack_stages = os.listdir(spack_build_directory)
+  spack_stages.append('')
   for spack_stage_dir in spack_stages:
     if package_hash in spack_stage_dir:
       break
-  # spack_stage_dir now contains the name of the directory
+  # spack_stage_dir now contains the name of the directory,  or None if we
+  # failed to find a stage directory (i.e., due to build failure)
+  if spack_stage_dir == '':
+    logging.warning(f'Failed to get stage dir for {package_hash}. This might '
+                    'have been caused by your spack installation and the '
+                    'package_list.json becoming out of sync.')
+    return None
   return os.path.join(spack_build_directory, spack_stage_dir)
 
 
 def extract_ir(package_hash, corpus_dir, threads):
   build_directory = get_spack_stage_directory(package_hash)
-  objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
-  relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
-                                                        "llvm-objcopy", None,
-                                                        None, ".llvmcmd",
-                                                        ".llvmbc")
-  extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
+  if build_directory is not None:
+    objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
+    relative_output_paths = extract_ir_lib.run_extraction(
+        objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
+    extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
+                                         corpus_dir)
 
 
 def push_to_buildcache(package_spec, buildcache_dir):
@@ -88,7 +95,8 @@ def cleanup(package_name,
             package_spec,
             corpus_dir,
             package_hash,
-            uninstall=True):
+            uninstall=True,
+            delete_stage=True):
   if uninstall:
     uninstall_command_vector = ['spack', 'uninstall', '-y']
     uninstall_command_vector.extend(
@@ -111,8 +119,10 @@ def cleanup(package_name,
     logging.warning(
         f'Failed to garbage collect while cleaning up package {package_name}.')
   # Delete the staging directory
-  spack_build_directory = get_spack_stage_directory(package_hash)
-  shutil.rmtree(spack_build_directory)
+  if delete_stage:
+    spack_build_directory = get_spack_stage_directory(package_hash)
+    if spack_build_directory is not None:
+      shutil.rmtree(spack_build_directory)
 
 
 def construct_build_log(build_success, package_name, build_log_path):
@@ -145,7 +155,8 @@ def build_package(dependency_futures,
             package_spec,
             corpus_dir,
             package_hash,
-            uninstall=False)
+            uninstall=False,
+            delete_stage=False)
       return construct_build_log(False, package_name, None)
   build_command = generate_build_command(package_spec, threads)
   build_result = perform_build(package_name, build_command, corpus_dir)
