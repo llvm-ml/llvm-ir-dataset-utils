@@ -80,8 +80,8 @@ def extract_ir(package_hash, corpus_dir, threads):
 
 def push_to_buildcache(package_spec, buildcache_dir):
   command_vector = [
-      'spack', 'buildcache', 'push', '--unsigned', '--allow-root',
-      buildcache_dir
+      'spack', 'buildcache', 'push', '--unsigned', '--allow-root', '--only',
+      'package', buildcache_dir
   ]
   command_vector.extend(get_spec_command_vector_section(package_spec))
   subprocess.run(
@@ -91,12 +91,13 @@ def push_to_buildcache(package_spec, buildcache_dir):
       stderr=subprocess.PIPE)
 
 
-def cleanup(package_name,
-            package_spec,
-            corpus_dir,
-            package_hash,
-            uninstall=True,
-            delete_stage=True):
+def delete_stage_directory(package_hash):
+  spack_build_directory = get_spack_stage_directory(package_hash)
+  if spack_build_directory is not None:
+    shutil.rmtree(spack_build_directory)
+
+
+def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
   if uninstall:
     uninstall_command_vector = ['spack', 'uninstall', '-y']
     uninstall_command_vector.extend(
@@ -118,11 +119,6 @@ def cleanup(package_name,
   except subprocess.SubprocessError:
     logging.warning(
         f'Failed to garbage collect while cleaning up package {package_name}.')
-  # Delete the staging directory
-  if delete_stage:
-    spack_build_directory = get_spack_stage_directory(package_hash)
-    if spack_build_directory is not None:
-      shutil.rmtree(spack_build_directory)
 
 
 def construct_build_log(build_success, package_name, build_log_path):
@@ -150,24 +146,20 @@ def build_package(dependency_futures,
           f'Some dependencies failed to build for package {package_name}, not building.'
       )
       if cleanup_build:
-        cleanup(
-            package_name,
-            package_spec,
-            corpus_dir,
-            package_hash,
-            uninstall=False,
-            delete_stage=False)
+        cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
   build_command = generate_build_command(package_spec, threads)
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
-    push_to_buildcache(package_spec, buildcache_dir)
     extract_ir(package_hash, corpus_dir, threads)
+    delete_stage_directory(package_hash)
+    push_to_buildcache(package_spec, buildcache_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
     if build_result:
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     else:
-      cleanup(package_name, package_spec, corpus_dir, package_hash, False)
+      cleanup(package_name, package_spec, corpus_dir, uninstall=False)
+      delete_stage_directory(package_hash)
   return construct_build_log(build_result, package_name,
                              get_build_log_path(corpus_dir))
