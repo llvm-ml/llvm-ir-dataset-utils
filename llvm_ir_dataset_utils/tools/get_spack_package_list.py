@@ -32,8 +32,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'full_packages_list', None,
     'The list of packages that are initially specified to be concretized '
-    'due to matching build system criteria.'
-)
+    'due to matching build system criteria.')
 flags.DEFINE_string(
     'excluded_by_deps_list', None,
     'The list of packages that would have been added due to build systems '
@@ -106,7 +105,6 @@ def main(_):
 
     # The following two arrays are only used for logging purposes.
     full_package_list = []
-    excluded_package_list = []
 
     for package in packages:
       pkg_class = spack.repo.path.get_pkg_class(package)
@@ -130,8 +128,6 @@ def main(_):
         to_add = recursive_check_result[0]
         if to_add:
           package_list.append(pkg.name)
-        else:
-          excluded_package_list.append((pkg.name, recursive_check_result[1]))
 
     # Write some logging information to the relevant files if requested.
     if FLAGS.full_packages_list is not None:
@@ -141,8 +137,10 @@ def main(_):
 
     if FLAGS.excluded_by_deps_list is not None:
       with open(FLAGS.excluded_by_deps_list, 'w') as excluded_by_deps_file:
-        for package in excluded_package_list:
-          excluded_by_deps_file.write(f'{package[0]},{package[1]}\n')
+        for package in should_include_cache:
+          package_data = should_include_cache[package]
+          if not package_data[0]:
+            excluded_by_deps_file.write(f'{package},{package_data[1]}\n')
 
     if FLAGS.selected_package_list is not None:
       with open(FLAGS.selected_package_list, 'w') as selected_package_list_file:
