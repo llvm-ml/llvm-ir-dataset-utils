@@ -31,11 +31,12 @@ flags.DEFINE_string(
     'multiple times in a row.')
 
 EXCLUDED_PACKAGES = [
-    'abi-compliance-checker', 'allpaths-lg', 'fujitsu-fftw', 'cusz',
-    'libpressio', 'openspeedshop-utils', 'unblur', 'rstudio',
-    'cbtf-agronavis-gui', 'bucky', 'elfutils', 'dyninst', 'openradioss-starter',
-    'cuda', 'root', 'cbench', 'fds', 'kahip', 'kentutils', 'maverick', 'pdc',
-    'plasma', 'clingo-bootstrap'
+    'elfutils', 'allpaths-lg', 'dyninst', 'nccl', 'bucky', 'bench',
+    'clingo-bootstrap', 'cp2k', 'root', 'gpu-burn', 'hdf5-vfd-gds', 'kahip',
+    'kentutils', 'arrow', 'maverick', 'mumax', 'nvcomp', 'openradioss-starter',
+    'openspeedshop-utils', 'plasma', 'pdc', 'qtwebengine', 'tiled-mm', 'unblur',
+    'whip', 'cbench', 'cusz', 'cutlass', 'fds', 'fujitsu-fftw', 'rodinia',
+    'knem'
 ]
 
 
