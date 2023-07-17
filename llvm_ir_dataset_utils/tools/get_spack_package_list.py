@@ -11,6 +11,8 @@ import tempfile
 import os
 import pathlib
 
+import sys
+
 from absl import app
 from absl import logging
 from absl import flags
@@ -29,6 +31,19 @@ flags.DEFINE_string(
     'environment that has already been concretized or a path to place a new '
     'spack environment to avoid the length concretization process when running '
     'multiple times in a row.')
+flags.DEFINE_string(
+    'full_packages_list', None,
+    'The list of packages that are initially specified to be concretized due to matching build system criteria.'
+)
+flags.DEFINE_string(
+    'excluded_by_deps_list', None,
+    'The list of packages that would have been added due to build systems '
+    'rules but were excluded due to dependencies failing to concretize.')
+flags.DEFINE_string(
+    'selected_package_list', None,
+    'The list of packages tht are going to be concretized due to matching build '
+    'system criteria and not being excluded due to dependence on an excluded '
+    'package or themselves being excluded.')
 
 EXCLUDED_PACKAGES = [
     'elfutils', 'allpaths-lg', 'dyninst', 'nccl', 'bucky', 'bench',
@@ -56,12 +71,12 @@ def recursively_check_dependencies(package, should_include_cache):
     return should_include_cache[package.name]
   for dependency in package.dependencies.keys():
     if dependency in should_include_cache and not should_include_cache[
-        dependency]:
-      should_include_cache[package.name] = False
-      return False
+        dependency][0]:
+      should_include_cache[package.name] = (False, dependency)
+      return (False, dependency)
     elif dependency in EXCLUDED_PACKAGES:
-      should_include_cache[package.name] = False
-      return False
+      should_include_cache[package.name] = (False, dependency)
+      return (False, dependency)
     else:
       # Try except here because Spack might not be able to find the package
       # (i.e., if it's a virtual package).
@@ -70,12 +85,12 @@ def recursively_check_dependencies(package, should_include_cache):
         dependency_pkg = dependency_pkg_class(spack.spec.Spec(dependency))
         recursive_check_result = recursively_check_dependencies(
             dependency_pkg, should_include_cache)
-        if not recursive_check_result:
-          return False
+        if not recursive_check_result[0]:
+          return (False, recursive_check_result[1])
       except:
         continue
-  should_include_cache[package.name] = True
-  return True
+  should_include_cache[package.name] = (True, None)
+  return (True, None)
 
 
 def main(_):
@@ -90,6 +105,10 @@ def main(_):
     package_list = []
     should_include_cache = {}
 
+    # The following two arrays are only used for logging purposes.
+    full_package_list = []
+    excluded_package_list = []
+
     for package in packages:
       pkg_class = spack.repo.path.get_pkg_class(package)
       # TODO(boomanaiden154): Look into other build systems that are likely to be
@@ -99,15 +118,37 @@ def main(_):
           pkg.build_system_class == 'MakefilePackage' or
           pkg.build_system_class == 'AutotoolsPackage' or
           pkg.build_system_class == 'MesonPackage'):
+        full_package_list.append(pkg.name)
         to_add = True
         for excluded_package in EXCLUDED_PACKAGES:
           if pkg.name == excluded_package:
             to_add = False
             break
-        if to_add:
-          to_add = recursively_check_dependencies(pkg, should_include_cache)
+        if not to_add:
+          continue
+        recursive_check_result = recursively_check_dependencies(
+            pkg, should_include_cache)
+        to_add = recursive_check_result[0]
         if to_add:
           package_list.append(pkg.name)
+        else:
+          excluded_package_list.append((pkg.name, recursive_check_result[1]))
+
+    # Write some logging information to the relevant files if requested.
+    if FLAGS.full_packages_list is not None:
+      with open(FLAGS.full_packages_list, 'w') as full_package_list_file:
+        for package in full_package_list:
+          full_package_list_file.write(f'{package}\n')
+
+    if FLAGS.excluded_by_deps_list is not None:
+      with open(FLAGS.excluded_by_deps_list, 'w') as excluded_by_deps_file:
+        for package in excluded_package_list:
+          excluded_by_deps_file.write(f'{package[0]},{package[1]}\n')
+
+    if FLAGS.selected_package_list is not None:
+      with open(FLAGS.selected_package_list, 'w') as selected_package_list_file:
+        for package in package_list:
+          selected_package_list_file.write(f'{package}\n')
 
     logging.info(f"Concretizing {len(package_list)} packages in environment")
     with tempfile.TemporaryDirectory() as tempdir:
