@@ -11,8 +11,6 @@ import tempfile
 import os
 import pathlib
 
-import sys
-
 from absl import app
 from absl import logging
 from absl import flags
@@ -33,7 +31,8 @@ flags.DEFINE_string(
     'multiple times in a row.')
 flags.DEFINE_string(
     'full_packages_list', None,
-    'The list of packages that are initially specified to be concretized due to matching build system criteria.'
+    'The list of packages that are initially specified to be concretized '
+    'due to matching build system criteria.'
 )
 flags.DEFINE_string(
     'excluded_by_deps_list', None,
