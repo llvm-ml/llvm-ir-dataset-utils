@@ -26,6 +26,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('package_list', 'package_list.json',
                     'The path to write the package list to.')
+flags.DEFINE_string(
+    'error_log', None,
+    'The path to write the output of failed concretization commands to.')
 
 
 def add_concrete_package_and_all_deps(concretized_packages, spec):
@@ -39,6 +42,7 @@ def add_concrete_package_and_all_deps(concretized_packages, spec):
       add_concrete_package_and_all_deps(concretized_packages, dep_spec)
 
 
+@ray.remote(num_cpus=1)
 def concretize_environment(package_name):
   concretized_packages = {}
   with tempfile.TemporaryDirectory() as tempdir:
@@ -48,31 +52,29 @@ def concretize_environment(package_name):
     env.write()
 
     concretize_command_vector = ['spack', '-e', './', 'concretize']
-    subprocess.run(
-      concretize_command_vector,
-      cwd=tempdir,
-      check=True,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE
-    )
 
-    env = spack.environment.Environment(tempdir)
+    command_output = subprocess.run(
+        concretize_command_vector,
+        cwd=tempdir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True)
 
-  concretized_specs = env.all_specs()
-  for concretized_spec in concretized_specs:
-    add_concrete_package_and_all_deps(concretized_packages, concretized_spec)
-  return concretized_packages
+    if command_output.returncode == 0:
+      env = spack.environment.Environment(tempdir)
 
-@ray.remote(num_cpus=1)
-def concretize_remote(package_name):
-  try:
-    concretized_packages = concretize_environment(package_name)
-    return concretized_packages
-  except:
-    return {}
+      concretized_specs = env.all_specs()
+      for concretized_spec in concretized_specs:
+        add_concrete_package_and_all_deps(concretized_packages,
+                                          concretized_spec)
+      return (command_output.stdout, concretized_packages)
+    else:
+      return (command_output.stdout, None)
+
 
 def get_concretization_future(package_name):
-  return concretize_remote.remote(package_name)
+  return concretize_environment.remote(package_name)
+
 
 def main(_):
   ray.init()
@@ -91,23 +93,36 @@ def main(_):
         pkg.build_system_class == 'AutotoolsPackage' or
         pkg.build_system_class == 'MesonPackage'):
       full_package_list.append(pkg.name)
-  
+
   logging.info('Concretizing packages')
   concretization_futures = []
   for package in full_package_list:
     concretization_futures.append(get_concretization_future(package))
-  
+
   concretized_packages = {}
 
+  erorr_log_file = None
+
+  if FLAGS.error_log is not None:
+    error_log_file = open(FLAGS.error_log, 'w')
+
   while len(concretization_futures) > 0:
-    finished, concretization_futures = ray.wait(concretization_futures, timeout=5.0)
+    finished, concretization_futures = ray.wait(
+        concretization_futures, timeout=5.0)
     finished_data = ray.get(finished)
     for data in finished_data:
-      concretized_packages.update(data)
+      if data[1] is None:
+        if error_log_file is not None:
+          error_log_file.write(data[0])
+      else:
+        concretized_packages.update(data[1])
     logging.info(
         f'Just finished {len(finished_data)}, {len(concretization_futures)} remaining'
     )
-  
+
+  if error_log_file is not None:
+    error_log_file.close()
+
   with open(FLAGS.package_list, 'w') as package_list_file:
     json.dump(concretized_packages, package_list_file, indent=2)
 
