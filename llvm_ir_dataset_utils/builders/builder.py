@@ -16,7 +16,10 @@ from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
 from llvm_ir_dataset_utils.builders import spack_builder
+
 from llvm_ir_dataset_utils.sources import source
+
+from llvm_ir_dataset_utils.util import file
 
 
 def get_corpus_size(corpus_dir):
@@ -116,12 +119,8 @@ def parse_and_build_from_description(corpus_description,
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
   if cleanup:
-    if (os.path.exists(build_dir)):
-      shutil.rmtree(build_dir)
-    if (os.path.exists(source_dir)):
-      shutil.rmtree(source_dir)
-    if (os.path.exists(build_dir)):
-      shutil.rmtree(build_dir)
+    file.delete_directory(build_dir, corpus_dir)
+    file.delete_directory(source_dir, corpus_dir)
   build_log['sources'] = source_logs
   build_log['size'] = get_corpus_size(corpus_dir)
   with open(os.path.join(corpus_dir, 'build_manifest.json'),

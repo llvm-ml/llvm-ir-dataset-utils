@@ -3,13 +3,14 @@
 import subprocess
 import os
 import tempfile
-import shutil
 
 from absl import logging
 
 import ray
 
 from compiler_opt.tools import extract_ir_lib
+
+from llvm_ir_dataset_utils.util import file
 
 SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 2
 
@@ -91,10 +92,10 @@ def push_to_buildcache(package_spec, buildcache_dir):
       stderr=subprocess.PIPE)
 
 
-def delete_stage_directory(package_hash):
+def delete_stage_directory(package_hash, corpus_dir):
   spack_build_directory = get_spack_stage_directory(package_hash)
   if spack_build_directory is not None:
-    shutil.rmtree(spack_build_directory)
+    file.delete_directory(spack_build_directory, corpus_dir)
 
 
 def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
@@ -152,7 +153,7 @@ def build_package(dependency_futures,
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
     extract_ir(package_hash, corpus_dir, threads)
-    delete_stage_directory(package_hash)
+    delete_stage_directory(package_hash, corpus_dir)
     push_to_buildcache(package_spec, buildcache_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
@@ -160,6 +161,6 @@ def build_package(dependency_futures,
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     else:
       cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-      delete_stage_directory(package_hash)
+      delete_stage_directory(package_hash, corpus_dir)
   return construct_build_log(build_result, package_name,
                              get_build_log_path(corpus_dir))
