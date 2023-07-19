@@ -5,6 +5,7 @@ import os
 import json
 import multiprocessing
 import shutil
+import pathlib
 
 from absl import logging
 
@@ -89,7 +90,12 @@ def build_package(source_dir, build_dir, corpus_dir, targets, threads,
     build_log.append(
         perform_build(source_dir, build_dir, corpus_dir, target, threads,
                       extra_env_variables))
-  extract_ir(build_dir, corpus_dir)
+  package_corpus_dir = os.path.join(corpus_dir, targets[0]["package"])
+  # We should never be creating the parents of the folder as they should be
+  # provided by builder.py and the folder should never exist before we create
+  # it.
+  pathlib.Path(package_corpus_dir).mkdir(exist_ok=False, parents=False)
+  extract_ir(build_dir, package_corpus_dir)
   if cleanup:
     if os.path.exists(build_dir):
       try:
