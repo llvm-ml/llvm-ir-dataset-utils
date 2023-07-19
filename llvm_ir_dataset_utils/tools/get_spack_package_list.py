@@ -67,9 +67,9 @@ def concretize_environment(package_name):
       for concretized_spec in concretized_specs:
         add_concrete_package_and_all_deps(concretized_packages,
                                           concretized_spec)
-      return (command_output.stdout, concretized_packages)
+      return (command_output.stdout, concretized_packages, package_name)
     else:
-      return (command_output.stdout, None)
+      return (command_output.stdout, None, package_name)
 
 
 def get_concretization_future(package_name):
@@ -113,6 +113,9 @@ def main(_):
     for data in finished_data:
       if data[1] is None:
         if error_log_file is not None:
+          error_log_file.write(
+              f'Encountered the following errors while concretizing {data[2]}:\n'
+          )
           error_log_file.write(data[0])
       else:
         concretized_packages.update(data[1])
