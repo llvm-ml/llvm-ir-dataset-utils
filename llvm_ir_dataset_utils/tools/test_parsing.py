@@ -34,6 +34,9 @@ def process_bitcode_file(bitcode_file_path):
 
 @ray.remote
 def process_folder(folder_path):
+  # TODO(boomanaiden154): Switch to pulling bitcode files from the meta corpus
+  # description once that is available and ready rather than the strategy being
+  # used here.
   bitcode_files = pathlib.Path(folder_path).glob('**/*.bc')
 
   file_status_futures = []
