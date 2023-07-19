@@ -13,6 +13,10 @@ import ray
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus directory.')
+flags.DEFINE_boolean(
+    'log_failures', False,
+    'Whether or not to output the paths to all the bitcode files that failed '
+    'to parse.')
 
 
 @ray.remote(num_cpus=1)
@@ -72,8 +76,9 @@ def main(_):
     )
   logging.info(f'Got {opt_success} successes and {len(opt_failures)} failures.')
 
-  for failure in opt_failures:
-    logging.info(f'{failure} failed.')
+  if FLAGS.log_failures:
+    for failure in opt_failures:
+      logging.info(f'{failure} failed.')
 
 
 if __name__ == '__main__':
