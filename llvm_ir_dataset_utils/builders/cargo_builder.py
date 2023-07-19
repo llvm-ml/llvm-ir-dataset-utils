@@ -13,6 +13,8 @@ import ray
 
 from compiler_opt.tools import make_corpus_lib
 
+from llvm_ir_dataset_utils.util import corpus
+
 BUILD_TIMEOUT = 900
 
 
@@ -70,6 +72,13 @@ def build_all_targets(source_dir, build_dir, corpus_dir, threads,
   package_build_logs = ray.get(package_futures)
   for package_build_log in package_build_logs:
     build_log['targets'].extend(package_build_log)
+  meta_corpus_description = corpus.create_meta_corpus(corpus_dir)
+  with open(os.path.join(corpus_dir, 'meta_corpus_description.json'),
+            'w') as meta_corpus_description_file:
+    json.dump(meta_corpus_description, meta_corpus_description_file, indent=2)
+  corpus_description_paths = corpus.get_corpus_description_paths(corpus_dir)
+  for corpus_description_path in corpus_description_paths:
+    os.remove(corpus_description_path)
   return build_log
 
 
