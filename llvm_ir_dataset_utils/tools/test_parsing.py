@@ -22,7 +22,10 @@ def process_bitcode_file(bitcode_file_path):
   command_vector = ['opt-16', bitcode_file_path, '-o', '/dev/null']
   command_output = subprocess.run(
       command_vector, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-  return command_output.returncode == 0
+  if command_output.returncode == 0:
+    return None
+  else:
+    return bitcode_file_path
 
 
 @ray.remote
@@ -37,13 +40,13 @@ def process_folder(folder_path):
   file_statuses = ray.get(file_status_futures)
 
   opt_success = 0
-  opt_failure = 0
+  opt_failures = []
   for file_status in file_statuses:
     if file_status:
-      opt_success += 1
+      opt_failures.append(file_status)
     else:
-      opt_failure += 1
-  return (opt_success, opt_failure)
+      opt_success += 1
+  return (opt_success, opt_failures)
 
 
 def main(_):
@@ -56,18 +59,21 @@ def main(_):
     folder_processing_futures.append(folder_processing_future)
 
   opt_success = 0
-  opt_failure = 0
+  opt_failures = []
   while len(folder_processing_futures) > 0:
     finished, folder_processing_futures = ray.wait(
         folder_processing_futures, timeout=5.0)
     finished_data = ray.get(finished)
     for finished_section in finished_data:
       opt_success += finished_section[0]
-      opt_failure += finished_section[1]
+      opt_failures.extend(finished_section[1])
     logging.info(
         f'Just finished {len(finished_data)}, {len(folder_processing_futures)} remaining.'
     )
-  logging.info(f'Got {opt_success} successes and {opt_failure} failures.')
+  logging.info(f'Got {opt_success} successes and {len(opt_failures)} failures.')
+
+  for failure in opt_failures:
+    logging.info(f'{failure} failed.')
 
 
 if __name__ == '__main__':
