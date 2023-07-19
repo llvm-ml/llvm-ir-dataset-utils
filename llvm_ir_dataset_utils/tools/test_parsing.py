@@ -15,6 +15,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus directory.')
 
 
+@ray.remote(num_cpus=1)
 def process_bitcode_file(bitcode_file_path):
   # TODO(boomanaiden154): Update the version of opt to use the generic version
   # once the symlink has been added to the container image.
@@ -24,13 +25,20 @@ def process_bitcode_file(bitcode_file_path):
   return command_output.returncode == 0
 
 
-@ray.remote(num_cpus=1)
+@ray.remote
 def process_folder(folder_path):
   bitcode_files = pathlib.Path(folder_path).glob('**/*.bc')
+
+  file_status_futures = []
+  for bitcode_file in bitcode_files:
+    file_status_future = process_bitcode_file.remote(bitcode_file)
+    file_status_futures.append(file_status_future)
+
+  file_statuses = ray.get(file_status_futures)
+
   opt_success = 0
   opt_failure = 0
-  for bitcode_file in bitcode_files:
-    file_status = process_bitcode_file(bitcode_file)
+  for file_status in file_statuses:
     if file_status:
       opt_success += 1
     else:
