@@ -26,6 +26,9 @@ def link_package(folder_path, output_dir):
   bitcode_files_gen = pathlib.Path(folder_path).glob('**/*.bc')
   bitcode_files = list(bitcode_files_gen)
 
+  if len(bitcode_files) == 0:
+    return (False, None)
+
   # TODO(boomanaiden154): Update this to just llvm-link after the symlink is
   # added into the container image.
   command_vector = ['llvm-link-16']
@@ -38,7 +41,11 @@ def link_package(folder_path, output_dir):
   output_file_path = os.path.join(output_dir, package_name + '.bc')
   command_vector.extend(['-o', output_file_path])
 
-  command_output = subprocess.run(command_vector)
+  try:
+    command_output = subprocess.run(
+        command_vector, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  except OSError:
+    return (False, None)
 
   if command_output.returncode == 0:
     return (True, output_file_path)
