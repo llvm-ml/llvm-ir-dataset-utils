@@ -15,10 +15,12 @@ BITCODE_FILE_CHUNK_SIZE = 16
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus directory.')
-flags.DEFINE_boolean(
-    'log_failures', False,
-    'Whether or not to output the paths to all the bitcode files that failed '
-    'to parse.')
+flags.DEFINE_string(
+    'log_failures', None,
+    'The path to a file to log failures to. If this flag is set, failures will '
+    'also be logged to STDOUT.')
+
+flags.mark_flag_as_required('corpus_dir')
 
 
 @ray.remote(num_cpus=1)
@@ -100,8 +102,10 @@ def main(_):
   logging.info(f'Got {opt_success} successes and {len(opt_failures)} failures.')
 
   if FLAGS.log_failures:
-    for failure in opt_failures:
-      logging.info(f'{failure} failed.')
+    with open(FLAGS.log_failures, 'w') as failures_log_file:
+      for failure in opt_failures:
+        logging.info(f'{failure} failed.')
+        failures_log_file.write(f'{failure}\n')
 
 
 if __name__ == '__main__':
