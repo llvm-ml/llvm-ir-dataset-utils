@@ -73,8 +73,11 @@ def extract_ir(package_hash, corpus_dir, threads):
   build_directory = get_spack_stage_directory(package_hash)
   if build_directory is not None:
     objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
+    logging_level = logging.get_verbosity()
+    logging.set_verbosity(logging.ERROR)
     relative_output_paths = extract_ir_lib.run_extraction(
         objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
+    logging.set_verbosity(logging_level)
     extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
                                          corpus_dir)
 
