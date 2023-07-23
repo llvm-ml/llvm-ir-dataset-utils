@@ -29,9 +29,7 @@ def link_package(folder_path, output_dir):
   if len(bitcode_files) == 0:
     return (False, None)
 
-  # TODO(boomanaiden154): Update this to just llvm-link after the symlink is
-  # added into the container image.
-  command_vector = ['llvm-link-16']
+  command_vector = ['llvm-link']
 
   command_vector.append(bitcode_files[0])
   for bitcode_file in bitcode_files[1:]:

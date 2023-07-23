@@ -25,11 +25,9 @@ flags.mark_flag_as_required('corpus_dir')
 
 @ray.remote(num_cpus=1)
 def process_bitcode_files(bitcode_file_paths):
-  # TODO(boomanaiden154): Update the version of opt to use the generic version
-  # once the symlink has been added to the container image.
   file_statuses = []
   for bitcode_file_path in bitcode_file_paths:
-    command_vector = ['opt-16', bitcode_file_path, '-o', '/dev/null']
+    command_vector = ['opt', bitcode_file_path, '-o', '/dev/null']
     command_output = subprocess.run(
         command_vector, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if command_output.returncode == 0:
