@@ -70,10 +70,12 @@ RUN apt-get -q update \
     && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add - \
     && apt-add-repository "deb http://apt.llvm.org/`lsb_release -cs`/ llvm-toolchain-`lsb_release -cs`-$LLVM_VERSION main" || true \
     && apt-get -q update \
-    && apt-get install -y clang-$LLVM_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev \
+    && apt-get install -y clang-$LLVM_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev libomp-$LLVM_VERSION-dev \
     && ln -s /usr/bin/clang-$LLVM_VERSION /usr/bin/clang \
     && ln -s /usr/bin/clang++-$LLVM_VERSION /usr/bin/clang++ \
-    && ln -s /usr/bin/llvm-objcopy-$LLVM_VERSION /usr/bin/llvm-objcopy
+    && ln -s /usr/bin/llvm-objcopy-$LLVM_VERSION /usr/bin/llvm-objcopy \
+		&& ln -s /usr/bin/opt-$LLVM_VERSION /usr/bin/opt \
+		&& ln -s /usr/bin/llvm-link-$LLVM_VERSION /usr/bin/llvm-link
 
 # Install and configure Spack
 ENV SPACK_ROOT=/opt/spack
