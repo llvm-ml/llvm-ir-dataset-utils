@@ -19,10 +19,11 @@ def get_spec_command_vector_section(spec):
   return spec.split(' ')
 
 
-def generate_build_command(package_to_build, threads):
+def generate_build_command(package_to_build, threads, build_dir):
   command_vector = [
-      'spack', 'install', '--keep-stage', '--overwrite', '-y',
-      '--use-buildcache', 'package:never,dependencies:only', '-j',
+      'spack', '-c', f'config:build_stage:{build_dir}', 'install',
+      '--keep-stage', '--overwrite', '-y', '--use-buildcache',
+      'package:never,dependencies:only', '-j',
       f'{SPACK_THREAD_OVERSUBSCRIPTION_FACTOR * threads}',
       '--no-check-signature', '--deprecated'
   ]
@@ -50,10 +51,8 @@ def perform_build(package_name, assembled_build_command, corpus_dir):
   return True
 
 
-def get_spack_stage_directory(package_hash):
-  # TODO(boomanaiden154): It feels like tempfile.gettempdir() might be a little
-  # bit flaky. Do some investigation on whether this is the case/alternatives.
-  spack_build_directory = os.path.join(tempfile.gettempdir(), 'spack-stage')
+def get_spack_stage_directory(package_hash, build_dir):
+  spack_build_directory = os.path.join(build_dir, os.getlogin())
   spack_stages = os.listdir(spack_build_directory)
   spack_stages.append('')
   for spack_stage_dir in spack_stages:
@@ -69,8 +68,8 @@ def get_spack_stage_directory(package_hash):
   return os.path.join(spack_build_directory, spack_stage_dir)
 
 
-def extract_ir(package_hash, corpus_dir, threads):
-  build_directory = get_spack_stage_directory(package_hash)
+def extract_ir(package_hash, corpus_dir, build_dir, threads):
+  build_directory = get_spack_stage_directory(package_hash, build_dir)
   if build_directory is not None:
     objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
     logging_level = logging.get_verbosity()
@@ -95,8 +94,8 @@ def push_to_buildcache(package_spec, buildcache_dir):
       stderr=subprocess.PIPE)
 
 
-def delete_stage_directory(package_hash, corpus_dir):
-  spack_build_directory = get_spack_stage_directory(package_hash)
+def delete_stage_directory(package_hash, corpus_dir, build_dir):
+  spack_build_directory = get_spack_stage_directory(package_hash, build_dir)
   if spack_build_directory is not None:
     file.delete_directory(spack_build_directory, corpus_dir)
 
@@ -142,6 +141,7 @@ def build_package(dependency_futures,
                   corpus_dir,
                   threads,
                   buildcache_dir,
+                  build_dir,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
@@ -152,11 +152,11 @@ def build_package(dependency_futures,
       if cleanup_build:
         cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
-  build_command = generate_build_command(package_spec, threads)
+  build_command = generate_build_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
-    extract_ir(package_hash, corpus_dir, threads)
-    delete_stage_directory(package_hash, corpus_dir)
+    extract_ir(package_hash, corpus_dir, build_dir, threads)
+    delete_stage_directory(package_hash, corpus_dir, build_dir)
     push_to_buildcache(package_spec, buildcache_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
@@ -164,6 +164,6 @@ def build_package(dependency_futures,
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     else:
       cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-      delete_stage_directory(package_hash, corpus_dir)
+      delete_stage_directory(package_hash, corpus_dir, build_dir)
   return construct_build_log(build_result, package_name,
                              get_build_log_path(corpus_dir))
