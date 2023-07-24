@@ -94,12 +94,6 @@ def push_to_buildcache(package_spec, buildcache_dir):
       stderr=subprocess.PIPE)
 
 
-def delete_stage_directory(package_hash, corpus_dir, build_dir):
-  spack_build_directory = get_spack_stage_directory(package_hash, build_dir)
-  if spack_build_directory is not None:
-    file.delete_directory(spack_build_directory, corpus_dir)
-
-
 def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
   if uninstall:
     uninstall_command_vector = ['spack', 'uninstall', '-y']
@@ -156,7 +150,6 @@ def build_package(dependency_futures,
   build_result = perform_build(package_name, build_command, corpus_dir)
   if build_result:
     extract_ir(package_hash, corpus_dir, build_dir, threads)
-    delete_stage_directory(package_hash, corpus_dir, build_dir)
     push_to_buildcache(package_spec, buildcache_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
@@ -164,6 +157,5 @@ def build_package(dependency_futures,
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     else:
       cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-      delete_stage_directory(package_hash, corpus_dir, build_dir)
   return construct_build_log(build_result, package_name,
                              get_build_log_path(corpus_dir))
