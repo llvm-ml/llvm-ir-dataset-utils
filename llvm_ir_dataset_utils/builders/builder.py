@@ -16,6 +16,7 @@ from llvm_ir_dataset_utils.builders import manual_builder
 from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
 from llvm_ir_dataset_utils.builders import spack_builder
+from llvm_ir_dataset_utils.builders import julia_builder
 
 from llvm_ir_dataset_utils.sources import source
 
@@ -116,6 +117,10 @@ def parse_and_build_from_description(corpus_description,
         corpus_description['package_spec'], corpus_description['package_hash'],
         corpus_dir, threads, extra_builder_arguments['buildcache_dir'],
         build_dir, cleanup)
+  elif corpus_description["build_system"] == "julia":
+    build_log = julia_builder.perform_build(corpus_description['package_name'],
+                                            build_dir, corpus_dir, threads)
+    julia_builder.extract_ir(build_dir, corpus_dir)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
