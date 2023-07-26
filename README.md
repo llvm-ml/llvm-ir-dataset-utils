@@ -10,6 +10,7 @@ multiple sources.
 - [x] Spack packages
 - [x] Autoconf
 - [x] Cmake
-- [ ] Julia packages
+- [x] Julia packages
 - [ ] Swift packages
+- [ ] Haskell packages
 
