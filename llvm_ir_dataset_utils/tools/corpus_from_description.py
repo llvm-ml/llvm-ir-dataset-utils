@@ -28,6 +28,10 @@ flags.DEFINE_bool(
     'build directories after finishing a build.')
 flags.DEFINE_integer('thread_count', multiprocessing.cpu_count(), 'The number '
                      'of threads to use per job.')
+flags.DEFINE_bool(
+    'archive_corpus', False,
+    'Whether or not to put the output corpus into an archive to reduce inode usage.'
+)
 
 flags.mark_flag_as_required("corpus_description")
 flags.mark_flag_as_required("source_dir")
@@ -47,7 +51,8 @@ def main(_):
         FLAGS.corpus_dir,
         FLAGS.thread_count, {},
         cleanup=FLAGS.cleanup,
-        extra_builder_arguments=extra_builder_arguments)
+        extra_builder_arguments=extra_builder_arguments,
+        archive_corpus=FLAGS.archive_corpus)
     logging.info('Starting build.')
     ray.get(build_future)
     logging.info('Build finished.')

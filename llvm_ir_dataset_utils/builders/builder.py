@@ -37,7 +37,8 @@ def get_build_future(corpus_description,
                      threads,
                      extra_env_variables,
                      extra_builder_arguments={},
-                     cleanup=False):
+                     cleanup=False,
+                     archive_corpus=False):
   return parse_and_build_from_description.options(num_cpus=threads).remote(
       corpus_description,
       source_base_dir,
@@ -46,7 +47,8 @@ def get_build_future(corpus_description,
       threads,
       extra_env_variables,
       extra_builder_arguments=extra_builder_arguments,
-      cleanup=cleanup)
+      cleanup=cleanup,
+      archive_corpus=archive_corpus)
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
@@ -57,7 +59,8 @@ def parse_and_build_from_description(corpus_description,
                                      threads,
                                      extra_env_variables,
                                      extra_builder_arguments={},
-                                     cleanup=False):
+                                     cleanup=False,
+                                     archive_corpus=False):
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["folder_name"])
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   pathlib.Path(source_base_dir).mkdir(exist_ok=True)
@@ -132,4 +135,9 @@ def parse_and_build_from_description(corpus_description,
   with open(os.path.join(corpus_dir, 'build_manifest.json'),
             'w') as build_manifest:
     json.dump(build_log, build_manifest, indent=2)
+  if archive_corpus:
+    # Use corpus_dir for the file path as make_archive automatically adds the
+    # .tar extension to the path
+    shutil.make_archive(corpus_dir, 'tar', corpus_dir)
+    shutil.rmtree(corpus_dir)
   return build_log
