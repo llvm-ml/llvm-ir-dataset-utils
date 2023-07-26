@@ -51,6 +51,7 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
   environment = os.environ.copy()
   julia_depot_path = os.path.join(build_dir, 'julia_depot')
   environment['JULIA_DEPOT_PATH'] = julia_depot_path
+  environment['JULIA_PKG_SERVER'] = ''
 
   try:
     with open(build_log_path, 'w') as build_log_file:

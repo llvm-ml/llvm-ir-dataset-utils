@@ -16,7 +16,7 @@ flags.DEFINE_string('source_dir', '/tmp/source',
 flags.DEFINE_string('build_dir', None,
                     'The base directory to perform builds in.')
 flags.DEFINE_string('corpus_dir', None, 'The directory to place the corpus in.')
-flags.DEFINE_integer('thread_count', 1,
+flags.DEFINE_integer('thread_count', 2,
                      'The number of threads to use per package build.')
 
 flags.mark_flag_as_required('build_dir')
