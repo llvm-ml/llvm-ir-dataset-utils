@@ -49,13 +49,18 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
   build_log_name = f'{package_name}.build.log'
   build_log_path = os.path.join(corpus_dir, build_log_name)
 
+  environment = os.environ.copy()
+  julia_depot_path = os.path.join(build_dir, 'julia_depot')
+  environment['JULIA_DEPOT_PATH']= julia_depot_path
+
   try:
     with open(build_log_path, 'w') as build_log_file:
       subprocess.run(
           build_command_vector,
           cwd=build_dir,
           stdout=build_log_file,
-          stderr=build_log_file)
+          stderr=build_log_file,
+          env=environment)
   except subprocess.SubprocessError:
     logging.warn(f'Failed to build julia package {package_name}')
     build_success = False

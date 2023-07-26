@@ -9,8 +9,6 @@ from absl import app
 from absl import logging
 from absl import flags
 
-# TODO(boomanaiden154): Add this as a dependency to the Pipfile and regenerate
-# the lock file.
 import toml
 
 FLAGS = flags.FLAGS
@@ -39,7 +37,9 @@ def main(_):
         os.path.join(registry_path, '**/Package.toml'), recursive=True):
       with open(package_toml_path) as package_toml_file:
         package_description = toml.load(package_toml_file)
-        package_list.append(package_description['name'])
+        package_name = package_description['name']
+        if 'jll' not in package_name:
+          package_list.append(package_name)
   logging.info('Writing packages to list.')
   with open(FLAGS.package_list, 'w') as package_list_file:
     for package in package_list:
