@@ -59,7 +59,8 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
           cwd=build_dir,
           stdout=build_log_file,
           stderr=build_log_file,
-          env=environment)
+          env=environment,
+          check=True)
   except subprocess.SubprocessError:
     logging.warn(f'Failed to build julia package {package_name}')
     build_success = False
