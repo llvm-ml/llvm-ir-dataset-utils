@@ -2,8 +2,7 @@
 
 import os
 import subprocess
-
-from absl import logging
+import logging
 
 
 def download_source_code(repo_url, repo_name, commit_sha, base_dir, corpus_dir):

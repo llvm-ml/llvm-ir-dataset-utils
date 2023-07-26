@@ -2,10 +2,10 @@
 
 import os
 import json
+import logging
 
 from absl import flags
 from absl import app
-from absl import logging
 
 import ray
 

@@ -2,7 +2,7 @@
 
 from absl import app
 from absl import flags
-from absl import logging
+import logging
 
 import ray
 
@@ -26,6 +26,7 @@ flags.mark_flag_as_required('package_list')
 
 def main(_):
   ray.init()
+
   with open(FLAGS.package_list) as package_list_file:
     package_list = [package_name.rstrip() for package_name in package_list_file]
 
@@ -47,14 +48,11 @@ def main(_):
             FLAGS.thread_count, {},
             cleanup=True))
 
-  all_finished = []
   while len(build_futures) > 0:
     finished, build_futures = ray.wait(build_futures, timeout=5.0)
     finished_data = ray.get(finished)
-    all_finished.extend(finished_data)
     logging.info(
-        f'Just finished {len(finished_data)}, {len(all_finished)} done, {len(build_futures)} remaining.'
-    )
+        f'Just finished {len(finished_data)}, {len(build_futures)} remaining.')
 
 
 if __name__ == '__main__':

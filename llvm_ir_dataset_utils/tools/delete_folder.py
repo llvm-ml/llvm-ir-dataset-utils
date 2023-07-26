@@ -2,12 +2,12 @@
 
 import os
 import shutil
+import logging
 
 import ray
 
 from absl import app
 from absl import flags
-from absl import logging
 
 FLAGS = flags.FLAGS
 

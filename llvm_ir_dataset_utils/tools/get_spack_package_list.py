@@ -10,9 +10,9 @@ import multiprocessing
 import tempfile
 import os
 import subprocess
+import logging
 
 from absl import app
-from absl import logging
 from absl import flags
 
 import ray

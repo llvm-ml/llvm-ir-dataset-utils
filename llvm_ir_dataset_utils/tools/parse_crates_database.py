@@ -13,7 +13,7 @@ from urllib import parse
 
 from absl import app
 from absl import flags
-from absl import logging
+import logging
 
 csv.field_size_limit(sys.maxsize)
 

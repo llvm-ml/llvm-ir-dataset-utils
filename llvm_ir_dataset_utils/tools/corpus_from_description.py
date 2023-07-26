@@ -2,10 +2,10 @@
 
 import json
 import multiprocessing
+import logging
 
 from absl import app
 from absl import flags
-from absl import logging
 import ray
 
 from llvm_ir_dataset_utils.builders import builder

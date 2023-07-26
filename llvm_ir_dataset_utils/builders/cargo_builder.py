@@ -6,8 +6,7 @@ import json
 import multiprocessing
 import shutil
 import pathlib
-
-from absl import logging
+import logging
 
 import ray
 

@@ -3,8 +3,8 @@
 import pathlib
 import os
 import subprocess
+import logging
 
-from absl import logging
 from absl import app
 from absl import flags
 

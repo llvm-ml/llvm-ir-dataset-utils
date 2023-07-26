@@ -4,8 +4,7 @@ import subprocess
 import os
 import pathlib
 import json
-
-from absl import logging
+import logging
 
 from compiler_opt.tools import make_corpus_lib
 

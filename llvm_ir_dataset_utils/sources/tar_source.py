@@ -4,9 +4,8 @@ import os
 import tarfile
 import tempfile
 import shutil
+import logging
 from urllib import request
-
-from absl import logging
 
 
 def download_source_code(archive_url, base_dir, source_folder_name):

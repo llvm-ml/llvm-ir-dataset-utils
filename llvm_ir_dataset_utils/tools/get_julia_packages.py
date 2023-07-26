@@ -4,9 +4,9 @@ import glob
 import subprocess
 import tempfile
 import os
+import logging
 
 from absl import app
-from absl import logging
 from absl import flags
 
 import toml

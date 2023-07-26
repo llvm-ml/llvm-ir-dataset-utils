@@ -3,8 +3,7 @@
 import subprocess
 import os
 import tempfile
-
-from absl import logging
+import logging
 
 import ray
 

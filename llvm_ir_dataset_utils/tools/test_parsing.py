@@ -3,8 +3,8 @@
 import pathlib
 import os
 import subprocess
+import logging
 
-from absl import logging
 from absl import app
 from absl import flags
 
@@ -74,6 +74,9 @@ def process_folder(folder_path):
 
 
 def main(_):
+  ray.init()
+  logging.getLogger().setLevel(logging.INFO)
+
   corpus_folders = os.listdir(FLAGS.corpus_dir)
 
   folder_processing_futures = []
