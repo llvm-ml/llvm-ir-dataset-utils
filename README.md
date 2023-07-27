@@ -11,6 +11,6 @@ multiple sources.
 - [x] Autoconf
 - [x] Cmake
 - [x] Julia packages
-- [ ] Swift packages
+- [x] Swift packages
 - [ ] Haskell packages
 
