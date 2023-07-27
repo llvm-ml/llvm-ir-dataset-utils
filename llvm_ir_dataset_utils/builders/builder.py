@@ -16,6 +16,7 @@ from llvm_ir_dataset_utils.builders import autoconf_builder
 from llvm_ir_dataset_utils.builders import cargo_builder
 from llvm_ir_dataset_utils.builders import spack_builder
 from llvm_ir_dataset_utils.builders import julia_builder
+from llvm_ir_dataset_utils.builders import swift_builder
 
 from llvm_ir_dataset_utils.sources import source
 
@@ -124,6 +125,12 @@ def parse_and_build_from_description(corpus_description,
                                             build_dir, corpus_dir, threads)
     if build_log['success']:
       julia_builder.extract_ir(build_dir, corpus_dir)
+  elif corpus_description["build_system"] == "swift":
+    build_log = swift_builder.perform_build(source_dir, build_dir, corpus_dir,
+                                            threads,
+                                            corpus_description['package_name'])
+    if build_log['success']:
+      swift_builder.extract_ir(build_dir, corpus_dir, threads)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")

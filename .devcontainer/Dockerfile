@@ -2,12 +2,16 @@ ARG UBUNTU_VERSION=22.04
 ARG LLVM_VERSION=16
 ARG JULIA_MAJOR_VERSION=8
 ARG JULIA_MINOR_VERSION=3
+ARG SWIFT_MAJOR_VERSION=8
+ARG SWIFT_MINOR_VERSION=1
 
 FROM ubuntu:$UBUNTU_VERSION
 
 ARG LLVM_VERSION
 ARG JULIA_MAJOR_VERSION
 ARG JULIA_MINOR_VERSION
+ARG SWIFT_MAJOR_VERSION
+ARG SWIFT_MINOR_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -48,6 +52,13 @@ RUN curl \
     | tar -xz
 RUN mv julia-1.$JULIA_MAJOR_VERSION.$JULIA_MINOR_VERSION/ /opt/
 ENV PATH="/opt/julia-1.$JULIA_MAJOR_VERSION.$JULIA_MINOR_VERSION/bin/:${PATH}"
+
+# Install Swift
+RUN curl \
+    https://download.swift.org/swift-5.8.1-release/ubuntu2204/swift-5.8.1-RELEASE/swift-5.8.1-RELEASE-ubuntu22.04.tar.gz \
+    | tar -xz
+RUN mv swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION-RELEASE-ubuntu22.04/usr/ /opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/
+ENV PATH="/opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/bin/:${PATH}"
 
 # Clean up the Docker container to make the image smaller
 RUN apt-get autoremove -y --purge \
