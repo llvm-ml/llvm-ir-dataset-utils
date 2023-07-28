@@ -29,13 +29,17 @@ def perform_build(source_dir, build_dir, corpus_dir, thread_count,
     # TODO(boomanaiden154): Figure out why a FileNotFoundError is thrown here
     # sometimes because it should be handled earlier.
     logging.warning(f'Failed to build swift package in {package_name}')
-    build_sucess = False
+    build_success = False
   else:
-    build_sucess = True
+    build_success = True
+  if build_success:
+    extract_ir(build_dir, corpus_dir, thread_count)
   return {
-      'success': build_sucess,
-      'build_log': build_log_path,
-      'name': package_name
+      'targets': [{
+          'success': build_success,
+          'build_log': build_log_path,
+          'name': package_name
+      }]
   }
 
 

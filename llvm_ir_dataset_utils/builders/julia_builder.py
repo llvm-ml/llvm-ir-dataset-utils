@@ -67,10 +67,14 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
     build_success = False
   else:
     build_success = True
+  if build_success:
+    extract_ir(build_dir, corpus_dir)
   return {
-      'success': build_success,
-      'build_log': build_log_path,
-      'name': package_name
+      'targets': [{
+          'success': build_success,
+          'build_log': build_log_path,
+          'name': package_name
+      }]
   }
 
 

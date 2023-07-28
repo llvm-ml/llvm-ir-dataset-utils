@@ -123,14 +123,10 @@ def parse_and_build_from_description(corpus_description,
   elif corpus_description["build_system"] == "julia":
     build_log = julia_builder.perform_build(corpus_description['package_name'],
                                             build_dir, corpus_dir, threads)
-    if build_log['success']:
-      julia_builder.extract_ir(build_dir, corpus_dir)
   elif corpus_description["build_system"] == "swift":
     build_log = swift_builder.perform_build(source_dir, build_dir, corpus_dir,
                                             threads,
                                             corpus_description['package_name'])
-    if build_log['success']:
-      swift_builder.extract_ir(build_dir, corpus_dir, threads)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
