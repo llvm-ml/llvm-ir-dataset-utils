@@ -62,8 +62,8 @@ def get_package_future(package_dict, current_package_futures, package, threads):
   }
   build_future = builder.get_build_future(
       corpus_description,
-      '/tmp/source',
-      '/tmp/build',
+      FLAGS.source_dir,
+      FLAGS.build_dir,
       FLAGS.corpus_dir,
       threads, {},
       extra_builder_arguments=extra_builder_arguments,
