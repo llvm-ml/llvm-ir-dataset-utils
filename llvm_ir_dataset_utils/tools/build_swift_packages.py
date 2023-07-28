@@ -19,6 +19,9 @@ flags.DEFINE_string('build_dir', None,
 flags.DEFINE_string('corpus_dir', None, 'The directory to place the corpus in')
 flags.DEFINE_integer('thread_count', 2,
                      'The number of threads to use per package build.')
+flags.DEFINE_bool(
+    'archive_corpus', False,
+    'Whether or not to put the output corpus for each package into an archive.')
 
 
 def main(_):
@@ -50,7 +53,8 @@ def main(_):
             FLAGS.build_dir,
             FLAGS.corpus_dir,
             FLAGS.thread_count, {},
-            cleanup=True))
+            cleanup=True,
+            archive_corpus=FLAGS.archive_corpus))
 
   while len(build_futures) > 0:
     finished, build_futures = ray.wait(build_futures, timeout=5.0)
