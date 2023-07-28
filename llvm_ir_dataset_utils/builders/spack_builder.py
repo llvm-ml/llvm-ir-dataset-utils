@@ -70,11 +70,14 @@ def get_spack_stage_directory(package_hash, build_dir):
 def extract_ir(package_hash, corpus_dir, build_dir, threads):
   build_directory = get_spack_stage_directory(package_hash, build_dir)
   if build_directory is not None:
+    current_verbosity = logging.getLogger().getEffectiveLevel()
+    logging.getLogger().setLevel(logging.ERROR)
     objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
     relative_output_paths = extract_ir_lib.run_extraction(
         objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
     extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
                                          corpus_dir)
+    logging.getLogger().setLevel(current_verbosity)
 
 
 def push_to_buildcache(package_spec, buildcache_dir):
