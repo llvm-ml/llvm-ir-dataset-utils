@@ -29,6 +29,9 @@ flags.DEFINE_string(
     'The directory of the spack buildcache to store built packages in.')
 flags.DEFINE_integer('thread_count', 16,
                      'The number of threads to use per job.')
+flags.DEFINE_bool(
+    'archive_corpus', False,
+    'Whether or not to put the output corpus for each package into an archive.')
 
 flags.mark_flag_as_required('package_list')
 flags.mark_flag_as_required('corpus_dir')
@@ -64,7 +67,8 @@ def get_package_future(package_dict, current_package_futures, package, threads):
       FLAGS.corpus_dir,
       threads, {},
       extra_builder_arguments=extra_builder_arguments,
-      cleanup=True)
+      cleanup=True,
+      archive_corpus=FLAGS.archive_corpus)
   current_package_futures[package] = build_future
   return build_future
 
