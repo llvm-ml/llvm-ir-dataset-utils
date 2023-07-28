@@ -8,18 +8,32 @@ from compiler_opt.tools import extract_ir_lib
 
 
 def perform_build(commands_list, source_dir, threads, corpus_dir):
+  command_statuses = []
+  build_config_file_path = os.path.join(corpus_dir, 'build.log')
   for command in commands_list:
     environment = os.environ.copy()
     environment['JOBS'] = str(threads)
-    build_config_file_path = os.path.join(corpus_dir, 'build.log')
     with open(build_config_file_path, 'w') as build_config_file:
-      subprocess.run(
+      build_process = subprocess.run(
           command,
           cwd=source_dir,
           env=environment,
           shell=True,
           stderr=build_config_file,
           stdout=build_config_file)
+      command_statuses.append(build_process.returncode == 0)
+  overall_success = True
+  for command_status in command_statuses:
+    if not command_status:
+      overall_success = False
+      break
+  return {
+      'targets': [{
+          'success': overall_success,
+          'build_log': build_config_file_path,
+          'name': os.path.basename(corpus_dir)
+      }]
+  }
 
 
 def extract_ir(build_dir, corpus_dir, threads):

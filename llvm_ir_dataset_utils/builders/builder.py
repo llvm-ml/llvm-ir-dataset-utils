@@ -80,19 +80,21 @@ def parse_and_build_from_description(corpus_description,
         os.path.join(source_dir, corpus_description["cmake_root"]),
         corpus_description["cmake_flags"])
     build_command_vector = cmake_builder.generate_build_command([], threads)
-    cmake_builder.perform_build(configure_command_vector, build_command_vector,
-                                build_dir, corpus_dir)
+    build_log = cmake_builder.perform_build(configure_command_vector,
+                                            build_command_vector, build_dir,
+                                            corpus_dir)
     cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
-    manual_builder.perform_build(corpus_description["commands"], source_dir,
-                                 threads, corpus_dir)
+    build_log = manual_builder.perform_build(corpus_description["commands"],
+                                             source_dir, threads, corpus_dir)
     manual_builder.extract_ir(source_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
         source_dir, corpus_description["autoconf_flags"])
     build_command_vector = autoconf_builder.generate_build_command(threads)
-    autoconf_builder.perform_build(configure_command_vector,
-                                   build_command_vector, build_dir, corpus_dir)
+    build_log = autoconf_builder.perform_build(configure_command_vector,
+                                               build_command_vector, build_dir,
+                                               corpus_dir)
     autoconf_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "cargo":
     build_log = cargo_builder.build_all_targets(source_dir, build_dir,

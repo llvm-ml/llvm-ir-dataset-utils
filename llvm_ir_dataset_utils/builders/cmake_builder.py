@@ -33,20 +33,31 @@ def perform_build(configure_command_vector, build_command_vector, build_dir,
                   corpus_dir):
   configure_log_path = os.path.join(corpus_dir, 'configure.log')
   with open(configure_log_path, 'w') as configure_log_file:
-    subprocess.run(
+    configure_process = subprocess.run(
         configure_command_vector,
         cwd=build_dir,
         check=True,
         stderr=configure_log_file,
         stdout=configure_log_file)
+    configure_success = configure_process.returncode == 0
   build_log_path = os.path.join(corpus_dir, 'build.log')
   with open(build_log_path, 'w') as build_log_file:
-    subprocess.run(
+    build_process = subprocess.run(
         build_command_vector,
         cwd=build_dir,
         check=True,
         stderr=build_log_file,
         stdout=build_log_file)
+    build_success = build_process.returncode == 0
+  return {
+      'targets': [{
+          'success': build_success and configure_success,
+          'build_log': build_log_path,
+          'name': 'all',
+          'build_success': build_success,
+          'configure_success': configure_success
+      }]
+  }
 
 
 def extract_ir(build_dir, corpus_dir, threads):
