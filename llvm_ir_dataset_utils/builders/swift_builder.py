@@ -25,7 +25,9 @@ def perform_build(source_dir, build_dir, corpus_dir, thread_count,
           stdout=build_log_file,
           stderr=build_log_file,
           check=True)
-  except subprocess.SubprocessError:
+  except (subprocess.SubprocessError, FileNotFoundError):
+    # TODO(boomanaiden154): Figure out why a FileNotFoundError is thrown here
+    # sometimes because it should be handled earlier.
     logging.warning(f'Failed to build swift package in {package_name}')
     build_sucess = False
   else:
