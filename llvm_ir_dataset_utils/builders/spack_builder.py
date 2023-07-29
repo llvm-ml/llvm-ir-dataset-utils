@@ -78,11 +78,10 @@ def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
 
 
 def get_spack_stage_directory(package_hash, build_dir):
-  if not os.path.exists(build_dir):
-    logging.warning(f'Failed to find build directory {build_dir}, unable to '
-                    'find stage directory.')
-    return None
   spack_build_directory = os.path.join(build_dir, os.getlogin())
+  if not os.path.exists(spack_build_directory):
+    logging.warning(os.listdir(build_dir))
+    return None
   spack_stages = os.listdir(spack_build_directory)
   spack_stages.append('')
   for spack_stage_dir in spack_stages:
