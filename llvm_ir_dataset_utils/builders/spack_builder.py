@@ -173,6 +173,20 @@ def spack_setup_compiler(build_dir):
     compiler_config_file.writelines(SPACK_COMPILER_CONFIG)
 
 
+def spack_setup_bootstrap_root(build_dir):
+  # TODO(boomanaiden154): Pull out the hardcoded /tmp/spack-boostrap path and
+  # make it a configurable somewhere.
+  command_vector = ['spack', 'bootstrap', 'root', '/tmp/spack-bootstrap']
+  environment = os.environ.copy()
+  environment['HOME'] = build_dir
+  subprocess.run(
+      command_vector,
+      env=environment,
+      check=True,
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.DEVNULL)
+
+
 def build_package(dependency_futures,
                   package_name,
                   package_spec,
@@ -193,6 +207,7 @@ def build_package(dependency_futures,
       return construct_build_log(False, package_name, None)
   spack_add_mirror(build_dir, buildcache_dir)
   spack_setup_compiler(build_dir)
+  spack_setup_bootstrap_root(build_dir)
   build_command = generate_build_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir,
                                build_dir)
