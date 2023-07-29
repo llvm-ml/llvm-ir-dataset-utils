@@ -78,6 +78,10 @@ def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
 
 
 def get_spack_stage_directory(package_hash, build_dir):
+  if not os.path.exists(build_dir):
+    logging.warning(f'Failed to find build directory {build_dir}, unable to '
+                    'find stage directory.')
+    return None
   spack_build_directory = os.path.join(build_dir, os.getlogin())
   spack_stages = os.listdir(spack_build_directory)
   spack_stages.append('')
@@ -167,6 +171,10 @@ def spack_add_mirror(build_dir, buildcache_dir):
 
 
 def spack_setup_compiler(build_dir):
+  # TODO(boomanaiden154): The following path is variable depending upon the
+  # system. For example, on some systems itis ~/.spack/linux and on others it
+  # is ~/.spack/cray. We should grab this path more intelligently from spack
+  # somehow.
   compiler_config_path = os.path.join(build_dir, '.spack/linux/compilers.yaml')
   pathlib.Path(os.path.dirname(compiler_config_path)).mkdir(parents=True)
   with open(compiler_config_path, 'w') as compiler_config_file:
