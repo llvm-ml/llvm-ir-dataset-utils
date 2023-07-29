@@ -34,15 +34,20 @@ def get_build_log_path(corpus_dir):
   return os.path.join(corpus_dir, 'spack_build.log')
 
 
-def perform_build(package_name, assembled_build_command, corpus_dir):
+def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
   logging.info(f"Spack building package {package_name}")
+  environment = os.environ.copy()
+  # Set $HOME to the build directory so that spack doesn't run into weird
+  # errors with multiple machines trying to write to a common home directory.
+  environment['HOME'] = build_dir
   try:
     with open(get_build_log_path(corpus_dir), 'w') as build_log_file:
       subprocess.run(
           assembled_build_command,
           stdout=build_log_file,
           stderr=build_log_file,
-          check=True)
+          check=True,
+          env=environment)
   except subprocess.SubprocessError:
     logging.warn(f"Failed to build spack package {package_name}")
     return False
@@ -127,6 +132,18 @@ def construct_build_log(build_success, package_name, build_log_path):
   }
 
 
+def spack_add_mirror(build_dir, buildcache_dir):
+  environment = os.environ.copy()
+  environment['HOME'] = build_dir
+  command_vector = ['spack', 'mirror', 'add', 'buildcache', buildcache_dir]
+  subprocess.run(
+      command_vector,
+      check=True,
+      env=environment,
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.DEVNULL)
+
+
 def build_package(dependency_futures,
                   package_name,
                   package_spec,
@@ -145,8 +162,10 @@ def build_package(dependency_futures,
       if cleanup_build:
         cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
+  spack_add_mirror(build_dir, buildcache_dir)
   build_command = generate_build_command(package_spec, threads, build_dir)
-  build_result = perform_build(package_name, build_command, corpus_dir)
+  build_result = perform_build(package_name, build_command, corpus_dir,
+                               build_dir)
   if build_result:
     extract_ir(package_hash, corpus_dir, build_dir, threads)
     push_to_buildcache(package_spec, buildcache_dir)
