@@ -19,13 +19,13 @@ flags.DEFINE_string('package_name', None, 'The name of an individual package '
                     'to build.')
 flags.DEFINE_string('corpus_dir', None, 'The path to the corpus.')
 flags.DEFINE_string(
-    'source_dir', 'tmp/source', 'The source dir to pass along '
+    'source_dir', '/tmp/source', 'The source dir to pass along '
     'to the builder. This is not used by the spack builder.')
 flags.DEFINE_string(
-    'build_dir', '/tmp/build', 'The build dir to pass along to '
+    'build_dir', None, 'The build dir to pass along to '
     'the builder. This is not used by the spack builder.')
 flags.DEFINE_string(
-    'buildcache_dir', '/tmp/buildcache',
+    'buildcache_dir', None,
     'The directory of the spack buildcache to store built packages in.')
 flags.DEFINE_integer('thread_count', 16,
                      'The number of threads to use per job.')
@@ -35,6 +35,8 @@ flags.DEFINE_bool(
 
 flags.mark_flag_as_required('package_list')
 flags.mark_flag_as_required('corpus_dir')
+flags.mark_flag_as_required('build_dir')
+flags.mark_flag_as_required('buildcache_dir')
 
 
 def get_package_future(package_dict, current_package_futures, package, threads):
