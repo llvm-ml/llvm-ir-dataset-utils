@@ -4,6 +4,7 @@ import subprocess
 import os
 import tempfile
 import logging
+import pathlib
 
 import ray
 
@@ -12,6 +13,27 @@ from compiler_opt.tools import extract_ir_lib
 from llvm_ir_dataset_utils.util import file
 
 SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 2
+
+# TODO(boomanaiden154): Change this to adapt to the compiler version and also
+# probably refactor it into a utility so that it can be easily used in the
+# get_spack_package_list.py script.
+SPACK_COMPILER_CONFIG = """compilers:
+- compiler:
+    spec: clang@=16.0.6
+    paths:
+      cc: /usr/bin/clang
+      cxx: /usr/bin/clang++
+      f77: /usr/bin/gfortran
+      fc: /usr/bin/gfortran
+    flags:
+      cflags: -Xclang -fembed-bitcode=all
+      cxxflags: -Xclang -fembed-bitcode=all
+    operating_system: ubuntu22.04
+    target: x86_64
+    modules: []
+    environment: {}
+    extra_rpaths: []
+"""
 
 
 def get_spec_command_vector_section(spec):
@@ -144,6 +166,13 @@ def spack_add_mirror(build_dir, buildcache_dir):
       stderr=subprocess.DEVNULL)
 
 
+def spack_setup_compiler(build_dir):
+  compiler_config_path = os.path.join(build_dir, '.spack/linux/compilers.yaml')
+  pathlib.Path(os.path.dirname(compiler_config_path)).mkdir(parents=True)
+  with open(compiler_config_path, 'w') as compiler_config_file:
+    compiler_config_file.writelines(SPACK_COMPILER_CONFIG)
+
+
 def build_package(dependency_futures,
                   package_name,
                   package_spec,
@@ -163,6 +192,7 @@ def build_package(dependency_futures,
         cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
   spack_add_mirror(build_dir, buildcache_dir)
+  spack_setup_compiler(build_dir)
   build_command = generate_build_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir,
                                build_dir)
