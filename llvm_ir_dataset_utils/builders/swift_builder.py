@@ -6,6 +6,8 @@ import logging
 
 from compiler_opt.tools import extract_ir_lib
 
+BUILD_TIMEOUT = 900
+
 
 def perform_build(source_dir, build_dir, corpus_dir, thread_count,
                   package_name):
@@ -24,7 +26,8 @@ def perform_build(source_dir, build_dir, corpus_dir, thread_count,
           cwd=source_dir,
           stdout=build_log_file,
           stderr=build_log_file,
-          check=True)
+          check=True,
+          timeout=BUILD_TIMEOUT)
   except (subprocess.SubprocessError, FileNotFoundError):
     # TODO(boomanaiden154): Figure out why a FileNotFoundError is thrown here
     # sometimes because it should be handled earlier.
