@@ -19,7 +19,13 @@ flags.mark_flag_as_required('folder')
 
 @ray.remote
 def delete_folder(folder_path):
-  shutil.rmtree(folder_path)
+  if os.path.isdir(folder_path):
+    shutil.rmtree(folder_path)
+  elif os.path.isfile(folder_path):
+    os.remove(folder_path)
+  else:
+    logging.warning(f'Failed to delete {folder_path}, no file or directory')
+    return False
   logging.warning(f'Deleted {folder_path}')
   return True
 
