@@ -101,7 +101,7 @@ RUN curl \
     https://download.swift.org/swift-5.8.1-release/ubuntu2204/swift-5.8.1-RELEASE/swift-5.8.1-RELEASE-ubuntu22.04.tar.gz \
     | tar -xz
 RUN mv swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION-RELEASE-ubuntu22.04/usr/ /opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/
-ENV PATH="/opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/bin/:${PATH}"
+ENV PATH="${PATH}:/opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/bin/"
 
 # Set up the Python dependencies
 COPY Pipfile* ./
