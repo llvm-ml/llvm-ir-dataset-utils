@@ -110,17 +110,19 @@ def extract_ir(package_hash, corpus_dir, build_dir, threads):
     logging.getLogger().setLevel(current_verbosity)
 
 
-def push_to_buildcache(package_spec, buildcache_dir):
+def push_to_buildcache(package_spec, buildcache_dir, corpus_dir):
   command_vector = [
       'spack', 'buildcache', 'push', '--unsigned', '--allow-root', '--only',
       'package', buildcache_dir
   ]
   command_vector.extend(get_spec_command_vector_section(package_spec))
-  subprocess.run(
-      command_vector,
-      check=True,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE)
+  buildcache_push_log_path = os.path.join(corpus_dir, 'buildcache_push.log')
+  with open(buildcache_push_log_path, 'w') as buildcache_push_log_file:
+    subprocess.run(
+        command_vector,
+        check=True,
+        stdout=buildcache_push_log_file,
+        stderr=buildcache_push_log_file)
 
 
 def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
@@ -220,7 +222,7 @@ def build_package(dependency_futures,
                                build_dir)
   if build_result:
     extract_ir(package_hash, corpus_dir, build_dir, threads)
-    push_to_buildcache(package_spec, buildcache_dir)
+    push_to_buildcache(package_spec, buildcache_dir, corpus_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
     if build_result:
