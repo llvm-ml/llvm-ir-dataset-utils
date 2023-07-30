@@ -35,6 +35,8 @@ SPACK_COMPILER_CONFIG = """compilers:
     extra_rpaths: []
 """
 
+SPACK_GARBAGE_COLLECTION_TIMEOUT = 300
+
 
 def get_spec_command_vector_section(spec):
   return spec.split(' ')
@@ -143,7 +145,11 @@ def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
     gc_log_path = os.path.join(corpus_dir, 'gc.log')
     with open(gc_log_path, 'w') as gc_log_file:
       subprocess.run(
-          gc_command_vector, check=True, stdout=gc_log_file, stderr=gc_log_file)
+          gc_command_vector,
+          check=True,
+          stdout=gc_log_file,
+          stderr=gc_log_file,
+          timeout=SPACK_GARBAGE_COLLECTION_TIMEOUT)
   except subprocess.SubprocessError:
     logging.warning(
         f'Failed to garbage collect while cleaning up package {package_name}.')
