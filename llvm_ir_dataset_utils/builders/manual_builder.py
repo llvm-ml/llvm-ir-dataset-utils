@@ -7,7 +7,7 @@ import os
 from compiler_opt.tools import extract_ir_lib
 
 
-def perform_build(commands_list, source_dir, threads, corpus_dir):
+def perform_build(commands_list, build_dir, threads, corpus_dir):
   command_statuses = []
   build_config_file_path = os.path.join(corpus_dir, 'build.log')
   for command in commands_list:
@@ -16,7 +16,7 @@ def perform_build(commands_list, source_dir, threads, corpus_dir):
     with open(build_config_file_path, 'w') as build_config_file:
       build_process = subprocess.run(
           command,
-          cwd=source_dir,
+          cwd=build_dir,
           env=environment,
           shell=True,
           stderr=build_config_file,

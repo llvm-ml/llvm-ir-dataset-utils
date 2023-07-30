@@ -66,11 +66,16 @@ def parse_and_build_from_description(corpus_description,
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   pathlib.Path(source_base_dir).mkdir(exist_ok=True)
   pathlib.Path(build_base_dir).mkdir(exist_ok=True)
+  to_download_dir = build_base_dir if corpus_description[
+      "build_system"] == "manual" else source_base_dir
   source_logs = source.download_source(corpus_description['sources'],
-                                       source_base_dir, corpus_dir,
+                                       to_download_dir, corpus_dir,
                                        corpus_description['folder_name'])
-  build_dir = os.path.join(build_base_dir,
-                           corpus_description["folder_name"] + "-build")
+  if corpus_description["build_system"] == "manual":
+    build_dir = os.path.join(build_base_dir, corpus_description["folder_name"])
+  else:
+    build_dir = os.path.join(build_base_dir,
+                             corpus_description["folder_name"] + "-build")
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
   build_log = {}
@@ -86,8 +91,8 @@ def parse_and_build_from_description(corpus_description,
     cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
     build_log = manual_builder.perform_build(corpus_description["commands"],
-                                             source_dir, threads, corpus_dir)
-    manual_builder.extract_ir(source_dir, corpus_dir, threads)
+                                             build_dir, threads, corpus_dir)
+    manual_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
         source_dir, corpus_description["autoconf_flags"])
