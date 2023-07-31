@@ -182,8 +182,7 @@ def spack_setup_compiler(build_dir):
   # system. For example, on some systems itis ~/.spack/linux and on others it
   # is ~/.spack/cray. We should grab this path more intelligently from spack
   # somehow.
-  compiler_config_path = os.path.join(build_dir, '.spack/linux/compilers.yaml')
-  pathlib.Path(os.path.dirname(compiler_config_path)).mkdir(parents=True)
+  compiler_config_path = os.path.join(build_dir, '.spack/compilers.yaml')
   with open(compiler_config_path, 'w') as compiler_config_file:
     compiler_config_file.writelines(SPACK_COMPILER_CONFIG)
 
