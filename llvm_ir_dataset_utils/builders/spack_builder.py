@@ -12,7 +12,7 @@ from compiler_opt.tools import extract_ir_lib
 
 from llvm_ir_dataset_utils.util import file
 
-SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 2
+SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 1
 
 # TODO(boomanaiden154): Change this to adapt to the compiler version and also
 # probably refactor it into a utility so that it can be easily used in the
