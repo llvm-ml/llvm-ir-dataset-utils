@@ -1,13 +1,14 @@
 """Tool for aggregating and providing statistics on bitcode size."""
 
 import os
-import json
 import logging
 
 from absl import flags
 from absl import app
 
 import ray
+
+from llvm_ir_dataset_utils.util import dataset_corpus
 
 FLAGS = flags.FLAGS
 
@@ -19,29 +20,23 @@ flags.DEFINE_string(
 
 flags.mark_flag_as_required('corpus_dir')
 
-
 @ray.remote
-def get_size_from_manifest(build_manifest_path):
-  if not os.path.exists(build_manifest_path):
-    logging.warning(
-        f'Expected build manifest at path {build_manifest_path} does not exist.'
-    )
-    return (build_manifest_path, 0, False)
-  with open(build_manifest_path) as build_manifest_file:
-    build_manifest = json.load(build_manifest_file)
-    package_name_hash = os.path.basename(os.path.dirname(build_manifest_path))
-    return (package_name_hash, build_manifest['size'],
-            build_manifest['targets'][0]['success'])
+def get_size_from_manifest(corpus_path):
+  build_manifest = dataset_corpus.load_json_from_corpus(corpus_path, "./build_manifest.json")
+  package_name_hash = os.path.basename(os.path.dirname(corpus_path))
+  if build_manifest is None:
+    return (package_name_hash, 0, False)
+  return (package_name_hash, build_manifest['size'],
+          build_manifest['targets'][0]['success'])
 
 
 def main(_):
-  subfolders = os.listdir(FLAGS.corpus_dir)
-  logging.info(f'Gathering data from {len(subfolders)} builds.')
+  build_corpora = os.listdir(FLAGS.corpus_dir)
+  logging.info(f'Gathering data from {len(build_corpora)} builds.')
   size_futures = []
-  for subfolder in subfolders:
-    build_manifest_path = os.path.join(FLAGS.corpus_dir, subfolder,
-                                       'build_manifest.json')
-    size_futures.append(get_size_from_manifest.remote(build_manifest_path))
+  for build_corpus in build_corpora:
+    corpus_path = os.path.join(FLAGS.corpus_dir, build_corpus)
+    size_futures.append(get_size_from_manifest.remote(corpus_path))
   names_sizes = ray.get(size_futures)
 
   size_sum = 0
