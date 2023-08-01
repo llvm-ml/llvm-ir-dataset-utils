@@ -20,9 +20,11 @@ flags.DEFINE_string(
 
 flags.mark_flag_as_required('corpus_dir')
 
+
 @ray.remote
 def get_size_from_manifest(corpus_path):
-  build_manifest = dataset_corpus.load_json_from_corpus(corpus_path, "./build_manifest.json")
+  build_manifest = dataset_corpus.load_json_from_corpus(
+      corpus_path, "./build_manifest.json")
   package_name_hash = os.path.basename(os.path.dirname(corpus_path))
   if build_manifest is None:
     return (package_name_hash, 0, False)
