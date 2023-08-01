@@ -3,6 +3,7 @@
 import os
 import glob
 import logging
+import csv
 
 from absl import app
 from absl import flags
@@ -22,18 +23,20 @@ flags.mark_flag_as_required('output_file_path')
 
 
 def main(_):
+  passes_changed = {}
+  for bitcode_file_path in glob.glob(
+      os.path.join(FLAGS.project_dir, '**/*.bc'), recursive=True):
+    bitcode_file_full_path = os.path.join(FLAGS.project_dir, bitcode_file_path)
+    logging.info(f'processing {bitcode_file_full_path}')
+    modules_passes_ran = bitcode_module.get_passes_bitcode_module(
+        bitcode_file_full_path)
+    passes_changed = bitcode_module.combine_module_passes(
+        passes_changed, modules_passes_ran)
+
   with open(FLAGS.output_file_path, 'w') as output_file:
-    for bitcode_file_path in glob.glob(
-        os.path.join(FLAGS.project_dir, '**/*.bc'), recursive=True):
-      bitcode_file_full_path = os.path.join(FLAGS.project_dir,
-                                            bitcode_file_path)
-      logging.info(f'processing {bitcode_file_full_path}')
-      modules_passes_ran = bitcode_module.get_passes_bitcode_module(
-          bitcode_file_full_path)
-      for module_passes_ran in modules_passes_ran:
-        passes_ran = ','.join(
-            ['1' if pass_ran else '0' for pass_ran in module_passes_ran])
-        output_file.write(passes_ran + '\n')
+    csv_writer = csv.writer(output_file)
+    csv_writer.writerow(passes_changed.keys())
+    csv_writer.writerows(zip(*passes_changed.values()))
 
 
 if __name__ == '__main__':

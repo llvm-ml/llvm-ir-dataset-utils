@@ -54,27 +54,47 @@ def get_run_passes_opt(bitcode_function_path):
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT)
   opt_process_lines = opt_process.stdout.split('\n')
-  passes = []
+  passes = {}
   for opt_process_line in opt_process_lines:
     if opt_process_line[:3] == '***' and opt_process_line[-3:] == '***':
       # We're in a pass status line
       if opt_process_line[4:11] == 'IR Pass':
         # All module level passes are ignored, so we can't do anything here.
         continue
+      pass_name = opt_process_line.split(' ')[4]
       if opt_process_line[-13:-4] == 'no change':
-        passes.append(False)
+        passes[pass_name] = [False]
       else:
-        passes.append(True)
+        passes[pass_name] = [True]
   return passes
+
+
+def combine_module_passes(function_a, function_b):
+  if function_a is None or function_a == {}:
+    return function_b
+  combined_passes = function_a
+  for single_pass in function_b:
+    if single_pass in combined_passes:
+      combined_passes[single_pass].extend(function_b[single_pass])
+    else:
+      combined_passes_length = len(combined_passes[list(
+          combined_passes.keys())[0]])
+      combined_passes[single_pass] = [
+          False for i in range(0, combined_passes_length)
+      ]
+      combined_passes[single_pass].extend(function_b[single_pass])
+  return combined_passes
 
 
 def get_passes_bitcode_module(bitcode_module_path):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
     extract_functions(bitcode_module_path, extracted_functions_dir)
     function_bitcode_files = os.listdir(extracted_functions_dir)
-    function_passes = []
+    function_passes = {}
     for function_bitcode_file in function_bitcode_files:
       full_bitcode_file_path = os.path.join(extracted_functions_dir,
                                             function_bitcode_file)
-      function_passes.append(get_run_passes_opt(full_bitcode_file_path))
+      current_function_results = get_run_passes_opt(full_bitcode_file_path)
+      function_passes = combine_module_passes(function_passes,
+                                              current_function_results)
   return function_passes
