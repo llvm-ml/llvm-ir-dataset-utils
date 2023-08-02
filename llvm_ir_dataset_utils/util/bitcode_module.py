@@ -124,8 +124,9 @@ def get_function_properties(bitcode_function_path):
       opt_command_vector,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT,
-      check=True,
       encoding='utf-8')
+  if opt_process.returncode != 0:
+    return {}
   output_lines = opt_process.stdout.split('\n')[1:-2]
   for output_line in output_lines:
     line_parts = output_line.split(': ')
