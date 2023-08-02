@@ -29,7 +29,15 @@ def process_corpus(build_corpus_path):
     return None
   for target in build_manifest['targets']:
     if target['success'] == False and target['build_log'] is not None:
-      return ('build_failure', target['name'], target['build_log'])
+      # We're assuming the spack builder here because that's mainly what this
+      # script is being used for currently.
+      # TODO(boomanaiden154): Make this more generic when #77 is fixed and the
+      # corpora have been rebuilt.
+      if build_corpus_path[-3:] == 'tar':
+        build_log_path = f'{build_corpus_path}:./spack_build.log'
+      else:
+        build_log_path = target['build_log']
+      return ('build_failure', target['name'], build_log_path)
     if target['build_log'] is None:
       return ('missing_logs', target['name'], None)
   return None
