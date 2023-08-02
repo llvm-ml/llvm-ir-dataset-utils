@@ -19,7 +19,8 @@ def get_function_symbols(bitcode_module):
     stdout = llvm_nm_process.communicate(
         input=bitcode_module)[0].decode('utf-8')
     if llvm_nm_process.returncode != 0:
-      raise ValueError('Failed to get functions from bitcode module.')
+      logging.warning('Failed to get functions from bitcode module.')
+      return []
     module_symbols = stdout.split('\n')[:-1]
   module_list = []
   for symbol in module_symbols:
