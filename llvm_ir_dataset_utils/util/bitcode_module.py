@@ -59,9 +59,14 @@ def get_run_passes_opt(bitcode_function_path):
     if opt_process_line[:3] == '***' and opt_process_line[-3:] == '***':
       # We're in a pass status line
       if opt_process_line[4:11] == 'IR Pass':
-        # All module level passes are ignored, so we can't do anything here.
+        # Anything starting with IR Pass gets ignored, so we can't do anything
+        # with it.
         continue
-      pass_name = opt_process_line.split(' ')[4]
+      if opt_process_line[12:20] == 'At Start':
+        # Ignore the starting IR
+        continue
+      pass_name = opt_process_line.split(' on ')[0][12:]
+      pass_name = pass_name.split('After ')[1]
       if opt_process_line[-13:-4] == 'no change':
         passes[pass_name] = [False]
       else:
