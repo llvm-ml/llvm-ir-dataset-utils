@@ -46,8 +46,7 @@ def extract_functions(bitcode_module, extraction_path):
         stdin=subprocess.PIPE) as extraction_process:
       extraction_process.communicate(input=bitcode_module)
       if extraction_process.returncode != 0:
-        logging.info(
-            f'Failed to extract {function_symbol} from {bitcode_module_path}')
+        logging.info(f'Failed to extract {function_symbol}')
 
 
 def get_run_passes_opt(bitcode_function_path):

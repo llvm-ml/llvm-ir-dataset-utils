@@ -4,6 +4,7 @@ import os
 import glob
 import logging
 import csv
+import sys
 
 from absl import app
 from absl import flags
@@ -15,29 +16,47 @@ from llvm_ir_dataset_utils.util import dataset_corpus
 
 FLAGS = flags.FLAGS
 
-# TODO(boomanaiden154): Refactor this to a corpus directory, maybe with a sampling/filtering
-# clause to allow for smaller scale testing.
 flags.DEFINE_string('corpus_dir', None,
                     'The corpus directory to look for modules in.')
 flags.DEFINE_string('output_file_path', None, 'The output file.')
 flags.DEFINE_enum('type', 'properties', ['properties', 'passes'],
                   'The type of statistics to collect.')
+flags.DEFINE_integer(
+    'max_projects',
+    sys.maxsize,
+    'The maximum number of projects to process.',
+    lower_bound=1)
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
 
 
 @ray.remote(num_cpus=1)
+def get_statistics_module(project_dir, bitcode_file_path, statistics_type):
+  bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
+                                                      bitcode_file_path)
+  return bitcode_module.get_bitcode_module_statistics(bitcode_file,
+                                                      statistics_type)
+
+
+@ray.remote(num_cpus=1)
 def process_single_project(project_dir, statistics_type):
   statistics = {}
-  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
+  try:
+    bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
+  except:
+    return {}
+
+  module_futures = []
   for bitcode_file_path in bitcode_modules:
-    bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
-                                                        bitcode_file_path)
-    module_statistics = bitcode_module.get_bitcode_module_statistics(
-        bitcode_file, statistics_type)
+    module_futures.append(
+        get_statistics_module.remote(project_dir, bitcode_file_path,
+                                     statistics_type))
+
+  module_statistics = ray.get(module_futures)
+  for module_statistic in module_statistics:
     statistics = bitcode_module.combine_module_statistics(
-        statistics, module_statistics)
+        statistics, module_statistic)
   return statistics
 
 
@@ -48,6 +67,8 @@ def collect_statistics(projects_list, statistics_type):
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
     project_futures.append(
         process_single_project.remote(full_project_path, statistics_type))
+    if len(project_futures) >= FLAGS.max_projects:
+      break
 
   statistics = {}
 
