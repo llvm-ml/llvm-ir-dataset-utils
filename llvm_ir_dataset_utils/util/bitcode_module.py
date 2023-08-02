@@ -81,37 +81,23 @@ def get_run_passes_opt(bitcode_function_path):
   return passes
 
 
-# TODO(boomanaiden154): This function needs to be renamed as it is used for
-# more than just passes now.
-def combine_module_passes(function_a, function_b):
+def combine_module_statistics(function_a, function_b):
   if function_a is None or function_a == {}:
     return function_b
-  combined_passes = function_a
-  for single_pass in function_b:
-    if single_pass in combined_passes:
-      combined_passes[single_pass].extend(function_b[single_pass])
+  combined_statistics = function_a
+  for function_statistic in function_b:
+    if function_statistic in combined_statistics:
+      combined_statistics[function_statistic].extend(
+          function_b[function_statistic])
     else:
-      combined_passes_length = len(combined_passes[list(
-          combined_passes.keys())[0]])
-      combined_passes[single_pass] = [
-          False for i in range(0, combined_passes_length)
+      combined_statistics_length = len(combined_statistics[list(
+          combined_statistics.keys())[0]])
+      combined_statistics[function_statistic] = [
+          False for i in range(0, combined_statistics_length)
       ]
-      combined_passes[single_pass].extend(function_b[single_pass])
-  return combined_passes
-
-
-def get_passes_bitcode_module(bitcode_module):
-  with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    extract_functions(bitcode_module, extracted_functions_dir)
-    function_bitcode_files = os.listdir(extracted_functions_dir)
-    function_passes = {}
-    for function_bitcode_file in function_bitcode_files:
-      full_bitcode_file_path = os.path.join(extracted_functions_dir,
-                                            function_bitcode_file)
-      current_function_results = get_run_passes_opt(full_bitcode_file_path)
-      function_passes = combine_module_passes(function_passes,
-                                              current_function_results)
-  return function_passes
+      combined_statistics[function_statistic].extend(
+          function_b[function_statistic])
+  return combined_statistics
 
 
 def get_function_properties(bitcode_function_path):
@@ -133,18 +119,19 @@ def get_function_properties(bitcode_function_path):
   return properties_dict
 
 
-def get_properties_bitcode_module(bitcode_module):
-  # TODO(boomanaiden154): There is a lot of code duplication here with
-  # get_passes_bitcode_module. We should probably refactor to get rid of it.
+def get_bitcode_module_statistics(bitcode_module, statistics_type):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
     extract_functions(bitcode_module, extracted_functions_dir)
     function_bitcode_files = os.listdir(extracted_functions_dir)
-    function_properties = {}
+    function_passes = {}
     for function_bitcode_file in function_bitcode_files:
       full_bitcode_file_path = os.path.join(extracted_functions_dir,
                                             function_bitcode_file)
-      current_function_properties = get_function_properties(
-          full_bitcode_file_path)
-      function_properties = combine_module_passes(function_properties,
-                                                  current_function_properties)
-  return function_properties
+      if statistics_type == 'properties':
+        current_function_results = get_function_properties(
+            full_bitcode_file_path)
+      elif statistics_type == 'passes':
+        current_function_results = get_run_passes_opt(full_bitcode_file_path)
+      function_passes = combine_module_statistics(function_passes,
+                                                  current_function_results)
+  return function_passes

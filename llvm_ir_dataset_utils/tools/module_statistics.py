@@ -28,80 +28,41 @@ flags.mark_flag_as_required('output_file_path')
 
 
 @ray.remote(num_cpus=1)
-def process_single_project_passes(project_dir):
-  passes_changed = {}
+def process_single_project(project_dir, statistics_type):
+  statistics = {}
   bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
   for bitcode_file_path in bitcode_modules:
     bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                         bitcode_file_path)
-    modules_passes_ran = bitcode_module.get_passes_bitcode_module(bitcode_file)
-    passes_changed = bitcode_module.combine_module_passes(
-        passes_changed, modules_passes_ran)
-  return passes_changed
+    module_statistics = bitcode_module.get_bitcode_module_statistics(
+        bitcode_file, statistics_type)
+    statistics = bitcode_module.combine_module_statistics(
+        statistics, module_statistics)
+  return statistics
 
 
-def collect_pass_statistics(projects_list):
+def collect_statistics(projects_list, statistics_type):
   project_futures = []
 
   for project_dir in projects_list:
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
     project_futures.append(
-        process_single_project_passes.remote(full_project_path))
+        process_single_project.remote(full_project_path, statistics_type))
 
-  passes_changed = {}
-
-  while len(project_futures) > 0:
-    finished, project_futures = ray.wait(project_futures, timeout=5.0)
-    logging.info(
-        f'Just finished {len(finished)}, {len(project_futures)} remaining.')
-    for change_info in ray.get(finished):
-      passes_changed = bitcode_module.combine_module_passes(
-          passes_changed, change_info)
-
-  with open(FLAGS.output_file_path, 'w') as output_file:
-    csv_writer = csv.writer(output_file)
-    csv_writer.writerow(passes_changed.keys())
-    csv_writer.writerows(zip(*passes_changed.values()))
-
-
-# TODO(boomanaiden154): Two functions below are almost exact copies of the
-# functions above. They could use some refactoring.
-@ray.remote(num_cpus=1)
-def process_single_projects_properties(project_dir):
-  properties = {}
-  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
-  for bitcode_file_path in bitcode_modules:
-    bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
-                                                        bitcode_file_path)
-    function_properties = bitcode_module.get_properties_bitcode_module(
-        bitcode_file)
-    properties = bitcode_module.combine_module_passes(properties,
-                                                      function_properties)
-  return properties
-
-
-def collect_property_statistics(projects_list):
-  project_futures = []
-
-  for project_dir in projects_list:
-    full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
-    project_futures.append(
-        process_single_projects_properties.remote(full_project_path))
-
-  function_properties = {}
+  statistics = {}
 
   while len(project_futures) > 0:
     finished, project_futures = ray.wait(project_futures, timeout=5.0)
     logging.info(
         f'Just finished {len(finished)}, {len(project_futures)} remaining.')
-    for property_info in ray.get(finished):
-      function_properties = bitcode_module.combine_module_passes(
-          function_properties, property_info)
+    for project_statistics in ray.get(finished):
+      statistics = bitcode_module.combine_module_statistics(
+          statistics, project_statistics)
 
   with open(FLAGS.output_file_path, 'w') as output_file:
     csv_writer = csv.writer(output_file)
-    csv_writer.writerow(function_properties.keys())
-    csv_writer.writerows(zip(*function_properties.values()))
+    csv_writer.writerow(statistics.keys())
+    csv_writer.writerows(zip(*statistics.values()))
 
 
 def main(_):
@@ -109,10 +70,7 @@ def main(_):
 
   projects = os.listdir(FLAGS.corpus_dir)
 
-  if FLAGS.type == 'passes':
-    collect_pass_statistics(projects)
-  elif FLAGS.type == 'properties':
-    collect_property_statistics(projects)
+  collect_statistics(projects, FLAGS.type)
 
 
 if __name__ == '__main__':
