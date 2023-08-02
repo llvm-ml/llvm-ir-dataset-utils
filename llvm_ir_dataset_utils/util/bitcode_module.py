@@ -6,18 +6,21 @@ import tempfile
 import logging
 
 
-def get_function_symbols(bitcode_module_path):
+def get_function_symbols(bitcode_module):
   # TODO(boomanaiden154): Adjust after symlinking to llvm-nm
   llvm_nm_command_vector = [
-      'llvm-nm-16', '--defined-only', '--format=posix', bitcode_module_path
+      'llvm-nm-16', '--defined-only', '--format=posix', '-'
   ]
-  llvm_nm_process = subprocess.run(
+  with subprocess.Popen(
       llvm_nm_command_vector,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT,
-      encoding='utf-8',
-      check=True)
-  module_symbols = llvm_nm_process.stdout.split('\n')[:-1]
+      stdin=subprocess.PIPE) as llvm_nm_process:
+    stdout = llvm_nm_process.communicate(
+        input=bitcode_module)[0].decode('utf-8')
+    if llvm_nm_process.returncode != 0:
+      raise ValueError('Failed to get functions from bitcode module.')
+    module_symbols = stdout.split('\n')[:-1]
   module_list = []
   for symbol in module_symbols:
     symbol_parts = symbol.split(' ')
@@ -27,20 +30,24 @@ def get_function_symbols(bitcode_module_path):
   return module_list
 
 
-def extract_functions(bitcode_module_path, extraction_path):
-  function_symbols_list = get_function_symbols(bitcode_module_path)
+def extract_functions(bitcode_module, extraction_path):
+  function_symbols_list = get_function_symbols(bitcode_module)
   for function_symbol in function_symbols_list:
     function_module_name = os.path.join(extraction_path,
                                         f'{function_symbol}.bc')
     # TODO(boomanaiden154): Adjust after symlinking to llvm-extract
     extract_command_vector = [
-        'llvm-extract-16', '-func', function_symbol, bitcode_module_path, '-o',
-        function_module_name
+        'llvm-extract-16', '-func', function_symbol, '-o', function_module_name
     ]
-    extraction_process = subprocess.run(extract_command_vector)
-    if extraction_process.returncode != 0:
-      logging.info(
-          f'Failed to extract {function_symbol} from {bitcode_module_path}')
+    with subprocess.Popen(
+        extract_command_vector,
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stdin=subprocess.PIPE) as extraction_process:
+      extraction_process.communicate(input=bitcode_module)
+      if extraction_process.returncode != 0:
+        logging.info(
+            f'Failed to extract {function_symbol} from {bitcode_module_path}')
 
 
 def get_run_passes_opt(bitcode_function_path):
@@ -91,9 +98,9 @@ def combine_module_passes(function_a, function_b):
   return combined_passes
 
 
-def get_passes_bitcode_module(bitcode_module_path):
+def get_passes_bitcode_module(bitcode_module):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    extract_functions(bitcode_module_path, extracted_functions_dir)
+    extract_functions(bitcode_module, extracted_functions_dir)
     function_bitcode_files = os.listdir(extracted_functions_dir)
     function_passes = {}
     for function_bitcode_file in function_bitcode_files:

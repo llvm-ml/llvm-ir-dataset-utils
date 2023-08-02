@@ -11,6 +11,7 @@ from absl import flags
 import ray
 
 from llvm_ir_dataset_utils.util import bitcode_module
+from llvm_ir_dataset_utils.util import dataset_corpus
 
 FLAGS = flags.FLAGS
 
@@ -27,11 +28,11 @@ flags.mark_flag_as_required('output_file_path')
 @ray.remote
 def process_single_project(project_dir):
   passes_changed = {}
-  for bitcode_file_path in glob.glob(
-      os.path.join(project_dir, '**/*.bc'), recursive=True):
-    bitcode_file_full_path = os.path.join(project_dir, bitcode_file_path)
-    modules_passes_ran = bitcode_module.get_passes_bitcode_module(
-        bitcode_file_full_path)
+  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
+  for bitcode_file_path in bitcode_modules:
+    bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
+                                                        bitcode_file_path)
+    modules_passes_ran = bitcode_module.get_passes_bitcode_module(bitcode_file)
     passes_changed = bitcode_module.combine_module_passes(
         passes_changed, modules_passes_ran)
   return passes_changed

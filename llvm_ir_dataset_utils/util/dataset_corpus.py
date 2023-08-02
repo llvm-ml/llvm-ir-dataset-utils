@@ -8,7 +8,6 @@ import json
 
 def load_file_from_corpus(corpus_path, file_name):
   if corpus_path[-3:] == "tar":
-    build_archive = tarfile.open(corpus_path)
     with tarfile.open(corpus_path) as build_archive:
       try:
         file_to_extract = build_archive.extractfile(file_name)
@@ -22,7 +21,7 @@ def load_file_from_corpus(corpus_path, file_name):
     if not os.path.exists(file_path):
       logging.warning(f'Expected {file_name} in {corpus_path} does not exist.')
       return None
-    with open(file_path) as file_to_read:
+    with open(file_path, 'rb') as file_to_read:
       return file_to_read.read()
 
 
@@ -32,3 +31,11 @@ def load_json_from_corpus(corpus_path, file_name):
     # Error logging should be handled by load_file_from_corpus
     return None
   return json.loads(file_contents)
+
+
+def get_bitcode_file_paths(corpus_path):
+  # TODO(boomanaiden154): This (and probably other parts) don't support meta
+  # corpora like what we get from the rust builder. This needs to be addressed.
+  corpus_description = load_json_from_corpus(corpus_path,
+                                             './corpus_description.json')
+  return ['./' + module + '.bc' for module in corpus_description['modules']]
