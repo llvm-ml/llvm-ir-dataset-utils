@@ -81,6 +81,8 @@ def get_run_passes_opt(bitcode_function_path):
   return passes
 
 
+# TODO(boomanaiden154): This function needs to be renamed as it is used for
+# more than just passes now.
 def combine_module_passes(function_a, function_b):
   if function_a is None or function_a == {}:
     return function_b
@@ -110,3 +112,39 @@ def get_passes_bitcode_module(bitcode_module):
       function_passes = combine_module_passes(function_passes,
                                               current_function_results)
   return function_passes
+
+
+def get_function_properties(bitcode_function_path):
+  properties_dict = {}
+  opt_command_vector = [
+      'opt', '-passes=print<func-properties>', bitcode_function_path, '-o',
+      '/dev/null'
+  ]
+  opt_process = subprocess.run(
+      opt_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      check=True,
+      encoding='utf-8')
+  output_lines = opt_process.stdout.split('\n')[1:-2]
+  for output_line in output_lines:
+    line_parts = output_line.split(': ')
+    properties_dict[line_parts[0]] = [line_parts[1]]
+  return properties_dict
+
+
+def get_properties_bitcode_module(bitcode_module):
+  # TODO(boomanaiden154): There is a lot of code duplication here with
+  # get_passes_bitcode_module. We should probably refactor to get rid of it.
+  with tempfile.TemporaryDirectory() as extracted_functions_dir:
+    extract_functions(bitcode_module, extracted_functions_dir)
+    function_bitcode_files = os.listdir(extracted_functions_dir)
+    function_properties = {}
+    for function_bitcode_file in function_bitcode_files:
+      full_bitcode_file_path = os.path.join(extracted_functions_dir,
+                                            function_bitcode_file)
+      current_function_properties = get_function_properties(
+          full_bitcode_file_path)
+      function_properties = combine_module_passes(function_properties,
+                                                  current_function_properties)
+  return function_properties

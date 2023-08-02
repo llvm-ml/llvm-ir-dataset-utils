@@ -20,13 +20,15 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('corpus_dir', None,
                     'The corpus directory to look for modules in.')
 flags.DEFINE_string('output_file_path', None, 'The output file.')
+flags.DEFINE_enum('type', 'properties', ['properties', 'passes'],
+                  'The type of statistics to collect.')
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
 
 
-@ray.remote
-def process_single_project(project_dir):
+@ray.remote(num_cpus=1)
+def process_single_project_passes(project_dir):
   passes_changed = {}
   bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
   for bitcode_file_path in bitcode_modules:
@@ -38,15 +40,13 @@ def process_single_project(project_dir):
   return passes_changed
 
 
-def main(_):
-  ray.init()
-
-  projects = os.listdir(FLAGS.corpus_dir)
+def collect_pass_statistics(projects_list):
   project_futures = []
 
-  for project_dir in projects:
+  for project_dir in projects_list:
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
-    project_futures.append(process_single_project.remote(full_project_path))
+    project_futures.append(
+        process_single_project_passes.remote(full_project_path))
 
   passes_changed = {}
 
@@ -62,6 +62,57 @@ def main(_):
     csv_writer = csv.writer(output_file)
     csv_writer.writerow(passes_changed.keys())
     csv_writer.writerows(zip(*passes_changed.values()))
+
+
+# TODO(boomanaiden154): Two functions below are almost exact copies of the
+# functions above. They could use some refactoring.
+@ray.remote(num_cpus=1)
+def process_single_projects_properties(project_dir):
+  properties = {}
+  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
+  for bitcode_file_path in bitcode_modules:
+    bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
+                                                        bitcode_file_path)
+    function_properties = bitcode_module.get_properties_bitcode_module(
+        bitcode_file)
+    properties = bitcode_module.combine_module_passes(properties,
+                                                      function_properties)
+  return properties
+
+
+def collect_property_statistics(projects_list):
+  project_futures = []
+
+  for project_dir in projects_list:
+    full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
+    project_futures.append(
+        process_single_projects_properties.remote(full_project_path))
+
+  function_properties = {}
+
+  while len(project_futures) > 0:
+    finished, project_futures = ray.wait(project_futures, timeout=5.0)
+    logging.info(
+        f'Just finished {len(finished)}, {len(project_futures)} remaining.')
+    for property_info in ray.get(finished):
+      function_properties = bitcode_module.combine_module_passes(
+          function_properties, property_info)
+
+  with open(FLAGS.output_file_path, 'w') as output_file:
+    csv_writer = csv.writer(output_file)
+    csv_writer.writerow(function_properties.keys())
+    csv_writer.writerows(zip(*function_properties.values()))
+
+
+def main(_):
+  ray.init()
+
+  projects = os.listdir(FLAGS.corpus_dir)
+
+  if FLAGS.type == 'passes':
+    collect_pass_statistics(projects)
+  elif FLAGS.type == 'properties':
+    collect_property_statistics(projects)
 
 
 if __name__ == '__main__':
