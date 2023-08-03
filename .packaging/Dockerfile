@@ -79,8 +79,11 @@ RUN apt-get -q update \
     && ln -s /usr/bin/clang-$LLVM_VERSION /usr/bin/clang \
     && ln -s /usr/bin/clang++-$LLVM_VERSION /usr/bin/clang++ \
     && ln -s /usr/bin/llvm-objcopy-$LLVM_VERSION /usr/bin/llvm-objcopy \
-		&& ln -s /usr/bin/opt-$LLVM_VERSION /usr/bin/opt \
-		&& ln -s /usr/bin/llvm-link-$LLVM_VERSION /usr/bin/llvm-link
+    && ln -s /usr/bin/opt-$LLVM_VERSION /usr/bin/opt \
+    && ln -s /usr/bin/llvm-link-$LLVM_VERSION /usr/bin/llvm-link \
+    && ln -s /usr/bin/llvm-ar-$LLVM_VERSION /usr/bin/llvm-ar \
+    && ln -s /usr/bin/llvm-nm-$LLVM_VERSION /usr/bin/llvm-nm \
+    && ln -s /usr/bin/llvm-extract-$LLVM_VERSION /usr/bin/llvm-extract
 
 # Install and configure Spack
 ENV SPACK_ROOT=/opt/spack
