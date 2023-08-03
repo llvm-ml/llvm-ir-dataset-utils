@@ -4,6 +4,7 @@ ml-compiler-opt = ">=0.0.1.dev202308030007"
 ray = ">=2.5.1"
 toml = ">=0.10.2"
 matplotlib = ">=3.7.2"
+pandas = ">=2.0.3"
 
 [dev-packages]
 yapf = ">=0.33.0"
