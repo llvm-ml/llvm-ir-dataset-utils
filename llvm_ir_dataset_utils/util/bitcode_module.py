@@ -9,6 +9,8 @@ import ray
 
 BITCODE_FILE_CHUNK_SIZE = 256
 
+OPT_TIMEOUT_SECONDS = 60
+
 
 def get_function_symbols(bitcode_module):
   llvm_nm_command_vector = ['llvm-nm', '--defined-only', '--format=posix', '-']
@@ -65,11 +67,16 @@ def get_run_passes_opt(bitcode_function_path):
       'opt', bitcode_function_path, '-print-changed', '-passes=default<O3>',
       '-o', '/dev/null'
   ]
-  opt_process = subprocess.run(
-      opt_command_vector,
-      encoding='UTF-8',
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT)
+  try:
+    opt_process = subprocess.run(
+        opt_command_vector,
+        encoding='UTF-8',
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=OPT_TIMEOUT_SECONDS,
+        check=True)
+  except:
+    return {}
   opt_process_lines = opt_process.stdout.split('\n')
   passes = {}
   for opt_process_line in opt_process_lines:
@@ -116,12 +123,15 @@ def get_function_properties(bitcode_function_path):
       'opt', '-passes=print<func-properties>', bitcode_function_path, '-o',
       '/dev/null'
   ]
-  opt_process = subprocess.run(
-      opt_command_vector,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
-      encoding='utf-8')
-  if opt_process.returncode != 0:
+  try:
+    opt_process = subprocess.run(
+        opt_command_vector,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding='utf-8',
+        timeout=OPT_TIMEOUT_SECONDS,
+        check=True)
+  except SubprocessError:
     return {}
   output_lines = opt_process.stdout.split('\n')[1:-2]
   for output_line in output_lines:
