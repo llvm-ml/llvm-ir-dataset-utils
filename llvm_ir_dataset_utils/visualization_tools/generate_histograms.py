@@ -1,7 +1,6 @@
 """A tool for generating histograms from a CSV file."""
 
 import logging
-import csv
 import os
 
 import pandas
@@ -23,7 +22,6 @@ flags.mark_flag_as_required('output_path')
 
 
 def main(_):
-  data = {}
   logging.info('Loading data.')
   data_frame = pandas.read_csv(FLAGS.data_path)
 
