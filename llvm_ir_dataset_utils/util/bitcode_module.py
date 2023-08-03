@@ -7,7 +7,7 @@ import logging
 
 import ray
 
-BITCODE_FILE_CHUNK_SIZE = 16
+BITCODE_FILE_CHUNK_SIZE = 256
 
 
 def get_function_symbols(bitcode_module):
