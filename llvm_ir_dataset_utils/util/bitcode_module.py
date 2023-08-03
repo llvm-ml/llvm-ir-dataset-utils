@@ -11,9 +11,8 @@ BITCODE_FILE_CHUNK_SIZE = 256
 
 
 def get_function_symbols(bitcode_module):
-  # TODO(boomanaiden154): Adjust after symlinking to llvm-nm
   llvm_nm_command_vector = [
-      'llvm-nm-16', '--defined-only', '--format=posix', '-'
+      'llvm-nm', '--defined-only', '--format=posix', '-'
   ]
   with subprocess.Popen(
       llvm_nm_command_vector,
@@ -38,9 +37,8 @@ def get_function_symbols(bitcode_module):
 def extract_individual_function(bitcode_module, extraction_path,
                                 function_symbol):
   function_module_name = os.path.join(extraction_path, f'{function_symbol}.bc')
-  # TODO(boomanaiden154): Adjust after symlinking to llvm-extract
   extract_command_vector = [
-      'llvm-extract-16', '-func', function_symbol, '-o', function_module_name
+      'llvm-extract', '-func', function_symbol, '-o', function_module_name
   ]
   with subprocess.Popen(
       extract_command_vector,
