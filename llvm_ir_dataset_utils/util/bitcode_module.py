@@ -11,9 +11,7 @@ BITCODE_FILE_CHUNK_SIZE = 256
 
 
 def get_function_symbols(bitcode_module):
-  llvm_nm_command_vector = [
-      'llvm-nm', '--defined-only', '--format=posix', '-'
-  ]
+  llvm_nm_command_vector = ['llvm-nm', '--defined-only', '--format=posix', '-']
   with subprocess.Popen(
       llvm_nm_command_vector,
       stdout=subprocess.PIPE,
