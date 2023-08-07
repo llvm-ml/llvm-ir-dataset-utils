@@ -32,11 +32,12 @@ flags.mark_flag_as_required('output_file_path')
 
 
 @ray.remote(num_cpus=1)
-def get_statistics_module(project_dir, bitcode_file_path, statistics_type):
+def get_statistics_module_functions(project_dir, bitcode_file_path,
+                                    statistics_type):
   bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                       bitcode_file_path)
-  return bitcode_module.get_bitcode_module_statistics(bitcode_file,
-                                                      statistics_type)
+  return bitcode_module.get_bitcode_module_function_statistics(
+      bitcode_file, statistics_type)
 
 
 @ray.remote(num_cpus=1)
@@ -50,13 +51,12 @@ def process_single_project(project_dir, statistics_type):
   module_futures = []
   for bitcode_file_path in bitcode_modules:
     module_futures.append(
-        get_statistics_module.remote(project_dir, bitcode_file_path,
-                                     statistics_type))
+        get_statistics_module_functions.remote(project_dir, bitcode_file_path,
+                                               statistics_type))
 
   module_statistics = ray.get(module_futures)
   for module_statistic in module_statistics:
-    statistics = bitcode_module.combine_module_statistics(
-        statistics, module_statistic)
+    statistics = bitcode_module.combine_statistics(statistics, module_statistic)
   return statistics
 
 
@@ -77,8 +77,8 @@ def collect_statistics(projects_list, statistics_type):
     logging.info(
         f'Just finished {len(finished)}, {len(project_futures)} remaining.')
     for project_statistics in ray.get(finished):
-      statistics = bitcode_module.combine_module_statistics(
-          statistics, project_statistics)
+      statistics = bitcode_module.combine_statistics(statistics,
+                                                     project_statistics)
 
   with open(FLAGS.output_file_path, 'w') as output_file:
     csv_writer = csv.writer(output_file)

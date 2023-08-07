@@ -98,7 +98,7 @@ def get_run_passes_opt(bitcode_function_path):
   return passes
 
 
-def combine_module_statistics(function_a, function_b):
+def combine_statistics(function_a, function_b):
   if function_a is None or function_a == {}:
     return function_b
   combined_statistics = function_a
@@ -141,7 +141,8 @@ def get_function_properties(bitcode_function_path):
 
 
 @ray.remote(num_cpus=1)
-def get_statistics_batch(bitcode_module, function_symbols, statistics_type):
+def get_function_statistics_batch(bitcode_module, function_symbols,
+                                  statistics_type):
   statistics = {}
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
     bitcode_function_paths = extract_functions(bitcode_module,
@@ -152,7 +153,7 @@ def get_statistics_batch(bitcode_module, function_symbols, statistics_type):
         function_statistics = get_function_properties(bitcode_function_path)
       elif statistics_type == 'passes':
         function_statistics = get_run_passes_opt(bitcode_function_path)
-      statistics = combine_module_statistics(statistics, function_statistics)
+      statistics = combine_statistics(statistics, function_statistics)
   return statistics
 
 
@@ -174,7 +175,7 @@ def split_batches(individual_jobs, batch_size):
   return batches
 
 
-def get_bitcode_module_statistics(bitcode_module, statistics_type):
+def get_bitcode_module_function_statistics(bitcode_module, statistics_type):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
     function_symbols = get_function_symbols(bitcode_module)
 
@@ -182,10 +183,11 @@ def get_bitcode_module_statistics(bitcode_module, statistics_type):
     batches = split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
     for batch in batches:
       statistics_futures.append(
-          get_statistics_batch.remote(bitcode_module, batch, statistics_type))
+          get_function_statistics_batch.remote(bitcode_module, batch,
+                                               statistics_type))
 
     statistics_chunks = ray.get(statistics_futures)
     statistics = {}
     for statistics_chunk in statistics_chunks:
-      statistics = combine_module_statistics(statistics, statistics_chunk)
+      statistics = combine_statistics(statistics, statistics_chunk)
   return statistics
