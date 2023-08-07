@@ -9,6 +9,6 @@
     "folder_name": "tree",
     "build_system": "manual",
     "commands": [
-        "make CC=clang CFLAGS='-Xclang -fembed-bitcode=all' -j${jobs}"
+        "make CC=clang CFLAGS='-Xclang -fembed-bitcode=all -O3' -j${jobs}"
     ]
 }
