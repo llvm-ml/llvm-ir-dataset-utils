@@ -19,7 +19,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('corpus_dir', None,
                     'The corpus directory to look for modules in.')
 flags.DEFINE_string('output_file_path', None, 'The output file.')
-flags.DEFINE_enum('type', 'properties', ['properties', 'passes'],
+flags.DEFINE_enum('type', 'properties', ['properties', 'passes', 'parsing'],
                   'The type of statistics to collect.')
 flags.DEFINE_integer(
     'max_projects',
@@ -29,6 +29,8 @@ flags.DEFINE_integer(
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
+
+BITCODE_MODULE_CHUNK_SIZE = 32
 
 
 @ray.remote(num_cpus=1)
@@ -49,10 +51,20 @@ def process_single_project(project_dir, statistics_type):
     return {}
 
   module_futures = []
-  for bitcode_file_path in bitcode_modules:
-    module_futures.append(
-        get_statistics_module_functions.remote(project_dir, bitcode_file_path,
-                                               statistics_type))
+  if statistics_type in ['parsing']:
+    # We're computing a module level statistic. Split modules into batches
+    # and then compute statistics over them.
+    batches = bitcode_module.split_batches(bitcode_modules,
+                                           BITCODE_MODULE_CHUNK_SIZE)
+    for batch in batches:
+      module_futures.append(
+          bitcode_module.get_module_statistics_batch.remote(
+              project_dir, batch, statistics_type))
+  else:
+    for bitcode_file_path in bitcode_modules:
+      module_futures.append(
+          get_statistics_module_functions.remote(project_dir, bitcode_file_path,
+                                                 statistics_type))
 
   module_statistics = ray.get(module_futures)
   for module_statistic in module_statistics:

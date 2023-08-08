@@ -7,6 +7,8 @@ import logging
 
 import ray
 
+from llvm_ir_dataset_utils.util import dataset_corpus
+
 BITCODE_FILE_CHUNK_SIZE = 256
 
 OPT_TIMEOUT_SECONDS = 60
@@ -190,4 +192,27 @@ def get_bitcode_module_function_statistics(bitcode_module, statistics_type):
     statistics = {}
     for statistics_chunk in statistics_chunks:
       statistics = combine_statistics(statistics, statistics_chunk)
+  return statistics
+
+
+def test_parsing(bitcode_module):
+  opt_command_vector = ['opt', '-', '-o', '/dev/null']
+  with subprocess.Popen(
+      opt_command_vector,
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.DEVNULL,
+      stdin=subprocess.PIPE) as opt_process:
+    opt_process.communicate(input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)
+    return {'parseable': [opt_process.returncode == 0]}
+
+
+@ray.remote(num_cpus=1)
+def get_module_statistics_batch(project_dir, module_paths, statistics_type):
+  statistics = {}
+  for module_path in module_paths:
+    bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
+                                                        module_path)
+    if statistics_type == 'parsing':
+      parse_result = test_parsing(bitcode_file)
+      statistics = combine_statistics(statistics, parse_result)
   return statistics
