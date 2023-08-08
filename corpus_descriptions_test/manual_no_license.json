@@ -6,10 +6,9 @@
       "commit_sha": "84fa3ddff51b30835a0f9c4a9e4c9225970f9aff"
     }
   ],
-  "folder_name": "tree",
+  "folder_name": "tree-no-license",
   "build_system": "manual",
   "commands": [
     "make CC=clang CFLAGS='-Xclang -fembed-bitcode=all -O3' -j${jobs}"
-  ],
-  "license": "GPL-2.0-or-later"
+  ]
 }

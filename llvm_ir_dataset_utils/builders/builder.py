@@ -142,6 +142,12 @@ def parse_and_build_from_description(corpus_description,
     file.delete_directory(source_dir, corpus_dir)
   build_log['sources'] = source_logs
   build_log['size'] = get_corpus_size(corpus_dir)
+
+  if 'license' in corpus_description:
+    build_log['license'] = corpus_description['license']
+  else:
+    build_log['license'] = None
+
   with open(os.path.join(corpus_dir, 'build_manifest.json'),
             'w') as build_manifest:
     json.dump(build_log, build_manifest, indent=2)
