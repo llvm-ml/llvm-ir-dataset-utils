@@ -13,4 +13,5 @@ multiple sources.
 - [x] Julia packages
 - [x] Swift packages
 - [ ] Haskell packages
+- [ ] Python packages (numba)
 
