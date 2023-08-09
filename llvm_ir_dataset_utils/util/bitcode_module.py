@@ -218,6 +218,10 @@ def test_parsing(bitcode_module):
     })
 
 
+def get_size(bitcode_module):
+  return (None, {'size': [len(bitcode_module)]})
+
+
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
   statistics = []
@@ -230,4 +234,6 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         statistics.append((None, parse_result[1], module_path))
       else:
         statistics.append((parse_result[0], parse_result[1], module_path))
+    if statistics_type == 'module_size':
+      statistics.append((None, get_size(bitcode_file)[1], module_path))
   return statistics

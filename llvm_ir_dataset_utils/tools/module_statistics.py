@@ -14,12 +14,17 @@ import ray
 from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
 
+MODULE_STATISTICS_TYPES = ['parsing', 'module_size']
+
+FUNCTION_STATISTICS_TYPES = ['properties', 'passes']
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('corpus_dir', None,
                     'The corpus directory to look for modules in.')
 flags.DEFINE_string('output_file_path', None, 'The output file.')
-flags.DEFINE_enum('type', 'properties', ['properties', 'passes', 'parsing'],
+flags.DEFINE_enum('type', 'properties',
+                  MODULE_STATISTICS_TYPES + FUNCTION_STATISTICS_TYPES,
                   'The type of statistics to collect.')
 flags.DEFINE_integer(
     'max_projects',
@@ -53,7 +58,7 @@ def process_single_project(project_dir, statistics_type):
     return []
 
   module_futures = []
-  if statistics_type in ['parsing']:
+  if statistics_type in MODULE_STATISTICS_TYPES:
     # We're computing a module level statistic. Split modules into batches
     # and then compute statistics over them.
     batches = bitcode_module.split_batches(bitcode_modules,
