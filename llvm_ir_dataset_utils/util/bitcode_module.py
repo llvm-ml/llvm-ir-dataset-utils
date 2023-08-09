@@ -149,9 +149,10 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
     for function_symbol in function_symbols:
       expected_extracted_function_path = extract_individual_function(
           bitcode_module, extracted_functions_dir, function_symbol)
+      function_path = f'{module_path}:{function_symbol}'
       if expected_extracted_function_path[0]:
-        statistics.append((expected_extracted_function_path[0], None,
-                           f'{module_path}:{function_symbol}'))
+        statistics.append(
+            (expected_extracted_function_path[0], None, function_path))
         continue
       bitcode_function_path = expected_extracted_function_path[1]
       if statistics_type == 'properties':
@@ -163,11 +164,11 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
         function_statistics_expected = get_function_properties(
             bitcode_function_path, 'default<O3>,print<func-properties>')
       if function_statistics_expected[0]:
-        statistics.append((function_statistics_expected[0], None,
-                           f'{module_path}:{function_symbol}'))
+        statistics.append(
+            (function_statistics_expected[0], None, function_path))
       else:
-        statistics.append((None, function_statistics_expected[1],
-                           f'{module_path}:{function_symbol}'))
+        statistics.append(
+            (None, function_statistics_expected[1], function_path))
   return statistics
 
 

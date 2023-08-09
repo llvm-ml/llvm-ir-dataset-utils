@@ -104,8 +104,10 @@ def collect_statistics(projects_list, statistics_type):
     if statistic[0]:
       errors.append(statistic)
     else:
+      individual_data = statistic[1]
+      individual_data['name'] = [statistic[2]]
       combined_statistics = bitcode_module.combine_statistics(
-          combined_statistics, statistic[1])
+          combined_statistics, individual_data)
 
   if FLAGS.error_file_path:
     with open(FLAGS.error_file_path, 'w') as error_file:
