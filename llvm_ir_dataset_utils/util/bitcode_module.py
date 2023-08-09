@@ -93,7 +93,7 @@ def get_run_passes_opt(bitcode_function_path):
   return (None, passes)
 
 
-def combine_statistics(function_a, function_b):
+def combine_statistics(function_a, function_b, fill_value=False):
   if function_a is None or function_a == {}:
     return function_b
   combined_statistics = function_a
@@ -106,13 +106,15 @@ def combine_statistics(function_a, function_b):
           function_b[function_statistic])
     elif function_statistic in function_b:
       combined_statistics[function_statistic] = [
-          False for i in range(0, combined_statistics_length)
+          fill_value for i in range(0, combined_statistics_length)
       ]
       combined_statistics[function_statistic].extend(
           function_b[function_statistic])
     elif function_statistic in combined_statistics:
       function_b_statistics_length = len(function_b[list(function_b.keys())[0]])
-      extra_values = [False for i in range(0, function_b_statistics_length)]
+      extra_values = [
+          fill_value for i in range(0, function_b_statistics_length)
+      ]
       combined_statistics[function_statistic].extend(extra_values)
   return combined_statistics
 
@@ -141,6 +143,35 @@ def get_function_properties(bitcode_function_path,
   return (None, properties_dict)
 
 
+def parse_bcanalyzer_output(output_string):
+  distribution_dict = {}
+  output_lines = output_string.split('\n')
+  line_index = 0
+  while line_index < len(output_lines):
+    output_line = output_lines[line_index]
+    line_index += 1
+    output_line_parts = output_line.split()
+    if '(FUNCTION_BLOCK):' in output_line:
+      # Grab the actual data
+      line_index += 12
+      while not output_lines[line_index].isspace(
+      ) and output_lines[line_index] != '':
+        histogram_parts = output_lines[line_index].split()
+        distribution_dict[histogram_parts[-1]] = [int(histogram_parts[0])]
+        line_index += 1
+      break
+  return distribution_dict
+
+
+def get_instruction_distribution_path(bitcode_function_path):
+  bcanalyzer_command_vector = ['llvm-bcanalyzer-16', bitcode_function_path]
+  analyzer_process = subprocess.run(
+      bcanalyzer_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  properties_dict = parse_bcanalyzer_output(
+      analyzer_process.stdout.decode('utf-8'))
+  return (None, properties_dict)
+
+
 @ray.remote(num_cpus=1)
 def get_function_statistics_batch(bitcode_module, function_symbols,
                                   statistics_type, module_path):
@@ -163,6 +194,9 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
       elif statistics_type == 'post_opt_properties':
         function_statistics_expected = get_function_properties(
             bitcode_function_path, 'default<O3>,print<func-properties>')
+      elif statistics_type == 'instruction_distribution':
+        function_statistics_expected = get_instruction_distribution_path(
+            bitcode_function_path)
       if function_statistics_expected[0]:
         statistics.append(
             (function_statistics_expected[0], None, function_path))

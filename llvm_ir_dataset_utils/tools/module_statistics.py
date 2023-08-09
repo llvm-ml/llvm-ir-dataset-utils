@@ -16,7 +16,9 @@ from llvm_ir_dataset_utils.util import dataset_corpus
 
 MODULE_STATISTICS_TYPES = ['parsing', 'module_size']
 
-FUNCTION_STATISTICS_TYPES = ['properties', 'passes', 'post_opt_properties']
+FUNCTION_STATISTICS_TYPES = [
+    'properties', 'passes', 'post_opt_properties', 'instruction_distribution'
+]
 
 FLAGS = flags.FLAGS
 
@@ -106,8 +108,9 @@ def collect_statistics(projects_list, statistics_type):
     else:
       individual_data = statistic[1]
       individual_data['name'] = [statistic[2]]
+      fill_value = 0 if statistics_type == 'instruction_distribution' else False
       combined_statistics = bitcode_module.combine_statistics(
-          combined_statistics, individual_data)
+          combined_statistics, individual_data, fill_value)
 
   if FLAGS.error_file_path:
     with open(FLAGS.error_file_path, 'w') as error_file:
