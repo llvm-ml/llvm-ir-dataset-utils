@@ -8,6 +8,7 @@ import logging
 import ray
 
 from llvm_ir_dataset_utils.util import dataset_corpus
+from llvm_ir_dataset_utils.util import pass_list_constants
 
 BITCODE_FILE_CHUNK_SIZE = 256
 
@@ -73,6 +74,7 @@ def get_run_passes_opt(bitcode_function_path):
   if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
   opt_process_lines = opt_process.stdout.split('\n')
+  pass_indexes = {}
   passes = {}
   for opt_process_line in opt_process_lines:
     if opt_process_line[:3] == '***' and opt_process_line[-3:] == '***':
@@ -86,7 +88,20 @@ def get_run_passes_opt(bitcode_function_path):
         continue
       pass_name = opt_process_line.split(' on ')[0][12:]
       pass_name = pass_name.split('After ')[1]
-      if opt_process_line[-13:-4] == 'no change':
+      ir_changed = opt_process_line[-13:-4] == 'no change'
+      # Special case loop passes because they run once per loop rather than
+      # once per function.
+      if pass_name in pass_list_constants.LOOP_PASS_LIST:
+        pass_name = pass_name + '1'
+        if pass_name not in passes or not passes[pass_name]:
+          passes[pass_name] = ir_changed
+      elif pass_name in pass_indexes:
+        pass_indexes[pass_name] += 1
+        pass_name = f'{pass_name}{pass_indexes[pass_name]}'
+      else:
+        pass_indexes[pass_name] = 2
+        pass_name = pass_name + '1'
+      if ir_changed:
         passes[pass_name] = [False]
       else:
         passes[pass_name] = [True]
