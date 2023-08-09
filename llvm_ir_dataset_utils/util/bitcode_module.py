@@ -117,11 +117,11 @@ def combine_statistics(function_a, function_b):
   return combined_statistics
 
 
-def get_function_properties(bitcode_function_path):
+def get_function_properties(bitcode_function_path,
+                            passes="print<func-properties>"):
   properties_dict = {}
   opt_command_vector = [
-      'opt', '-passes=print<func-properties>', bitcode_function_path, '-o',
-      '/dev/null'
+      'opt', f'-passes={passes}', bitcode_function_path, '-o', '/dev/null'
   ]
   try:
     opt_process = subprocess.run(
@@ -129,9 +129,10 @@ def get_function_properties(bitcode_function_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         encoding='utf-8',
-        timeout=OPT_TIMEOUT_SECONDS,
-        check=True)
+        timeout=OPT_TIMEOUT_SECONDS)
   except SubprocessError:
+    return ('timeout', None)
+  if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
   output_lines = opt_process.stdout.split('\n')[1:-2]
   for output_line in output_lines:
@@ -158,6 +159,9 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
             bitcode_function_path)
       elif statistics_type == 'passes':
         function_statistics_expected = get_run_passes_opt(bitcode_function_path)
+      elif statistics_type == 'post_opt_properties':
+        function_statistics_expected = get_function_properties(
+            bitcode_function_path, 'default<O3>,print<func-properties>')
       if function_statistics_expected[0]:
         statistics.append((function_statistics_expected[0], None,
                            f'{module_path}:{function_symbol}'))

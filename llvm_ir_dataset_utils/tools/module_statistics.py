@@ -16,7 +16,7 @@ from llvm_ir_dataset_utils.util import dataset_corpus
 
 MODULE_STATISTICS_TYPES = ['parsing', 'module_size']
 
-FUNCTION_STATISTICS_TYPES = ['properties', 'passes']
+FUNCTION_STATISTICS_TYPES = ['properties', 'passes', 'post_opt_properties']
 
 FLAGS = flags.FLAGS
 
