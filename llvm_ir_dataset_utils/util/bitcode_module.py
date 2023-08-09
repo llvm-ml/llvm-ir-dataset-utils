@@ -25,7 +25,7 @@ def get_function_symbols(bitcode_module):
         input=bitcode_module)[0].decode('utf-8')
     if llvm_nm_process.returncode != 0:
       logging.warning('Failed to get functions from bitcode module.')
-      return []
+      return (stdout.replace('\n', ''), None)
     module_symbols = stdout.split('\n')[:-1]
   module_list = []
   for symbol in module_symbols:
@@ -33,7 +33,7 @@ def get_function_symbols(bitcode_module):
     # Only look for t or T symbols (actual code)
     if symbol_parts[1] == 't' or symbol_parts[1] == 'T':
       module_list.append(symbol_parts[0])
-  return module_list
+  return (None, module_list)
 
 
 def extract_individual_function(bitcode_module, extraction_path,
@@ -44,24 +44,15 @@ def extract_individual_function(bitcode_module, extraction_path,
   ]
   with subprocess.Popen(
       extract_command_vector,
-      stderr=subprocess.DEVNULL,
-      stdout=subprocess.DEVNULL,
+      stderr=subprocess.STDOUT,
+      stdout=subprocess.PIPE,
       stdin=subprocess.PIPE) as extraction_process:
     extraction_process.communicate(input=bitcode_module)
     if extraction_process.returncode != 0:
       logging.info(f'Failed to extract {function_symbol}')
-      return []
+      return (extraction_process.stdout, None)
 
-  return [function_module_name]
-
-
-def extract_functions(bitcode_module, extraction_path, function_symbols_list):
-  extracted_functions = []
-  for function_symbol in function_symbols_list:
-    extracted_functions.extend(
-        extract_individual_function(bitcode_module, extraction_path,
-                                    function_symbol))
-  return extracted_functions
+  return (None, function_module_name)
 
 
 def get_run_passes_opt(bitcode_function_path):
@@ -78,7 +69,7 @@ def get_run_passes_opt(bitcode_function_path):
         timeout=OPT_TIMEOUT_SECONDS,
         check=True)
   except:
-    return {}
+    return (opt_process.stdout.replace('\n', ''), None)
   opt_process_lines = opt_process.stdout.split('\n')
   passes = {}
   for opt_process_line in opt_process_lines:
@@ -97,7 +88,7 @@ def get_run_passes_opt(bitcode_function_path):
         passes[pass_name] = [False]
       else:
         passes[pass_name] = [True]
-  return passes
+  return (None, passes)
 
 
 def combine_statistics(function_a, function_b):
@@ -134,28 +125,37 @@ def get_function_properties(bitcode_function_path):
         timeout=OPT_TIMEOUT_SECONDS,
         check=True)
   except SubprocessError:
-    return {}
+    return (opt_process.stdout.replace('\n', ''), None)
   output_lines = opt_process.stdout.split('\n')[1:-2]
   for output_line in output_lines:
     line_parts = output_line.split(': ')
     properties_dict[line_parts[0]] = [line_parts[1]]
-  return properties_dict
+  return (None, properties_dict)
 
 
 @ray.remote(num_cpus=1)
 def get_function_statistics_batch(bitcode_module, function_symbols,
-                                  statistics_type):
-  statistics = {}
+                                  statistics_type, module_path):
+  statistics = []
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    bitcode_function_paths = extract_functions(bitcode_module,
-                                               extracted_functions_dir,
-                                               function_symbols)
-    for bitcode_function_path in bitcode_function_paths:
+    for function_symbol in function_symbols:
+      expected_extracted_function_path = extract_individual_function(
+          bitcode_module, extracted_functions_dir, function_symbol)
+      if expected_extracted_function_path[0]:
+        statistics.append((expected_extracted_function_path[0], None))
+        continue
+      bitcode_function_path = expected_extracted_function_path[1]
       if statistics_type == 'properties':
-        function_statistics = get_function_properties(bitcode_function_path)
+        function_statistics_expected = get_function_properties(
+            bitcode_function_path)
       elif statistics_type == 'passes':
-        function_statistics = get_run_passes_opt(bitcode_function_path)
-      statistics = combine_statistics(statistics, function_statistics)
+        function_statistics_expected = get_run_passes_opt(bitcode_function_path)
+      if function_statistics_expected[0]:
+        statistics.append((function_statistics_expected[0], None,
+                           f'{module_path}:{function_symbol}'))
+      else:
+        statistics.append((None, function_statistics_expected[1],
+                           f'{module_path}:{function_symbol}'))
   return statistics
 
 
@@ -177,21 +177,27 @@ def split_batches(individual_jobs, batch_size):
   return batches
 
 
-def get_bitcode_module_function_statistics(bitcode_module, statistics_type):
+def get_bitcode_module_function_statistics(bitcode_module, statistics_type,
+                                           module_path):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    function_symbols = get_function_symbols(bitcode_module)
+    function_symbols_expected = get_function_symbols(bitcode_module)
+
+    if function_symbols_expected[0]:
+      return [(function_symbols_expected[0], None, module_path)]
+
+    function_symbols = function_symbols_expected[1]
 
     statistics_futures = []
     batches = split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
     for batch in batches:
       statistics_futures.append(
           get_function_statistics_batch.remote(bitcode_module, batch,
-                                               statistics_type))
+                                               statistics_type, module_path))
 
     statistics_chunks = ray.get(statistics_futures)
-    statistics = {}
+    statistics = []
     for statistics_chunk in statistics_chunks:
-      statistics = combine_statistics(statistics, statistics_chunk)
+      statistics.extend(statistics_chunk)
   return statistics
 
 
@@ -199,20 +205,26 @@ def test_parsing(bitcode_module):
   opt_command_vector = ['opt', '-', '-o', '/dev/null']
   with subprocess.Popen(
       opt_command_vector,
-      stdout=subprocess.DEVNULL,
-      stderr=subprocess.DEVNULL,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
       stdin=subprocess.PIPE) as opt_process:
-    opt_process.communicate(input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)
-    return {'parseable': [opt_process.returncode == 0]}
+    stdout = opt_process.communicate(
+        input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
+    return (stdout.replace('\n', ''), {
+        'parseable': [opt_process.returncode == 0]
+    })
 
 
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
-  statistics = {}
+  statistics = []
   for module_path in module_paths:
     bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                         module_path)
     if statistics_type == 'parsing':
       parse_result = test_parsing(bitcode_file)
-      statistics = combine_statistics(statistics, parse_result)
+      if parse_result[1] == True:
+        statistics.append((None, parse_result[1], module_path))
+      else:
+        statistics.append((parse_result[0], parse_result[1], module_path))
   return statistics

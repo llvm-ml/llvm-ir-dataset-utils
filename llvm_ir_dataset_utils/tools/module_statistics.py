@@ -26,6 +26,7 @@ flags.DEFINE_integer(
     sys.maxsize,
     'The maximum number of projects to process.',
     lower_bound=1)
+flags.DEFINE_string('error_file_path', None, 'The path to log errors in.')
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
@@ -38,17 +39,18 @@ def get_statistics_module_functions(project_dir, bitcode_file_path,
                                     statistics_type):
   bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                       bitcode_file_path)
+  module_path = os.path.join(project_dir, bitcode_file_path)
   return bitcode_module.get_bitcode_module_function_statistics(
-      bitcode_file, statistics_type)
+      bitcode_file, statistics_type, module_path)
 
 
 @ray.remote(num_cpus=1)
 def process_single_project(project_dir, statistics_type):
-  statistics = {}
+  statistics = []
   try:
     bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
   except:
-    return {}
+    return []
 
   module_futures = []
   if statistics_type in ['parsing']:
@@ -68,7 +70,7 @@ def process_single_project(project_dir, statistics_type):
 
   module_statistics = ray.get(module_futures)
   for module_statistic in module_statistics:
-    statistics = bitcode_module.combine_statistics(statistics, module_statistic)
+    statistics.extend(module_statistic)
   return statistics
 
 
@@ -82,20 +84,35 @@ def collect_statistics(projects_list, statistics_type):
     if len(project_futures) >= FLAGS.max_projects:
       break
 
-  statistics = {}
+  statistics = []
 
   while len(project_futures) > 0:
     finished, project_futures = ray.wait(project_futures, timeout=5.0)
     logging.info(
         f'Just finished {len(finished)}, {len(project_futures)} remaining.')
     for project_statistics in ray.get(finished):
-      statistics = bitcode_module.combine_statistics(statistics,
-                                                     project_statistics)
+      statistics.extend(project_statistics)
+
+  combined_statistics = {}
+  errors = []
+  for statistic in statistics:
+    if statistic[0]:
+      errors.append(statistic)
+    else:
+      combined_statistics = bitcode_module.combine_statistics(
+          combined_statistics, statistic[1])
+
+  if FLAGS.error_file_path:
+    with open(FLAGS.error_file_path, 'w') as error_file:
+      for error in errors:
+        error_file.write(f'{error[2]},{error[0]}\n')
+
+  logging.info('Writing statistics to csv file.')
 
   with open(FLAGS.output_file_path, 'w') as output_file:
     csv_writer = csv.writer(output_file)
-    csv_writer.writerow(statistics.keys())
-    csv_writer.writerows(zip(*statistics.values()))
+    csv_writer.writerow(combined_statistics.keys())
+    csv_writer.writerows(zip(*combined_statistics.values()))
 
 
 def main(_):
