@@ -47,10 +47,11 @@ def extract_individual_function(bitcode_module, extraction_path,
       stderr=subprocess.STDOUT,
       stdout=subprocess.PIPE,
       stdin=subprocess.PIPE) as extraction_process:
-    extraction_process.communicate(input=bitcode_module)
+    stdout = extraction_process.communicate(
+        input=bitcode_module)[0].decode('utf-8')
     if extraction_process.returncode != 0:
       logging.info(f'Failed to extract {function_symbol}')
-      return (extraction_process.stdout, None)
+      return (stdout.replace('\n', ''), None)
 
   return (None, function_module_name)
 
@@ -66,9 +67,10 @@ def get_run_passes_opt(bitcode_function_path):
         encoding='UTF-8',
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=OPT_TIMEOUT_SECONDS,
-        check=True)
+        timeout=OPT_TIMEOUT_SECONDS)
   except:
+    return ('timeout', None)
+  if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
   opt_process_lines = opt_process.stdout.split('\n')
   passes = {}
@@ -142,7 +144,8 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
       expected_extracted_function_path = extract_individual_function(
           bitcode_module, extracted_functions_dir, function_symbol)
       if expected_extracted_function_path[0]:
-        statistics.append((expected_extracted_function_path[0], None))
+        statistics.append((expected_extracted_function_path[0], None,
+                           f'{module_path}:{function_symbol}'))
         continue
       bitcode_function_path = expected_extracted_function_path[1]
       if statistics_type == 'properties':
