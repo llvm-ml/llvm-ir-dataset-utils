@@ -99,7 +99,7 @@ def get_run_passes_opt(bitcode_function_path):
         pass_indexes[pass_name] += 1
         pass_name = f'{pass_name}{pass_indexes[pass_name]}'
       else:
-        pass_indexes[pass_name] = 2
+        pass_indexes[pass_name] = 1
         pass_name = pass_name + '1'
       if ir_changed:
         passes[pass_name] = [False]
