@@ -97,18 +97,23 @@ def combine_statistics(function_a, function_b):
   if function_a is None or function_a == {}:
     return function_b
   combined_statistics = function_a
-  for function_statistic in function_b:
-    if function_statistic in combined_statistics:
+  combined_statistics_length = len(combined_statistics[list(
+      combined_statistics.keys())[0]])
+  for function_statistic in list(
+      set(list(function_a.keys()) + list(function_b.keys()))):
+    if function_statistic in combined_statistics and function_statistic in function_b:
       combined_statistics[function_statistic].extend(
           function_b[function_statistic])
-    else:
-      combined_statistics_length = len(combined_statistics[list(
-          combined_statistics.keys())[0]])
+    elif function_statistic in function_b:
       combined_statistics[function_statistic] = [
           False for i in range(0, combined_statistics_length)
       ]
       combined_statistics[function_statistic].extend(
           function_b[function_statistic])
+    elif function_statistic in combined_statistics:
+      function_b_statistics_length = len(function_b[list(function_b.keys())[0]])
+      extra_values = [False for i in range(0, function_b_statistics_length)]
+      combined_statistics[function_statistic].extend(extra_values)
   return combined_statistics
 
 
