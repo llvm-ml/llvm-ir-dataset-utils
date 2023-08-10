@@ -28,7 +28,16 @@ def main(_):
   logging.info('Loading data.')
   data_frame = pandas.read_csv(FLAGS.data_path)
   data_frame.drop(['name'], axis=1, inplace=True)
-  data_frame = data_frame[pass_list_constants.OPT_DEFAULT_O3_PASS_LIST]
+
+  # Only grab passes that we have in case we only have a sample that misses
+  # some of the loop passes. We're only transforming everything to make sure
+  # it's all in order.
+  passes_to_grab = []
+  for pass_name in pass_list_constants.OPT_DEFAULT_O3_PASS_LIST:
+    if pass_name in data_frame.columns:
+      passes_to_grab.append(pass_name)
+
+  data_frame = data_frame[passes_to_grab]
 
   labels = []
   percentages = []
