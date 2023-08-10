@@ -10,6 +10,8 @@ import matplotlib.pyplot
 from absl import app
 from absl import flags
 
+from llvm_ir_dataset_utils.util import pass_list_constants
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('data_path', None, 'The path to the data file.')
@@ -25,6 +27,8 @@ flags.mark_flag_as_required('output_file')
 def main(_):
   logging.info('Loading data.')
   data_frame = pandas.read_csv(FLAGS.data_path)
+  data_frame.drop(['name'], axis=1, inplace=True)
+  data_frame = data_frame[pass_list_constants.OPT_DEFAULT_O3_PASS_LIST]
 
   labels = []
   percentages = []

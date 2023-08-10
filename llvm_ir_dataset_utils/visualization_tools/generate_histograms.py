@@ -24,6 +24,7 @@ flags.mark_flag_as_required('output_path')
 def main(_):
   logging.info('Loading data.')
   data_frame = pandas.read_csv(FLAGS.data_path)
+  data_frame.drop(['name'], axis=1, inplace=True)
 
   for column in data_frame:
     print(column)
