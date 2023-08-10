@@ -13,8 +13,6 @@ import ray
 from compiler_opt.tools import make_corpus_lib
 from compiler_opt.tools import combine_training_corpus_lib
 
-from llvm_ir_dataset_utils.util import corpus
-
 BUILD_TIMEOUT = 900
 
 

@@ -88,8 +88,9 @@ def main(_):
         versions_map = {}
         for version_entry in reader:
           if version_entry['crate_id'] not in versions_map or versions_map[
-              version_entry['crate_id']] < version_entry['num']:
-            versions_map[version_entry['crate_id']] = version_entry['num']
+              version_entry['crate_id']][0] < version_entry['num']:
+            versions_map[version_entry['crate_id']] = (version_entry['num'],
+                                                       version_entry['license'])
   logging.info('Generating and deduplicating repository list.')
   source_list = []
   for crate in crates_list:
@@ -98,9 +99,10 @@ def main(_):
             crate['repository'] if crate["repository"] != '' else None,
     }
     if crate['id'] in versions_map:
-      crate_version = versions_map[crate['id']]
+      crate_version = versions_map[crate['id']][0]
       crate_source_dict[
           'tar_archive'] = f'https://crates.io/api/v1/crates/{crate["name"]}/{crate_version}/download'
+      crate_source_dict['license'] = versions_map[crate['id']][1]
     else:
       crate_source_dict['tar_archive'] = None
     source_list.append(crate_source_dict)

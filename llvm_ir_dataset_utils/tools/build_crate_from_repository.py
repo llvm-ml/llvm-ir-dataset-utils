@@ -70,7 +70,8 @@ def main(_):
     corpus_description = {
         'sources': sources,
         'folder_name': f'build-{index}',
-        'build_system': 'cargo'
+        'build_system': 'cargo',
+        'license': crate_to_build['license']
     }
 
     additional_build_env_variables = {
