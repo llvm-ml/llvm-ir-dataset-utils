@@ -37,6 +37,8 @@ SPACK_COMPILER_CONFIG = """compilers:
 
 SPACK_GARBAGE_COLLECTION_TIMEOUT = 300
 
+BUILD_LOG_NAME = './spack_build.log'
+
 
 def get_spec_command_vector_section(spec):
   return spec.split(' ')
@@ -54,18 +56,15 @@ def generate_build_command(package_to_build, threads, build_dir):
   return command_vector
 
 
-def get_build_log_path(corpus_dir):
-  return os.path.join(corpus_dir, 'spack_build.log')
-
-
 def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
   logging.info(f"Spack building package {package_name}")
   environment = os.environ.copy()
   # Set $HOME to the build directory so that spack doesn't run into weird
   # errors with multiple machines trying to write to a common home directory.
   environment['HOME'] = build_dir
+  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
   try:
-    with open(get_build_log_path(corpus_dir), 'w') as build_log_file:
+    with open(build_log_path, 'w') as build_log_file:
       subprocess.run(
           assembled_build_command,
           stdout=build_log_file,
@@ -155,11 +154,11 @@ def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
         f'Failed to garbage collect while cleaning up package {package_name}.')
 
 
-def construct_build_log(build_success, package_name, build_log_path):
+def construct_build_log(build_success, package_name):
   return {
       'targets': [{
           'name': package_name,
-          'build_log': build_log_path,
+          'build_log': BUILD_LOG_NAME,
           'success': build_success
       }]
   }
@@ -234,5 +233,4 @@ def build_package(dependency_futures,
       cleanup(package_name, package_spec, corpus_dir, package_hash)
     else:
       cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-  return construct_build_log(build_result, package_name,
-                             get_build_log_path(corpus_dir))
+  return construct_build_log(build_result, package_name)

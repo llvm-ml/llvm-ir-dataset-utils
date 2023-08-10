@@ -51,9 +51,8 @@ def get_packages_from_manifest(source_dir):
     return []
 
 
-def get_build_log_path(corpus_dir, target):
-  return os.path.join(corpus_dir,
-                      target['name'] + '.' + target['kind'] + '.build.log')
+def get_build_log_name(target):
+  return './' + target['name'] + '.' + target['kind'] + '.build.log'
 
 
 def build_all_targets(source_dir, build_dir, corpus_dir, threads,
@@ -141,7 +140,8 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
     }
   build_command_vector.extend(["--", '--emit=llvm-bc'])
   try:
-    with open(get_build_log_path(corpus_dir, target), 'w') as build_log_file:
+    build_log_path = os.path.join(corpus_dir, get_build_log_name(target))
+    with open(build_log_path, 'w') as build_log_file:
       subprocess.run(
           build_command_vector,
           cwd=source_dir,
@@ -162,7 +162,7 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
     build_success = True
   return {
       'success': build_success,
-      'build_log': get_build_log_path(corpus_dir, target),
+      'build_log': get_build_log_name(target),
       'name': target['name'] + '.' + target['kind']
   }
 

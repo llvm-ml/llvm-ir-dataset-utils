@@ -8,6 +8,8 @@ from compiler_opt.tools import extract_ir_lib
 
 BUILD_TIMEOUT = 900
 
+BUILD_LOG_NAME = './build.log'
+
 
 def perform_build(source_dir, build_dir, corpus_dir, thread_count,
                   package_name):
@@ -17,7 +19,7 @@ def perform_build(source_dir, build_dir, corpus_dir, thread_count,
       str(thread_count), '--build-path', build_dir
   ]
 
-  build_log_path = os.path.join(corpus_dir, 'build.log')
+  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
 
   try:
     with open(build_log_path, 'w') as build_log_file:
@@ -40,7 +42,7 @@ def perform_build(source_dir, build_dir, corpus_dir, thread_count,
   return {
       'targets': [{
           'success': build_success,
-          'build_log': build_log_path,
+          'build_log': BUILD_LOG_NAME,
           'name': package_name
       }]
   }

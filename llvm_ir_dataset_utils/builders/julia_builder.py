@@ -45,7 +45,7 @@ def generate_build_command(julia_options_dict, package_to_build, thread_count):
 def perform_build(package_name, build_dir, corpus_dir, thread_count):
   build_command_vector = generate_build_command({}, package_name, thread_count)
 
-  build_log_name = f'{package_name}.build.log'
+  build_log_name = f'./{package_name}.build.log'
   build_log_path = os.path.join(corpus_dir, build_log_name)
 
   environment = os.environ.copy()
@@ -72,7 +72,7 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
   return {
       'targets': [{
           'success': build_success,
-          'build_log': build_log_path,
+          'build_log': build_log_name,
           'name': package_name
       }]
   }

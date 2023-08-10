@@ -6,21 +6,23 @@ import os
 
 from compiler_opt.tools import extract_ir_lib
 
+BUILD_LOG_NAME = './build.log'
+
 
 def perform_build(commands_list, build_dir, threads, corpus_dir):
   command_statuses = []
-  build_config_file_path = os.path.join(corpus_dir, 'build.log')
+  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
   for command in commands_list:
     environment = os.environ.copy()
     environment['JOBS'] = str(threads)
-    with open(build_config_file_path, 'w') as build_config_file:
+    with open(build_log_path, 'w') as build_log_file:
       build_process = subprocess.run(
           command,
           cwd=build_dir,
           env=environment,
           shell=True,
-          stderr=build_config_file,
-          stdout=build_config_file)
+          stderr=build_log_file,
+          stdout=build_log_file)
       command_statuses.append(build_process.returncode == 0)
   overall_success = True
   for command_status in command_statuses:
@@ -30,7 +32,7 @@ def perform_build(commands_list, build_dir, threads, corpus_dir):
   return {
       'targets': [{
           'success': overall_success,
-          'build_log': build_config_file_path,
+          'build_log': BUILD_LOG_NAME,
           'name': os.path.basename(corpus_dir)
       }]
   }

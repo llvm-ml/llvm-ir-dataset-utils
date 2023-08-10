@@ -6,6 +6,9 @@ import os
 
 from compiler_opt.tools import extract_ir_lib
 
+CONFIGURE_LOG_NAME = './configure.log'
+BUILD_LOG_NAME = './build.log'
+
 
 def generate_configure_command(root_path, options_dict):
   command_vector = ["cmake", "-G", "Ninja"]
@@ -31,7 +34,7 @@ def generate_build_command(targets, threads):
 
 def perform_build(configure_command_vector, build_command_vector, build_dir,
                   corpus_dir):
-  configure_log_path = os.path.join(corpus_dir, 'configure.log')
+  configure_log_path = os.path.join(corpus_dir, CONFIGURE_LOG_NAME)
   with open(configure_log_path, 'w') as configure_log_file:
     configure_process = subprocess.run(
         configure_command_vector,
@@ -40,7 +43,7 @@ def perform_build(configure_command_vector, build_command_vector, build_dir,
         stderr=configure_log_file,
         stdout=configure_log_file)
     configure_success = configure_process.returncode == 0
-  build_log_path = os.path.join(corpus_dir, 'build.log')
+  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
   with open(build_log_path, 'w') as build_log_file:
     build_process = subprocess.run(
         build_command_vector,
@@ -52,7 +55,8 @@ def perform_build(configure_command_vector, build_command_vector, build_dir,
   return {
       'targets': [{
           'success': build_success and configure_success,
-          'build_log': build_log_path,
+          'build_log': BUILD_LOG_NAME,
+          'configure_log': CONFIGURE_LOG_NAME,
           'name': 'all',
           'build_success': build_success,
           'configure_success': configure_success
