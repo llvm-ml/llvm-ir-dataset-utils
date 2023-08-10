@@ -83,7 +83,8 @@ RUN apt-get -q update \
     && ln -s /usr/bin/llvm-link-$LLVM_VERSION /usr/bin/llvm-link \
     && ln -s /usr/bin/llvm-ar-$LLVM_VERSION /usr/bin/llvm-ar \
     && ln -s /usr/bin/llvm-nm-$LLVM_VERSION /usr/bin/llvm-nm \
-    && ln -s /usr/bin/llvm-extract-$LLVM_VERSION /usr/bin/llvm-extract
+    && ln -s /usr/bin/llvm-extract-$LLVM_VERSION /usr/bin/llvm-extract \
+    && ln -s /usr/bin/llvm-bcanalyzer-$LLVM_VERSION /usr/bin/llvm-bcanalyzer
 
 # Install and configure Spack
 ENV SPACK_ROOT=/opt/spack
