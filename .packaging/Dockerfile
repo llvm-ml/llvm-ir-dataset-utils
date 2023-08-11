@@ -1,5 +1,5 @@
 ARG UBUNTU_VERSION=22.04
-ARG LLVM_VERSION=16
+ARG LLVM_VERSION=17
 ARG JULIA_MAJOR_VERSION=8
 ARG JULIA_MINOR_VERSION=3
 ARG SWIFT_MAJOR_VERSION=8
@@ -67,8 +67,6 @@ ENV CARGO_HOME="/cargo"
 ENV RUSTUP_HOME="/rustup"
 RUN curl https://sh.rustup.rs | sh -s -- -y --default-toolchain none
 ENV PATH="$PATH:/cargo/bin"
-RUN rustup toolchain install nightly-2023-06-22 \
-    && rustup component add rust-src rustc-dev llvm-tools-preview
 
 # LLVM Installation
 RUN apt-get -q update \
@@ -85,13 +83,6 @@ RUN apt-get -q update \
     && ln -s /usr/bin/llvm-nm-$LLVM_VERSION /usr/bin/llvm-nm \
     && ln -s /usr/bin/llvm-extract-$LLVM_VERSION /usr/bin/llvm-extract \
     && ln -s /usr/bin/llvm-bcanalyzer-$LLVM_VERSION /usr/bin/llvm-bcanalyzer
-
-# Install and configure Spack
-ENV SPACK_ROOT=/opt/spack
-ENV PATH=${PATH}:${SPACK_ROOT}/bin
-RUN git clone https://github.com/spack/spack.git ${SPACK_ROOT} \
-    && git --git-dir=${SPACK_ROOT}/.git --work-tree=${SPACK_ROOT} checkout develop \
-    && . ${SPACK_ROOT}/share/spack/setup-env.sh
 
 # Install Julia
 RUN curl \
@@ -113,6 +104,15 @@ RUN pip3 install pipenv \
  && pipenv sync --categories "packages dev-packages" --system \
  && pipenv --clear \
  && rm Pipfile*
+
+# Install llvm-tokenizer
+WORKDIR /
+COPY llvm-tokenizer.tar.gz /
+RUN tar -xzf ./llvm-tokenizer.tar.gz \
+    && mkdir /llvm-tokenizer/build \
+    && cd /llvm-tokenizer/build \
+    && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ../ \
+    && ninja install
 
 # Clean up the Docker container to make the image smaller
 RUN apt-get autoremove -y --purge \
