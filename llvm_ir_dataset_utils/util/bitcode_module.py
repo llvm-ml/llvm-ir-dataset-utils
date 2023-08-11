@@ -179,7 +179,7 @@ def parse_bcanalyzer_output(output_string):
 
 
 def get_instruction_distribution_path(bitcode_function_path):
-  bcanalyzer_command_vector = ['llvm-bcanalyzer-16', bitcode_function_path]
+  bcanalyzer_command_vector = ['llvm-bcanalyzer', bitcode_function_path]
   analyzer_process = subprocess.run(
       bcanalyzer_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   properties_dict = parse_bcanalyzer_output(
