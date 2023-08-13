@@ -4,6 +4,7 @@ import subprocess
 import os
 import tempfile
 import logging
+import json
 
 import ray
 
@@ -296,3 +297,21 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
     if statistics_type == 'module_size':
       statistics.append((None, get_size(bitcode_file)[1], module_path))
   return statistics
+
+
+def get_tokenization(bitcode_module):
+  tokenizer_command_vector = ['llvm-tokenizer', '-output-mode=json', '-']
+  with subprocess.Popen(
+      tokenizer_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE) as tokenizer_process:
+    try:
+      stdout = tokenizer_process.communicate(input=bitcode_module)[0]
+      return json.loads(stdout)
+    except json.JSONDecodeError:
+      # TODO(boomanaiden154): This is failing pretty often. Get more debug
+      # information (like file path) into these logs so we can do downstream
+      # analysis.
+      logging.warning('Failed to decode JSON')
+      return {}
