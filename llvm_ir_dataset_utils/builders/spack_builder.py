@@ -14,30 +14,54 @@ from llvm_ir_dataset_utils.util import file
 
 SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 1
 
-# TODO(boomanaiden154): Change this to adapt to the compiler version and also
-# probably refactor it into a utility so that it can be easily used in the
-# get_spack_package_list.py script.
-SPACK_COMPILER_CONFIG = """compilers:
-- compiler:
-    spec: clang@=16.0.6
-    paths:
-      cc: /usr/bin/clang
-      cxx: /usr/bin/clang++
-      f77: /usr/bin/gfortran
-      fc: /usr/bin/gfortran
-    flags:
-      cflags: -Xclang -fembed-bitcode=all
-      cxxflags: -Xclang -fembed-bitcode=all
-    operating_system: ubuntu22.04
-    target: x86_64
-    modules: []
-    environment: {}
-    extra_rpaths: []
-"""
-
 SPACK_GARBAGE_COLLECTION_TIMEOUT = 300
 
 BUILD_LOG_NAME = './spack_build.log'
+
+
+def get_spack_arch_info(info_type):
+  spack_arch_command_vector = ['spack', 'arch', f'--{info_type}']
+  arch_process = subprocess.run(
+      spack_arch_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      check=True)
+  return arch_process.stdout.decode('utf-8').rsplit()[0]
+
+
+def get_compiler_version():
+  compiler_command_vector = ['clang', '--version']
+  compiler_version_process = subprocess.run(
+      compiler_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      check=True)
+  version_line = compiler_version_process.stdout.decode('utf-8').split('\n')[0]
+  version_line_parts = version_line.split(' ')
+  for index, version_line_part in enumerate(version_line_parts):
+    if version_line_part == 'version':
+      return version_line_parts[index + 1]
+
+
+def get_spack_compiler_config():
+  compiler_config = (
+      "compilers:\n"
+      "- compiler:\n"
+      f"    spec: clang@={get_compiler_version()}\n"
+      "    paths:\n"
+      "      cc: /usr/bin/clang\n"
+      "      cxx: /usr/bin/clang++\n"
+      "      f77: /usr/bin/gfortran\n"
+      "      fc: /usr/bin/gfortran\n"
+      "    flags:\n"
+      "      cflags: -Xclang -fembed-bitcode=all\n"
+      "      cxxflags: -Xclang -fembed-bitcode=all\n"
+      f"    operating_system: {get_spack_arch_info('operating-system')}\n"
+      "    target: x86_64\n"
+      "    modules: []\n"
+      "    environment: {}\n"
+      "    extra_rpaths: []")
+  return compiler_config
 
 
 def get_spec_command_vector_section(spec):
@@ -183,7 +207,7 @@ def spack_setup_compiler(build_dir):
   # somehow.
   compiler_config_path = os.path.join(build_dir, '.spack/compilers.yaml')
   with open(compiler_config_path, 'w') as compiler_config_file:
-    compiler_config_file.writelines(SPACK_COMPILER_CONFIG)
+    compiler_config_file.writelines(get_spack_compiler_config())
 
 
 def spack_setup_bootstrap_root(build_dir):

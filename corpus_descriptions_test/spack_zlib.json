@@ -3,7 +3,7 @@
   "folder_name": "zlib",
   "build_system": "spack",
   "package_name": "zlib",
-  "package_spec": "zlib@=1.2.13%clang@=16.0.6 cflags=\"-Xclang -fembed-bitcode=all\" cxxflags=\"-Xclang -fembed-bitcode=all\" +optimize+pic+shared build_system=makefile arch=linux-ubuntu22.04-zen2",
-  "package_hash": "5t2nwpjpuuzabowtj5bw2jaezmdzx7md",
+  "package_spec": "zlib@1.2.13%clang@17.0.0 cflags=\"-Xclang -fembed-bitcode=all\" cxxflags=\"-Xclang -fembed-bitcode=all\" +optimize+pic+shared build_system=makefile arch=linux-ubuntu22.04-x86_64_v3",
+  "package_hash": "urhhmbrocyrrhqn5btbiopsrrtc5ng7d",
   "license": "Zlib"
 }
