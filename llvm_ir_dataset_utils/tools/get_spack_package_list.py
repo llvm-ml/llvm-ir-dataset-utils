@@ -22,6 +22,8 @@ import spack.environment
 import spack.spec
 import spack.config
 
+from llvm_ir_dataset_utils.util import spack as spack_utils
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('package_list', 'package_list.json',
@@ -51,6 +53,11 @@ def concretize_environment(package_name):
     env.unify = False
     env.write()
 
+    os.mkdir(os.path.join(tempdir, '.spack'))
+    command_env = os.environ.copy()
+    command_env['HOME'] = tempdir
+    spack_utils.spack_setup_compiler(tempdir)
+
     concretize_command_vector = ['spack', '-e', './', 'concretize']
 
     command_output = subprocess.run(
@@ -58,6 +65,7 @@ def concretize_environment(package_name):
         cwd=tempdir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env=command_env,
         universal_newlines=True)
 
     if command_output.returncode == 0:
@@ -93,6 +101,7 @@ def main(_):
         pkg.build_system_class == 'AutotoolsPackage' or
         pkg.build_system_class == 'MesonPackage'):
       full_package_list.append(pkg.name)
+      break
 
   logging.info('Concretizing packages')
   concretization_futures = []
