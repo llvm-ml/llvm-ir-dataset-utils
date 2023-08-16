@@ -105,15 +105,6 @@ RUN pip3 install pipenv \
  && pipenv --clear \
  && rm Pipfile*
 
-# Install llvm-tokenizer
-WORKDIR /
-COPY llvm-tokenizer.tar.gz /
-RUN tar -xzf ./llvm-tokenizer.tar.gz \
-    && mkdir /llvm-tokenizer/build \
-    && cd /llvm-tokenizer/build \
-    && cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ../ \
-    && ninja install
-
 # Clean up the Docker container to make the image smaller
 RUN apt-get autoremove -y --purge \
     && apt-get clean -y \
