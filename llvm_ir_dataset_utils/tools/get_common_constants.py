@@ -43,7 +43,8 @@ def combine_constant_histograms(part_a, part_b):
 def get_constants_from_bitcode(project_dir, bitcode_file_path):
   bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                       bitcode_file_path)
-  tokenized_functions = bitcode_module.get_tokenization(bitcode_file)
+  tokenized_functions = bitcode_module.get_tokenization(
+      bitcode_file)['functions']
   constant_histogram = {}
   for function in tokenized_functions:
     for token in function['tokens']:
