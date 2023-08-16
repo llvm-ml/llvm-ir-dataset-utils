@@ -11,6 +11,7 @@ import ray
 
 from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
+from llvm_ir_dataset_utils.util import parallel
 
 FLAGS = flags.FLAGS
 
@@ -55,21 +56,33 @@ def get_constants_from_bitcode(project_dir, bitcode_file_path):
 
 
 @ray.remote(num_cpus=1)
+def get_constants_from_bitcode_batch(project_dir, bitcode_file_paths):
+  constant_histogram = {}
+  for bitcode_file_path in bitcode_file_paths:
+    constant_histogram = combine_constant_histograms(
+        constant_histogram,
+        get_constants_from_bitcode(project_dir, bitcode_file_path))
+  return constant_histogram
+
+
+@ray.remote(num_cpus=1)
 def get_constants_from_project(project_dir):
   try:
     bitcode_file_paths = dataset_corpus.get_bitcode_file_paths(project_dir)
   except:
     return {}
 
-  # TODO(boomanaiden154): Split these jobs into smaller batches so that we can
-  # operate over sets of bitcode files in parallel to decrease per-project
-  # latency for big projects.
+  batches = parallel.split_batches(bitcode_file_paths, 16)
+  batch_futures = []
+  for batch in batches:
+    batch_futures.append(
+        get_constants_from_bitcode_batch.remote(project_dir, batch))
+
   constant_histogram = {}
-  for bitcode_file_path in bitcode_file_paths:
-    file_constant_histogram = get_constants_from_bitcode(
-        project_dir, bitcode_file_path)
-    constant_histogram = combine_constant_histograms(constant_histogram,
-                                                     file_constant_histogram)
+  constant_histograms = ray.get(batch_futures)
+  for partial_constant_histogram in constant_histograms:
+    constant_histogram = combine_constant_histograms(
+        constant_histogram, partial_constant_histogram)
 
   return constant_histogram
 
