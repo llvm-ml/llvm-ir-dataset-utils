@@ -10,6 +10,7 @@ import ray
 
 from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import pass_list_constants
+from llvm_ir_dataset_utils.util import parallel
 
 BITCODE_FILE_CHUNK_SIZE = 256
 
@@ -222,24 +223,6 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
   return statistics
 
 
-# TODO(boomanaiden154): Probably put this into a separate parallel util module
-# or something.
-# TODO(boomanaiden154): Write some unit tests for this function.
-def split_batches(individual_jobs, batch_size):
-  batches = []
-  current_start_index = 0
-  while True:
-    end_index = current_start_index + batch_size
-    chunk = individual_jobs[current_start_index:end_index]
-    batches.append(chunk)
-    current_start_index = end_index
-    if current_start_index + batch_size >= len(individual_jobs):
-      last_chunk = individual_jobs[current_start_index:]
-      batches.append(last_chunk)
-      break
-  return batches
-
-
 def get_bitcode_module_function_statistics(bitcode_module, statistics_type,
                                            module_path):
   with tempfile.TemporaryDirectory() as extracted_functions_dir:
@@ -251,7 +234,7 @@ def get_bitcode_module_function_statistics(bitcode_module, statistics_type,
     function_symbols = function_symbols_expected[1]
 
     statistics_futures = []
-    batches = split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
+    batches = parallel.split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
     for batch in batches:
       statistics_futures.append(
           get_function_statistics_batch.remote(bitcode_module, batch,

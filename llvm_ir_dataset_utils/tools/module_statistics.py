@@ -13,6 +13,7 @@ import ray
 
 from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
+from llvm_ir_dataset_utils.util import parallel
 
 MODULE_STATISTICS_TYPES = ['parsing', 'module_size']
 
@@ -63,8 +64,7 @@ def process_single_project(project_dir, statistics_type):
   if statistics_type in MODULE_STATISTICS_TYPES:
     # We're computing a module level statistic. Split modules into batches
     # and then compute statistics over them.
-    batches = bitcode_module.split_batches(bitcode_modules,
-                                           BITCODE_MODULE_CHUNK_SIZE)
+    batches = parallel.split_batches(bitcode_modules, BITCODE_MODULE_CHUNK_SIZE)
     for batch in batches:
       module_futures.append(
           bitcode_module.get_module_statistics_batch.remote(
