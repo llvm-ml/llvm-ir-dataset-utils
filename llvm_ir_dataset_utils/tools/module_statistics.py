@@ -15,7 +15,9 @@ from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import parallel
 
-MODULE_STATISTICS_TYPES = ['parsing', 'module_size']
+MODULE_STATISTICS_TYPES = [
+    'parsing', 'module_size', 'get_lowered_size', 'get_opt_lowered_size'
+]
 
 FUNCTION_STATISTICS_TYPES = [
     'properties', 'passes', 'post_opt_properties', 'instruction_distribution'

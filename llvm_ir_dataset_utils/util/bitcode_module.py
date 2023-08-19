@@ -265,6 +265,50 @@ def get_size(bitcode_module):
   return (None, {'size': [len(bitcode_module)]})
 
 
+def get_lowered_size(bitcode_module):
+  # Run llc on the bitcode to lower to assembly
+  # TODO(boomanaiden154): Update this to use a symlink
+  llc_command_vector = ['llc-17', '-filetype=obj', '-']
+  with subprocess.Popen(
+      llc_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as llc_process:
+    llc_output = llc_process.communicate(input=bitcode_module)[0]
+  # Use llvm-size to measure the output size
+  # TODO(boomanaiden154): Update this to use a symlink
+  # Note that the format specified here actually impacts the output text size
+  # as certain modes that LLVM aims to be compatible with count things differently.
+  # --format=sysv seems to specifically count data contained in .txt sections, which
+  # is what we're after.
+  llvm_size_command_vector = ['llvm-size-17', '--format=sysv', '-']
+  with subprocess.Popen(
+      llvm_size_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as llvm_size_process:
+    llvm_size_output = llvm_size_process.communicate(
+        input=llc_output)[0].decode('utf-8')
+  llvm_size_output_lines = llvm_size_output.split('\n')
+  return int(llvm_size_output_lines[2].split()[1])
+
+
+def get_optimized_bitcode(bitcode_module):
+  # Run the opt O3 pipeline on the module.
+  opt_command_vector = ['opt', '-passes=default<O3>', '-']
+  with subprocess.Popen(
+      opt_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as opt_process:
+    return opt_process.communicate(input=bitcode_module)[0]
+
+
+def get_lowered_size_post_opt(bitcode_module):
+  optimized_bc = get_optimized_bitcode(bitcode_module)
+  return get_lowered_size(optimized_bc)
+
+
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
   statistics = []
@@ -277,8 +321,16 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         statistics.append((None, parse_result[1], module_path))
       else:
         statistics.append((parse_result[0], parse_result[1], module_path))
-    if statistics_type == 'module_size':
+    elif statistics_type == 'module_size':
       statistics.append((None, get_size(bitcode_file)[1], module_path))
+    elif statistics_type == 'get_lowered_size':
+      lowered_size = get_lowered_size(bitcode_file)
+      wrapped_result = {'lowered_size': [lowered_size]}
+      statistics.append((None, wrapped_result, module_path))
+    elif statistics_type == 'get_opt_lowered_size':
+      post_opt_lowered_size = get_lowered_size_post_opt(bitcode_file)
+      wrapped_result = {'post_opt_lowered_size': [post_opt_lowered_size]}
+      statistics.append((None, wrapped_result, module_path))
   return statistics
 
 
