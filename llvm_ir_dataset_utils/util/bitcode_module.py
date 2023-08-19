@@ -5,6 +5,7 @@ import os
 import tempfile
 import logging
 import json
+import shutil
 
 import ray
 
@@ -309,6 +310,24 @@ def get_lowered_size_post_opt(bitcode_module):
   return get_lowered_size(optimized_bc)
 
 
+def get_call_names(bitcode_module):
+  call_names_pass_path = shutil.which('libPrintCallNamesPass.so')
+  opt_command_vector = [
+      'opt', '-load-pass-plugin', call_names_pass_path,
+      '-passes=print<call-names>', '-disable-output', '-'
+  ]
+  with subprocess.Popen(
+      opt_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as opt_process:
+    opt_output = opt_process.communicate(
+        input=bitcode_module)[0].decode('utf-8')
+    if (opt_process.returncode != 0):
+      return []
+    return opt_output.split('\n')[1:-1]
+
+
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
   statistics = []
@@ -331,6 +350,11 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
       post_opt_lowered_size = get_lowered_size_post_opt(bitcode_file)
       wrapped_result = {'post_opt_lowered_size': [post_opt_lowered_size]}
       statistics.append((None, wrapped_result, module_path))
+    elif statistics_type == 'call_names':
+      call_names_wrapped = {'call_names': get_call_names(bitcode_file)}
+      for call_name in get_call_names(bitcode_file):
+        call_names_wrapped = {'call_names': [call_name]}
+        statistics.append((None, call_names_wrapped, module_path))
   return statistics
 
 
