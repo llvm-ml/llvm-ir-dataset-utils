@@ -1,21 +1,21 @@
 ARG UBUNTU_VERSION=22.04
-ARG LLVM_VERSION=17
 ARG JULIA_MAJOR_VERSION=8
 ARG JULIA_MINOR_VERSION=3
 ARG SWIFT_MAJOR_VERSION=8
 ARG SWIFT_MINOR_VERSION=1
 ARG CUSTOM_CERT
 ARG ENABLE_LEGACY_RENEGOTIATION
+ARG LLVM_COMMIT_SHA=d6cd49dd9a3edeadc2e2c600952cde171908ed6e
 
 FROM ubuntu:$UBUNTU_VERSION
 
-ARG LLVM_VERSION
 ARG JULIA_MAJOR_VERSION
 ARG JULIA_MINOR_VERSION
 ARG SWIFT_MAJOR_VERSION
 ARG SWIFT_MINOR_VERSION
 ARG CUSTOM_CERT
 ARG ENABLE_LEGACY_RENEGOTIATION
+ARG LLVM_COMMIT_SHA
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -69,20 +69,18 @@ RUN curl https://sh.rustup.rs | sh -s -- -y --default-toolchain none
 ENV PATH="$PATH:/cargo/bin"
 
 # LLVM Installation
-RUN apt-get -q update \
-    && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add - \
-    && apt-add-repository "deb http://apt.llvm.org/`lsb_release -cs`/ llvm-toolchain-`lsb_release -cs`-$LLVM_VERSION main" || true \
-    && apt-get -q update \
-    && apt-get install -y clang-$LLVM_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev libomp-$LLVM_VERSION-dev \
-    && ln -s /usr/bin/clang-$LLVM_VERSION /usr/bin/clang \
-    && ln -s /usr/bin/clang++-$LLVM_VERSION /usr/bin/clang++ \
-    && ln -s /usr/bin/llvm-objcopy-$LLVM_VERSION /usr/bin/llvm-objcopy \
-    && ln -s /usr/bin/opt-$LLVM_VERSION /usr/bin/opt \
-    && ln -s /usr/bin/llvm-link-$LLVM_VERSION /usr/bin/llvm-link \
-    && ln -s /usr/bin/llvm-ar-$LLVM_VERSION /usr/bin/llvm-ar \
-    && ln -s /usr/bin/llvm-nm-$LLVM_VERSION /usr/bin/llvm-nm \
-    && ln -s /usr/bin/llvm-extract-$LLVM_VERSION /usr/bin/llvm-extract \
-    && ln -s /usr/bin/llvm-bcanalyzer-$LLVM_VERSION /usr/bin/llvm-bcanalyzer
+RUN git clone https://github.com/llvm/llvm-project \
+    && mkdir /llvm-project/build \
+    && cd /llvm-project/build \
+    && git checkout $LLVM_COMMIT_SHA \
+    && cmake -GNinja -DCMAKE_BUILD_TYPE=Relase \
+         -DLLVM_ENABLE_PROJECTS="clang" \
+         -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" \
+         -DCMAKE_INSTALL_PREFIX=/usr \
+         ../llvm \
+    && ninja install \
+    && cd / \
+    && rm -rf /llvm-project
 
 # Install Julia
 RUN curl \
