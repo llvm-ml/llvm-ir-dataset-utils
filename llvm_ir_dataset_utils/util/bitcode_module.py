@@ -268,8 +268,7 @@ def get_size(bitcode_module):
 
 def get_lowered_size(bitcode_module):
   # Run llc on the bitcode to lower to assembly
-  # TODO(boomanaiden154): Update this to use a symlink
-  llc_command_vector = ['llc-17', '-filetype=obj', '-']
+  llc_command_vector = ['llc', '-filetype=obj', '-']
   with subprocess.Popen(
       llc_command_vector,
       stdin=subprocess.PIPE,
@@ -277,12 +276,11 @@ def get_lowered_size(bitcode_module):
       stderr=subprocess.STDOUT) as llc_process:
     llc_output = llc_process.communicate(input=bitcode_module)[0]
   # Use llvm-size to measure the output size
-  # TODO(boomanaiden154): Update this to use a symlink
   # Note that the format specified here actually impacts the output text size
   # as certain modes that LLVM aims to be compatible with count things differently.
   # --format=sysv seems to specifically count data contained in .txt sections, which
   # is what we're after.
-  llvm_size_command_vector = ['llvm-size-17', '--format=sysv', '-']
+  llvm_size_command_vector = ['llvm-size', '--format=sysv', '-']
   with subprocess.Popen(
       llvm_size_command_vector,
       stdin=subprocess.PIPE,
