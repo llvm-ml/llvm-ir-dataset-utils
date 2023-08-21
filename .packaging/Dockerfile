@@ -77,6 +77,7 @@ RUN git clone https://github.com/llvm/llvm-project \
          -DLLVM_ENABLE_PROJECTS="clang" \
          -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" \
          -DCMAKE_INSTALL_PREFIX=/usr \
+         -DLLVM_TARGETS_TO_BUILD=Native \
          ../llvm \
     && ninja install \
     && cd / \
