@@ -4,7 +4,7 @@ import logging
 import os
 
 import pandas
-import matplotlib.pyplot
+import plotly.express
 
 from absl import app
 from absl import flags
@@ -32,10 +32,9 @@ def main(_):
   logging.info('Finished loading data, generating histograms.')
 
   for column in data_frame:
-    matplotlib.pyplot.hist(
-        data_frame[column].to_numpy(), bins=FLAGS.num_bins, log=True)
-    matplotlib.pyplot.savefig(os.path.join(FLAGS.output_path, f'{column}.png'))
-    matplotlib.pyplot.close()
+    figure = plotly.express.histogram(
+        data_frame[column].to_numpy(), nbins=FLAGS.num_bins, log_y=True)
+    figure.write_image(os.path.join(FLAGS.output_path, f'{column}.png'))
 
 
 if __name__ == '__main__':

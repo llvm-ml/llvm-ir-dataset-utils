@@ -5,7 +5,7 @@ bar chart.
 import logging
 
 import pandas
-import matplotlib.pyplot
+import plotly.express
 
 from absl import app
 from absl import flags
@@ -46,14 +46,18 @@ def main(_):
     labels.append(column)
     percentages.append(data_frame[column].sum() / data_frame.shape[0])
 
+  final_data = pandas.DataFrame(dict(passes=labels, percent_ran=percentages))
+
   logging.info('Finished loading data, generating figures.')
 
-  matplotlib.pyplot.figure(figsize=(10, 10))
-  matplotlib.pyplot.bar(labels, percentages, log=FLAGS.log_scale)
-  matplotlib.pyplot.xticks(rotation=90)
-  matplotlib.pyplot.tight_layout()
-  matplotlib.pyplot.savefig(FLAGS.output_file)
-  matplotlib.pyplot.close()
+  figure = plotly.express.bar(
+      final_data,
+      log_y=FLAGS.log_scale,
+      x='passes',
+      y='percent_ran',
+      width=2000,
+      height=800)
+  figure.write_image(FLAGS.output_file)
 
 
 if __name__ == '__main__':
