@@ -86,9 +86,9 @@ RUN git clone https://github.com/llvm/llvm-project \
 # Install Julia
 RUN git clone -b emit-per-package-bitcode --depth=1 https://github.com/llvm-ml/julia /julia \
     && cd /julia \
-    && make -j $(nproc) \
+    && make MARCH=x86-64 -j $(nproc) \
     && echo prefix=/usr > Make.user \
-    && make install \
+    && make MARCH=x86-64 install \
     && cd / \
     && rm -rf /julia
 
