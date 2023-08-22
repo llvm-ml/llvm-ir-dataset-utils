@@ -15,19 +15,13 @@ The archive then needs to be unpacked with `ar -x`.
 """
 
 
-def generate_build_command(julia_options_dict, package_to_build, thread_count):
-
-  # Syntax: julia <command line flags> -- julia_builder.jl <package to build>
+def generate_build_command(package_to_build, thread_count):
   command_vector = [
       "julia",
       "--threads",
       f"{thread_count}",
       "--quiet",
   ]
-
-  # Provide further flags provided to the command line flags
-  for option in julia_options_dict:
-    command_vector.append(f"{option}={julia_options_dict[option]}")
 
   # Close out the Julia command line switches
   command_vector.append("--")
@@ -43,7 +37,7 @@ def generate_build_command(julia_options_dict, package_to_build, thread_count):
 
 
 def perform_build(package_name, build_dir, corpus_dir, thread_count):
-  build_command_vector = generate_build_command({}, package_name, thread_count)
+  build_command_vector = generate_build_command(package_name, thread_count)
 
   build_log_name = f'./{package_name}.build.log'
   build_log_path = os.path.join(corpus_dir, build_log_name)

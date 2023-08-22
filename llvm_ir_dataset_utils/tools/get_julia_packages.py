@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import os
 import logging
+import json
 
 from absl import app
 from absl import flags
@@ -13,7 +14,7 @@ import toml
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('package_list', 'julia_package_list.txt',
+flags.DEFINE_string('package_list', 'julia_package_list.json',
                     'The path to write all the list of Julia packages to.')
 
 REGISTRY_REPOSITORY = 'https://github.com/JuliaRegistries/General'
@@ -38,12 +39,12 @@ def main(_):
       with open(package_toml_path) as package_toml_file:
         package_description = toml.load(package_toml_file)
         package_name = package_description['name']
+        package_repo = package_description['repo']
         if 'jll' not in package_name:
-          package_list.append(package_name)
+          package_list.append({'name': package_name, 'repo': package_repo})
   logging.info('Writing packages to list.')
   with open(FLAGS.package_list, 'w') as package_list_file:
-    for package in package_list:
-      package_list_file.write(f'{package}\n')
+    json.dump(package_list, package_list_file, indent=2)
 
 
 if __name__ == '__main__':

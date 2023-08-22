@@ -28,15 +28,15 @@ def main(_):
   ray.init()
 
   with open(FLAGS.package_list) as package_list_file:
-    package_list = [package_name.rstrip() for package_name in package_list_file]
+    package_list = json.load(package_list_file)
 
   build_futures = []
-  for package_name in package_list:
+  for package in package_list:
     corpus_description = {
         'sources': [],
-        'folder_name': package_name,
+        'folder_name': package['name'],
         'build_system': 'julia',
-        'package_name': package_name
+        'package_name': package['name']
     }
 
     build_futures.append(
