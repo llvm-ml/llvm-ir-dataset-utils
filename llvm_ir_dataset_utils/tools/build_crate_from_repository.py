@@ -24,6 +24,9 @@ flags.DEFINE_integer('thread_count', 8,
 flags.DEFINE_string('cargo_home', '/cargo', 'The default cargo directory.')
 flags.DEFINE_string('rustup_home', '/rustup',
                     'The default rustup home directory.')
+flags.DEFINE_bool(
+    'archive_corpus', False,
+    'Whether or not to put the output corpus for each package into an archive.')
 
 flags.mark_flag_as_required('source_dir')
 flags.mark_flag_as_required('build_dir')
@@ -87,7 +90,8 @@ def main(_):
             FLAGS.corpus_dir,
             FLAGS.thread_count,
             additional_build_env_variables,
-            cleanup=True))
+            cleanup=True,
+            archive_corpus=FLAGS.archive_corpus))
 
   all_finished = []
   while len(build_futures) > 0:
