@@ -84,11 +84,13 @@ RUN git clone https://github.com/llvm/llvm-project \
     && rm -rf /llvm-project
 
 # Install Julia
-RUN curl \
-    https://julialang-s3.julialang.org/bin/linux/x64/1.$JULIA_MAJOR_VERSION/julia-1.$JULIA_MAJOR_VERSION.$JULIA_MINOR_VERSION-linux-x86_64.tar.gz \
-    | tar -xz
-RUN mv julia-1.$JULIA_MAJOR_VERSION.$JULIA_MINOR_VERSION/ /opt/
-ENV PATH="/opt/julia-1.$JULIA_MAJOR_VERSION.$JULIA_MINOR_VERSION/bin/:${PATH}"
+RUN git clone -b emit-per-package-bitcode --depth=1 https://github.com/llvm-ml/julia /julia \
+    && cd /julia \
+    && make -j $(nproc) \
+    && echo prefix=/usr > Make.user \
+    && make install \
+    && cd / \
+    && rm -rf /julia
 
 # Install Swift
 RUN curl \
