@@ -8,7 +8,7 @@ import os
 import tarfile
 import sys
 import json
-from urllib import request
+import requests
 from urllib import parse
 
 from absl import app
@@ -59,8 +59,9 @@ def main(_):
     if file_download_path is None:
       logging.info('Downloading crates.io database dump.')
       file_download_path = os.path.join(download_dir, 'db-dump.tar.gz')
-      request.urlretrieve('https://static.crates.io/db-dump.tar.gz',
-                          file_download_path)
+      response = requests.get('https://static.crates.io/db-dump.tar.gz')
+      with open(file_download_path, 'wb') as file_download_file:
+        file_download_file.write(response.content)
       logging.info('Extracting relevant data from the downloaded tar archive.')
     else:
       logging.info('Not downloading crates.io database dump, using user '
