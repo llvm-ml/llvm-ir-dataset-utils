@@ -5,10 +5,10 @@ import os
 import pathlib
 import json
 import logging
+import shutil
+import glob
 
 from compiler_opt.tools import make_corpus_lib
-
-ARCHIVE_NAME = 'bitcode.a'
 """
 Generates the command to compile a bitcode archive from a Julia package.
 The archive then needs to be unpacked with `ar -x`.
@@ -46,6 +46,11 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
   julia_depot_path = os.path.join(build_dir, 'julia_depot')
   environment['JULIA_DEPOT_PATH'] = julia_depot_path
   environment['JULIA_PKG_SERVER'] = ''
+  julia_bc_path = os.path.join(build_dir, 'unopt_bc')
+  os.mkdir(julia_bc_path)
+  environment['JULIA_PKG_UNOPT_BITCODE_DIR'] = julia_bc_path
+  environment['JULIA_IMAGE_THREADS'] = '1'
+  environment['JULIA_CPU_TARGET'] = 'x86-64'
 
   try:
     with open(build_log_path, 'w') as build_log_file:
@@ -72,17 +77,42 @@ def perform_build(package_name, build_dir, corpus_dir, thread_count):
   }
 
 
-def unpack_archive(build_dir):
-  archive_path = os.path.join(build_dir, ARCHIVE_NAME)
+def unpack_archives(unopt_bc_archive_dir, unopt_bc_dir):
+  archive_files = os.listdir(unopt_bc_archive_dir)
+  for archive_file in archive_files:
+    full_archive_file_path = os.path.join(unopt_bc_archive_dir, archive_file)
+    # Strip the last two characters which will be the .a in the extensions
+    archive_package_name = archive_file[:-2]
 
-  # TODO(boomanaiden154): Maybe move to llvm-ar at some point?
-  command_vector = ['ar', '-x', archive_path]
+    archive_extraction_command_vector = ['llvm-ar', '-x', archive_file]
 
-  subprocess.run(command_vector, cwd=build_dir)
+    subprocess.run(
+        archive_extraction_command_vector,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        cwd=unopt_bc_archive_dir)
+
+    # Copy text_opt#0.bc to the output directory
+    unopt_bitcode_full_path = os.path.join(unopt_bc_archive_dir,
+                                           'text_unopt#0.bc')
+    copied_bitcode_full_path = os.path.join(unopt_bc_dir,
+                                            f'{archive_package_name}.bc')
+    shutil.copyfile(unopt_bitcode_full_path, copied_bitcode_full_path)
+
+    # Delete all bitcode files from the current extraction in preparation
+    # for the next archive.
+    for bitcode_file in glob.glob(os.path.join(unopt_bc_archive_dir, '*.bc')):
+      os.remove(bitcode_file)
+
+    os.remove(full_archive_file_path)
 
 
 def extract_ir(build_dir, corpus_dir):
-  unpack_archive(build_dir)
-  relative_paths = make_corpus_lib.load_bitcode_from_directory(build_dir)
-  make_corpus_lib.copy_bitcode(relative_paths, build_dir, corpus_dir)
+  unopt_bc_dir = os.path.join(build_dir, 'unopt_bc')
+  output_bc_dir = os.path.join(build_dir, 'output_bc')
+  os.mkdir(output_bc_dir)
+  unpack_archives(unopt_bc_dir, output_bc_dir)
+  relative_paths = make_corpus_lib.load_bitcode_from_directory(output_bc_dir)
+  make_corpus_lib.copy_bitcode(relative_paths, output_bc_dir, corpus_dir)
   make_corpus_lib.write_corpus_manifest(relative_paths, corpus_dir, '')
