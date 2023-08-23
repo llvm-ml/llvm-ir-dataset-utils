@@ -76,6 +76,18 @@ def parse_and_build_from_description(corpus_description,
   else:
     build_dir = os.path.join(build_base_dir,
                              corpus_description["folder_name"] + "-build")
+  # Handle the case where we are archiving corpora and we already have some
+  # packages that have finished building.
+  if archive_corpus and os.path.exists(f'{corpus_dir}.tar'):
+    # We already have an archived corpus for this package, so we can exit early
+    # without doing the build.
+    return {}
+  elif archive_corpus:
+    if os.path.exists(corpus_dir):
+      shutil.rmtree(corpus_dir)
+    if os.path.exists(build_dir):
+      shutil.rmtree(build_dir)
+
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
   build_log = {}
