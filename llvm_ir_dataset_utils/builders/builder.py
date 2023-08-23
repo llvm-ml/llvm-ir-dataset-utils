@@ -62,7 +62,31 @@ def parse_and_build_from_description(corpus_description,
                                      extra_builder_arguments={},
                                      cleanup=False,
                                      archive_corpus=False):
+  # Construct relevant paths for the build
   corpus_dir = os.path.join(corpus_base_dir, corpus_description["folder_name"])
+  if corpus_description["build_system"] == "manual":
+    build_dir = os.path.join(build_base_dir, corpus_description["folder_name"])
+  else:
+    build_dir = os.path.join(build_base_dir,
+                             corpus_description["folder_name"] + "-build")
+  source_dir = os.path.join(source_base_dir, corpus_description["folder_name"])
+
+  # Handle the case where we are archiving corpora and we already have some
+  # packages that have finished building.
+  if archive_corpus and os.path.exists(f'{corpus_dir}.tar'):
+    # We already have an archived corpus for this package, so we can exit early
+    # without doing the build.
+    logging.warning(
+        f'Found already built version of package at {corpus_dir}, skipping')
+    return {}
+  else:
+    if os.path.exists(corpus_dir):
+      shutil.rmtree(corpus_dir)
+    if os.path.exists(build_dir):
+      shutil.rmtree(build_dir)
+    if os.path.exists(source_dir):
+      shutil.rmtree(source_dir)
+
   pathlib.Path(corpus_dir).mkdir(exist_ok=True, parents=True)
   pathlib.Path(source_base_dir).mkdir(exist_ok=True)
   pathlib.Path(build_base_dir).mkdir(exist_ok=True)
@@ -71,27 +95,10 @@ def parse_and_build_from_description(corpus_description,
   source_logs = source.download_source(corpus_description['sources'],
                                        to_download_dir, corpus_dir,
                                        corpus_description['folder_name'])
-  if corpus_description["build_system"] == "manual":
-    build_dir = os.path.join(build_base_dir, corpus_description["folder_name"])
-  else:
-    build_dir = os.path.join(build_base_dir,
-                             corpus_description["folder_name"] + "-build")
-  # Handle the case where we are archiving corpora and we already have some
-  # packages that have finished building.
-  if archive_corpus and os.path.exists(f'{corpus_dir}.tar'):
-    # We already have an archived corpus for this package, so we can exit early
-    # without doing the build.
-    return {}
-  elif archive_corpus:
-    if os.path.exists(corpus_dir):
-      shutil.rmtree(corpus_dir)
-    if os.path.exists(build_dir):
-      shutil.rmtree(build_dir)
 
   if not os.path.exists(build_dir):
     os.makedirs(build_dir)
   build_log = {}
-  source_dir = os.path.join(source_base_dir, corpus_description["folder_name"])
   if corpus_description["build_system"] == "cmake":
     configure_command_vector = cmake_builder.generate_configure_command(
         os.path.join(source_dir, corpus_description["cmake_root"]),
