@@ -5,7 +5,6 @@ ARG SWIFT_MAJOR_VERSION=8
 ARG SWIFT_MINOR_VERSION=1
 ARG CUSTOM_CERT
 ARG ENABLE_LEGACY_RENEGOTIATION
-ARG LLVM_COMMIT_SHA=d6cd49dd9a3edeadc2e2c600952cde171908ed6e
 
 FROM ubuntu:$UBUNTU_VERSION
 
@@ -15,7 +14,6 @@ ARG SWIFT_MAJOR_VERSION
 ARG SWIFT_MINOR_VERSION
 ARG CUSTOM_CERT
 ARG ENABLE_LEGACY_RENEGOTIATION
-ARG LLVM_COMMIT_SHA
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -69,10 +67,9 @@ RUN curl https://sh.rustup.rs | sh -s -- -y --default-toolchain none
 ENV PATH="$PATH:/cargo/bin"
 
 # LLVM Installation
-RUN git clone https://github.com/llvm/llvm-project \
+RUN git clone -b running-fixes --depth=1 https://github.com/llvm-ml/llvm-project \
     && mkdir /llvm-project/build \
     && cd /llvm-project/build \
-    && git checkout $LLVM_COMMIT_SHA \
     && cmake -GNinja -DCMAKE_BUILD_TYPE=Relase \
          -DLLVM_ENABLE_PROJECTS="clang" \
          -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" \
