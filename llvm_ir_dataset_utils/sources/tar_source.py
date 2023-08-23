@@ -20,10 +20,10 @@ def download_source_code(archive_url, base_dir, source_folder_name):
       tar_archive_file = io.BytesIO(tar_archive.content)
       with tarfile.open(fileobj=tar_archive_file) as source_tar_archive:
         source_tar_archive.extractall(download_dir)
-      download_dir_files = os.listdir(download_dir)[0]
+      download_dir_files = os.listdir(download_dir)
       if len(download_dir_files) != 0:
         real_source_folder_name = os.path.join(download_dir,
-                                               os.listdir(download_dir)[0])
+                                               download_dir_files[0])
         shutil.move(real_source_folder_name,
                     os.path.join(base_dir, source_folder_name))
         success = True
