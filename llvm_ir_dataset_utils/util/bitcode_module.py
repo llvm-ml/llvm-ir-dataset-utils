@@ -326,6 +326,29 @@ def get_call_names(bitcode_module):
     return opt_output.split('\n')[1:-1]
 
 
+def get_function_hashes(bitcode_module):
+  opt_hashing_vector = [
+      'opt', '-passes=print<structural-hash>', '-disable-output', '-'
+  ]
+  with subprocess.Popen(
+      opt_hashing_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as opt_process:
+    opt_output = opt_process.communicate(
+        input=bitcode_module)[0].decode('utf-8')
+    if opt_process.returncode != 0:
+      return {}
+    function_hashes = {}
+    output_lines = opt_output.split('\n')
+    for output_line in output_lines[1:-1]:
+      output_line_parts = output_line.split()
+      function_name = output_line_parts[1]
+      function_hash = output_line_parts[3]
+      function_hashes[function_name] = function_hash
+    return function_hashes
+
+
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
   statistics = []
@@ -349,10 +372,15 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
       wrapped_result = {'post_opt_lowered_size': [post_opt_lowered_size]}
       statistics.append((None, wrapped_result, module_path))
     elif statistics_type == 'call_names':
-      call_names_wrapped = {'call_names': get_call_names(bitcode_file)}
       for call_name in get_call_names(bitcode_file):
         call_names_wrapped = {'call_names': [call_name]}
         statistics.append((None, call_names_wrapped, module_path))
+    elif statistics_type == 'function_hashes':
+      function_hashes = get_function_hashes(bitcode_file)
+      for function_name in function_hashes:
+        hash_wrapped = {'function_hashes': [function_hashes[function_name]]}
+        statistics.append(
+            (None, hash_wrapped, f'{module_path}:{function_name}'))
   return statistics
 
 
