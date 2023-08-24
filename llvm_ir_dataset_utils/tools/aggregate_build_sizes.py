@@ -25,11 +25,10 @@ flags.mark_flag_as_required('corpus_dir')
 def get_size_from_manifest(corpus_path):
   build_manifest = dataset_corpus.load_json_from_corpus(
       corpus_path, "./build_manifest.json")
-  package_name_hash = os.path.basename(os.path.dirname(corpus_path))
+  package_name = dataset_corpus.get_corpus_name(corpus_path)
   if build_manifest is None:
-    return (package_name_hash, 0, False)
-  return (package_name_hash, build_manifest['size'],
-          build_manifest['targets'][0]['success'])
+    return (package_name, 0, False)
+  return (package_name, build_manifest['size'])
 
 
 def main(_):
@@ -47,11 +46,11 @@ def main(_):
   logging.info(f'Aggregate size:{size_sum}')
 
   if FLAGS.per_package_output is not None:
-    names_sizes = sorted(names_sizes, key=lambda name_size: name_size[1])
+    names_sizes = sorted(
+        names_sizes, key=lambda name_size: name_size[1], reverse=True)
     with open(FLAGS.per_package_output, 'w') as per_package_index_file:
       for name_size in names_sizes:
-        if name_size[2]:
-          per_package_index_file.write(f'{name_size[0]},{name_size[1]}\n')
+        per_package_index_file.write(f'{name_size[0]},{name_size[1]}\n')
 
 
 if __name__ == '__main__':
