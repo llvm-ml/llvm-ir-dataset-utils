@@ -141,8 +141,12 @@ def get_function_properties(bitcode_function_path,
                             passes="print<func-properties>"):
   properties_dict = {}
   opt_command_vector = [
-      'opt', f'-passes={passes}', bitcode_function_path,
-      '-enable-detailed-function-properties', '-o', '/dev/null'
+      'opt',
+      f'-passes={passes}',
+      bitcode_function_path,
+      '-enable-detailed-function-properties',
+      '-strip-optnone',
+      '-disable-output',
   ]
   try:
     opt_process = subprocess.run(
