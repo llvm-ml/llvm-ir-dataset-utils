@@ -181,7 +181,7 @@ def get_function_properties_module(bitcode_module):
     try:
       stdout = opt_process.communicate(
           input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
       return ('timout', None)
     if opt_process.returncode != 0:
       return (stdout.replace('\n', ''), None)
@@ -197,6 +197,8 @@ def get_function_properties_module(bitcode_module):
       if line_parts[0] in properties_dict:
         properties_dict[line_parts[0]].append(line_parts[1])
       else:
+        if len(line_parts) < 2:
+          return ('invalid output from opt', None)
         properties_dict[line_parts[0]] = [line_parts[1]]
     return (None, properties_dict)
 
