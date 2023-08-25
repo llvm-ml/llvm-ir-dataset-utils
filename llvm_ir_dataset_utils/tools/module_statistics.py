@@ -110,7 +110,8 @@ def collect_statistics(projects_list, statistics_type):
       errors.append(statistic)
     else:
       individual_data = statistic[1]
-      individual_data['name'] = [statistic[2]]
+      data_length = len(next(iter(individual_data.values())))
+      individual_data['name'] = [statistic[2]] * data_length
       fill_value = 0 if statistics_type == 'instruction_distribution' else False
       combined_statistics = bitcode_module.combine_statistics(
           combined_statistics, individual_data, fill_value)

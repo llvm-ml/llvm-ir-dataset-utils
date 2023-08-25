@@ -424,7 +424,7 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
     elif statistics_type == 'module_properties':
       properties_tuple = get_function_properties_module(bitcode_file)
       if properties_tuple[0]:
-        statistics.append((properties_tuple[0], {}, module_path))
+        statistics.append((properties_tuple[0], None, module_path))
       else:
         statistics.append((None, properties_tuple[1], module_path))
   return statistics
