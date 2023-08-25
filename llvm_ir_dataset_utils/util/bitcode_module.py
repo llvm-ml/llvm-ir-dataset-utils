@@ -166,6 +166,41 @@ def get_function_properties(bitcode_function_path,
   return (None, properties_dict)
 
 
+def get_function_properties_module(bitcode_module):
+  properties_dict = {}
+  opt_command_vector = [
+      'opt', '-passes=print<func-properties>',
+      '-enable-detailed-function-properties', '-strip-optnone',
+      '-disable-output', '-'
+  ]
+  with subprocess.Popen(
+      opt_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      stdin=subprocess.PIPE) as opt_process:
+    try:
+      stdout = opt_process.communicate(
+          input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
+    except TimeoutExpired:
+      return ('timout', None)
+    if opt_process.returncode != 0:
+      return (stdout.replace('\n', ''), None)
+    output_lines = stdout.split('\n')[1:-2]
+    if len(output_lines) == 0:
+      return ('no functions found in bitcode file', None)
+    for output_line in output_lines:
+      if output_line.startswith('Printing'):
+        continue
+      elif output_line == '':
+        continue
+      line_parts = output_line.split(': ')
+      if line_parts[0] in properties_dict:
+        properties_dict[line_parts[0]].append(line_parts[1])
+      else:
+        properties_dict[line_parts[0]] = [line_parts[1]]
+    return (None, properties_dict)
+
+
 def parse_bcanalyzer_output(output_string):
   distribution_dict = {}
   output_lines = output_string.split('\n')
@@ -386,6 +421,12 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         hash_wrapped = {'function_hashes': [function_hashes[function_name]]}
         statistics.append(
             (None, hash_wrapped, f'{module_path}:{function_name}'))
+    elif statistics_type == 'module_properties':
+      properties_tuple = get_function_properties_module(bitcode_file)
+      if properties_tuple[0]:
+        statistics.append((properties_tuple[0], {}, module_path))
+      else:
+        statistics.append((None, properties_tuple[1], module_path))
   return statistics
 
 
