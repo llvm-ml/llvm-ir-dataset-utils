@@ -138,15 +138,12 @@ def combine_statistics(function_a, function_b, fill_value=False):
 
 
 def get_function_properties(bitcode_function_path,
-                            passes="print<func-properties>"):
+                            passes="forceattrs,print<func-properties>"):
   properties_dict = {}
   opt_command_vector = [
-      'opt',
-      f'-passes={passes}',
-      bitcode_function_path,
-      '-enable-detailed-function-properties',
-      '-strip-optnone',
-      '-disable-output',
+      'opt', f'-passes={passes}', bitcode_function_path,
+      '-enable-detailed-function-properties', '-disable-output',
+      '-force-remove-attribute=optnone'
   ]
   try:
     opt_process = subprocess.run(
@@ -155,7 +152,7 @@ def get_function_properties(bitcode_function_path,
         stderr=subprocess.STDOUT,
         encoding='utf-8',
         timeout=OPT_TIMEOUT_SECONDS)
-  except SubprocessError:
+  except subprocess.SubprocessError:
     return ('timeout', None)
   if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
@@ -169,8 +166,8 @@ def get_function_properties(bitcode_function_path,
 def get_function_properties_module(bitcode_module):
   properties_dict = {}
   opt_command_vector = [
-      'opt', '-passes=print<func-properties>',
-      '-enable-detailed-function-properties', '-strip-optnone',
+      'opt', '-passes=forceattrs,print<func-properties>',
+      '-enable-detailed-function-properties', '-force-remove-attribute=optnone',
       '-disable-output', '-'
   ]
   with subprocess.Popen(
@@ -253,7 +250,8 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
         function_statistics_expected = get_run_passes_opt(bitcode_function_path)
       elif statistics_type == 'post_opt_properties':
         function_statistics_expected = get_function_properties(
-            bitcode_function_path, 'default<O3>,print<func-properties>')
+            bitcode_function_path,
+            'forceattrs,default<O3>,print<func-properties>')
       elif statistics_type == 'instruction_distribution':
         function_statistics_expected = get_instruction_distribution_path(
             bitcode_function_path)
@@ -370,8 +368,8 @@ def get_call_names(bitcode_module):
 
 def get_function_hashes(bitcode_module):
   opt_hashing_vector = [
-      'opt', '-passes=print<structural-hash>', '-disable-output', '-',
-      '-strip-optnone'
+      'opt', '-passes=forceattrs,print<structural-hash>', '-disable-output',
+      '-', '-force-remove-attribute=optnone'
   ]
   with subprocess.Popen(
       opt_hashing_vector,
@@ -393,11 +391,6 @@ def get_function_hashes(bitcode_module):
         return ('invalid output from opt', None)
       function_name = output_line_parts[1]
       function_hash = output_line_parts[3]
-      # Skip declarations here (as the hash doesn't change from the default
-      # value of four) as we currently aren't skipping them in the upstream
-      # pass.
-      if function_hash == '4':
-        continue
       function_hashes[function_name] = function_hash
     return (None, function_hashes)
 
