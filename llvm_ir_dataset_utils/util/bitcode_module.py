@@ -370,25 +370,36 @@ def get_call_names(bitcode_module):
 
 def get_function_hashes(bitcode_module):
   opt_hashing_vector = [
-      'opt', '-passes=print<structural-hash>', '-disable-output', '-'
+      'opt', '-passes=print<structural-hash>', '-disable-output', '-',
+      '-strip-optnone'
   ]
   with subprocess.Popen(
       opt_hashing_vector,
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT) as opt_process:
-    opt_output = opt_process.communicate(
-        input=bitcode_module)[0].decode('utf-8')
+    try:
+      opt_output = opt_process.communicate(
+          input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
+    except subprocess.TimeoutExpired:
+      return ('timeout', None)
     if opt_process.returncode != 0:
-      return {}
+      return ('opt did not exit with code 0', None)
     function_hashes = {}
     output_lines = opt_output.split('\n')
     for output_line in output_lines[1:-1]:
       output_line_parts = output_line.split()
+      if len(output_line_parts) != 4:
+        return ('invalid output from opt', None)
       function_name = output_line_parts[1]
       function_hash = output_line_parts[3]
+      # Skip declarations here (as the hash doesn't change from the default
+      # value of four) as we currently aren't skipping them in the upstream
+      # pass.
+      if function_hash == '4':
+        continue
       function_hashes[function_name] = function_hash
-    return function_hashes
+    return (None, function_hashes)
 
 
 @ray.remote(num_cpus=1)
@@ -418,7 +429,11 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         call_names_wrapped = {'call_names': [call_name]}
         statistics.append((None, call_names_wrapped, module_path))
     elif statistics_type == 'function_hashes':
-      function_hashes = get_function_hashes(bitcode_file)
+      function_hashes_or_error = get_function_hashes(bitcode_file)
+      if function_hashes_or_error[0]:
+        statistics.append((function_hashes_or_error[0], None, module_path))
+        continue
+      function_hashes = function_hashes_or_error[1]
       for function_name in function_hashes:
         hash_wrapped = {'function_hashes': [function_hashes[function_name]]}
         statistics.append(
