@@ -380,11 +380,13 @@ def get_function_hashes(bitcode_module):
       opt_output = opt_process.communicate(
           input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
     except subprocess.TimeoutExpired:
-      return ('timeout', None)
+      return ('timeout', None, None)
     if opt_process.returncode != 0:
-      return ('opt did not exit with code 0', None)
+      return ('opt did not exit with code 0', None, None)
     function_hashes = {}
     output_lines = opt_output.split('\n')
+    first_line_parts = output_lines[0].split()
+    module_hash = first_line_parts[2]
     for output_line in output_lines[1:-1]:
       output_line_parts = output_line.split()
       if len(output_line_parts) != 4:
@@ -392,7 +394,7 @@ def get_function_hashes(bitcode_module):
       function_name = output_line_parts[1]
       function_hash = output_line_parts[3]
       function_hashes[function_name] = function_hash
-    return (None, function_hashes)
+    return (None, function_hashes, module_hash)
 
 
 @ray.remote(num_cpus=1)
@@ -431,6 +433,13 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         hash_wrapped = {'function_hashes': [function_hashes[function_name]]}
         statistics.append(
             (None, hash_wrapped, f'{module_path}:{function_name}'))
+    elif statistics_type == 'module_hashes':
+      module_hash_or_error = get_function_hashes(bitcode_file)
+      if module_hash_or_error[0]:
+        statistics.append((module_hash_or_error[0], None, module_path))
+      else:
+        hash_wrapped = {'module_hashes': [module_hash_or_error[2]]}
+        statistics.append((None, hash_wrapped, module_path))
     elif statistics_type == 'module_properties':
       properties_tuple = get_function_properties_module(bitcode_file)
       if properties_tuple[0]:
