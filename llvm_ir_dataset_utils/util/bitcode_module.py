@@ -306,6 +306,23 @@ def get_size(bitcode_module):
   return (None, {'size': [len(bitcode_module)]})
 
 
+def get_size_text(bitcode_module):
+  dis_command_vector = ['llvm-dis', '-']
+  with subprocess.Popen(
+      dis_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      stdin=subprocess.PIPE) as dis_process:
+    try:
+      output = dis_process.communicate(
+          input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
+    except subprocess.TimeoutExpired:
+      return ('timeout', None)
+    if dis_process.returncode != 0:
+      return ('llvm-dis returned code other than 0', None)
+    return (None, {'size': [len(output)]})
+
+
 def get_lowered_size(bitcode_module):
   # Run llc on the bitcode to lower to assembly
   llc_command_vector = ['llc', '-filetype=obj', '-']
@@ -411,6 +428,12 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         statistics.append((parse_result[0], parse_result[1], module_path))
     elif statistics_type == 'module_size':
       statistics.append((None, get_size(bitcode_file)[1], module_path))
+    elif statistics_type == 'module_size_text':
+      text_size_or_error = get_size_text(bitcode_file)[1]
+      if text_size_or_error[0]:
+        statistics.append((text_size_or_error[0], None, module_path))
+      else:
+        statistics.append((None, text_size_or_error[1], module_path))
     elif statistics_type == 'get_lowered_size':
       lowered_size = get_lowered_size(bitcode_file)
       wrapped_result = {'lowered_size': [lowered_size]}
