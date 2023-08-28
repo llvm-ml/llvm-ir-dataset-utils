@@ -374,8 +374,12 @@ def get_lowered_size_post_opt(bitcode_module):
   return get_lowered_size(optimized_bc)
 
 
+def get_call_names_pass_path():
+  return shutil.which('libPrintCallNamesPass.so')
+
+
 def get_call_names(bitcode_module):
-  call_names_pass_path = shutil.which('libPrintCallNamesPass.so')
+  call_names_pass_path = get_call_names_pass_path()
   opt_command_vector = [
       'opt', '-load-pass-plugin', call_names_pass_path,
       '-passes=print<call-names>', '-disable-output', '-'
@@ -389,7 +393,27 @@ def get_call_names(bitcode_module):
         input=bitcode_module)[0].decode('utf-8')
     if (opt_process.returncode != 0):
       return []
-    return opt_output.split('\n')[1:-1]
+    return opt_output.split('\n')[:-1]
+
+
+def get_defined_function_names(bitcode_module):
+  opt_command_vector = [
+      'opt', '-load-pass-plugin',
+      get_call_names_pass_path(), '-passes=print<definition-names>',
+      '-disable-output'
+  ]
+  with subprocess.Popen(
+      opt_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      stdin=subprocess.PIPE) as opt_process:
+    try:
+      stdout = opt_process.communicate(input=bitcode_module)[0].decode('utf-8')
+    except subprocess.TimeoutExpired:
+      return ('timeout', None)
+    if opt_process.returncode != 0:
+      return ('opt returned code other than 0', None)
+    return (None, stdout.split('\n')[:-1])
 
 
 def get_function_hashes(bitcode_module):
@@ -484,6 +508,14 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         statistics.append((instruction_hist_or_error[0], None, module_path))
       else:
         statistics.append((None, instruction_hist_or_error[1], module_path))
+    elif statistics_type == 'defined_function_names':
+      function_names_or_error = get_defined_function_names(bitcode_file)
+      if function_names_or_error[0]:
+        statistics.append((function_names_or_error[0], None, module_path))
+      else:
+        for defined_function_name in function_names_or_error[1]:
+          function_name_wrapped = {'defined_function': [defined_function_name]}
+          statistics.append((None, function_name_wrapped, module_path))
   return statistics
 
 
