@@ -200,33 +200,40 @@ def get_function_properties_module(bitcode_module):
     return (None, properties_dict)
 
 
-def parse_bcanalyzer_output(output_string):
-  distribution_dict = {}
-  output_lines = output_string.split('\n')
-  line_index = 0
-  while line_index < len(output_lines):
-    output_line = output_lines[line_index]
-    line_index += 1
-    output_line_parts = output_line.split()
-    if '(FUNCTION_BLOCK):' in output_line:
-      # Grab the actual data
-      line_index += 12
-      while not output_lines[line_index].isspace(
-      ) and output_lines[line_index] != '':
-        histogram_parts = output_lines[line_index].split()
-        distribution_dict[histogram_parts[-1]] = [int(histogram_parts[0])]
-        line_index += 1
-      break
-  return distribution_dict
+def get_instruction_histogram(bitcode_module):
+  instruction_histogram = {}
+  opt_command_vector = ['opt', '-disable-output', '-passes=instcount', '-stats']
+  with subprocess.Popen(
+      opt_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      stdin=subprocess.PIPE) as opt_process:
+    try:
+      output = opt_process.communicate(input=bitcode_module)[0].decode('utf-8')
+    except subprocess.TimeoutExpired:
+      return ('timeout', None)
+    if opt_process.returncode != 0:
+      return ('opt did not return with code zero', None)
+    # Work on parsing the output
+    output_lines = output.split('\n')
+    # Skip the first five lines as they contain the stats header
+    for output_line in output_lines[5:-2]:
+      output_line_parts = output_line.split()
+      # Statistics line format is <count> <stat type> - number of <inst name>
+      if output_line_parts[1] == 'bitcode-reader':
+        continue
+      # This check skips all non instruction statistics also collected by the pass.
+      if output_line_parts[6] != 'insts':
+        continue
+      instruction_name = output_line_parts[5]
+      instruction_count = int(output_line_parts[0])
+      instruction_histogram[instruction_name] = [instruction_count]
+  return (None, instruction_histogram)
 
 
-def get_instruction_distribution_path(bitcode_function_path):
-  bcanalyzer_command_vector = ['llvm-bcanalyzer', bitcode_function_path]
-  analyzer_process = subprocess.run(
-      bcanalyzer_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  properties_dict = parse_bcanalyzer_output(
-      analyzer_process.stdout.decode('utf-8'))
-  return (None, properties_dict)
+def get_instruction_histogram_from_file(bitcode_file_path):
+  with open(bitcode_file_path, 'rb') as bitcode_file:
+    return get_instruction_histogram(bitcode_file.read())
 
 
 @ray.remote(num_cpus=1)
@@ -253,7 +260,7 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
             bitcode_function_path,
             'forceattrs,default<O3>,print<func-properties>')
       elif statistics_type == 'instruction_distribution':
-        function_statistics_expected = get_instruction_distribution_path(
+        function_statistics_expected = get_instruction_histogram_from_file(
             bitcode_function_path)
       if function_statistics_expected[0]:
         statistics.append(
@@ -469,6 +476,12 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         statistics.append((properties_tuple[0], None, module_path))
       else:
         statistics.append((None, properties_tuple[1], module_path))
+    elif statistics_type == 'module_instruction_distribution':
+      instruction_hist_or_error = get_instruction_histogram(bitcode_file)
+      if instruction_hist_or_error[0]:
+        statistics.append((instruction_hist_or_error[0], None, module_path))
+      else:
+        statistics.append((None, instruction_hist_or_error[1], module_path))
   return statistics
 
 

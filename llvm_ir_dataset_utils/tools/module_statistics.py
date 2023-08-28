@@ -18,7 +18,7 @@ from llvm_ir_dataset_utils.util import parallel
 MODULE_STATISTICS_TYPES = [
     'parsing', 'module_size', 'module_size_text', 'get_lowered_size',
     'get_opt_lowered_size', 'call_names', 'function_hashes',
-    'module_properties', 'module_hashes'
+    'module_properties', 'module_hashes', 'module_instruction_distribution'
 ]
 
 FUNCTION_STATISTICS_TYPES = [
@@ -111,9 +111,11 @@ def collect_statistics(projects_list, statistics_type):
       errors.append(statistic)
     else:
       individual_data = statistic[1]
-      data_length = len(next(iter(individual_data.values())))
+      data_length = 0
+      if len(individual_data) != 0:
+        data_length = len(next(iter(individual_data.values())))
       individual_data['name'] = [statistic[2]] * data_length
-      fill_value = 0 if statistics_type == 'instruction_distribution' else False
+      fill_value = 0 if 'instruction_distribution' in statistics_type else False
       combined_statistics = bitcode_module.combine_statistics(
           combined_statistics, individual_data, fill_value)
 
