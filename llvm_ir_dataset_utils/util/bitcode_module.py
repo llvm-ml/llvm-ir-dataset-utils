@@ -219,6 +219,8 @@ def get_instruction_histogram(bitcode_module):
     # Skip the first five lines as they contain the stats header
     for output_line in output_lines[5:-2]:
       output_line_parts = output_line.split()
+      if len(output_line_parts) < 7:
+        return ('opt returned invalid output', None)
       # Statistics line format is <count> <stat type> - number of <inst name>
       if output_line_parts[1] == 'bitcode-reader':
         continue
