@@ -52,7 +52,7 @@ def get_statistics_module_functions(project_dir, bitcode_file_path,
                                     statistics_type):
   bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                       bitcode_file_path)
-  module_path = os.path.join(project_dir, bitcode_file_path)
+  module_path = f'{project_dir}:{bitcode_file_path}'
   return bitcode_module.get_bitcode_module_function_statistics(
       bitcode_file, statistics_type, module_path)
 
