@@ -450,9 +450,10 @@ def get_function_hashes(bitcode_module):
 @ray.remote(num_cpus=1)
 def get_module_statistics_batch(project_dir, module_paths, statistics_type):
   statistics = []
-  for module_path in module_paths:
+  for relative_module_path in module_paths:
     bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
-                                                        module_path)
+                                                        relative_module_path)
+    module_path = f'{project_dir}:{relative_module_path}'
     if statistics_type == 'parsing':
       parse_result = test_parsing(bitcode_file)
       if parse_result[1] == True:
