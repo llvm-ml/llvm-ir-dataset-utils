@@ -8,6 +8,7 @@ plotly = ">=5.16.1"
 # Kaleido is a dependency of plotly not explicitly declared needed for image
 # export.
 kaleido = ">=0.2.1"
+umap-learn = ">=0.5.3"
 
 [dev-packages]
 yapf = ">=0.33.0"
