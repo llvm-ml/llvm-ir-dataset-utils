@@ -40,6 +40,10 @@ flags.DEFINE_integer(
     'The maximum number of projects to process.',
     lower_bound=1)
 flags.DEFINE_string('error_file_path', None, 'The path to log errors in.')
+flags.DEFINE_enum(
+    'language_filter', 'none', ['c', 'cpp', 'none'], 'Specify a '
+    'language to filter for. This is mostly aimed at filtering '
+    'for c/c++ which can coexist in the same project.')
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
@@ -58,10 +62,11 @@ def get_statistics_module_functions(project_dir, bitcode_file_path,
 
 
 @ray.remote(num_cpus=1)
-def process_single_project(project_dir, statistics_type):
+def process_single_project(project_dir, statistics_type, language_filter):
   statistics = []
   try:
-    bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
+    bitcode_modules = dataset_corpus.get_bitcode_file_paths(
+        project_dir, language_filter)
   except:
     return []
 
@@ -92,7 +97,8 @@ def collect_statistics(projects_list, statistics_type):
   for project_dir in projects_list:
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
     project_futures.append(
-        process_single_project.remote(full_project_path, statistics_type))
+        process_single_project.remote(full_project_path, statistics_type,
+                                      FLAGS.language_filter))
     if len(project_futures) >= FLAGS.max_projects:
       break
 

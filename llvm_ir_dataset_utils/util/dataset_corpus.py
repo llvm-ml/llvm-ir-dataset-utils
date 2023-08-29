@@ -33,12 +33,35 @@ def load_json_from_corpus(corpus_path, file_name):
   return json.loads(file_contents)
 
 
-def get_bitcode_file_paths(corpus_path):
-  # TODO(boomanaiden154): This (and probably other parts) don't support meta
-  # corpora like what we get from the rust builder. This needs to be addressed.
+def get_bitcode_file_paths(corpus_path, filter='none'):
   corpus_description = load_json_from_corpus(corpus_path,
                                              './corpus_description.json')
-  return ['./' + module + '.bc' for module in corpus_description['modules']]
+  if filter == 'none':
+    return ['./' + module + '.bc' for module in corpus_description['modules']]
+  else:
+    # We're assuming here that if a corpus description has a global
+    # command override section that we don't have individual compilation
+    # command sections.
+    if "global_command_override" in corpus_description:
+      return ValueError("Bitcode modules don't have .llvmcmd section.")
+
+  modules_matching_filter = []
+
+  for module in corpus_description['modules']:
+    command_line_path = './' + module + '.cmd'
+    command_line = load_file_from_corpus(corpus_path,
+                                         command_line_path).decode('utf-8')
+    # This is a very hacky heuristic, mostly based on how many include paths
+    # the driver tries to add to the frontend command line. Might need to be
+    # fixed in the future for portability.
+    if filter == 'cpp' and command_line.count('c++') >= 4:
+      modules_matching_filter.append('./' + module + '.bc')
+    elif filter == 'c' and command_line.count('c++') <= 1:
+      modules_matching_filter.append('./' + module + '.bc')
+    else:
+      raise ValueError('Invalid filter')
+
+  return modules_matching_filter
 
 
 def get_corpus_name(corpus_path):
