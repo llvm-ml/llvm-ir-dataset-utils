@@ -418,8 +418,8 @@ def get_defined_function_names(bitcode_module):
 
 def get_function_hashes(bitcode_module):
   opt_hashing_vector = [
-      'opt', '-passes=forceattrs,print<structural-hash>', '-disable-output',
-      '-', '-force-remove-attribute=optnone'
+      'opt', '-passes=forceattrs,print<structural-hash><detailed>',
+      '-disable-output', '-', '-force-remove-attribute=optnone'
   ]
   with subprocess.Popen(
       opt_hashing_vector,
