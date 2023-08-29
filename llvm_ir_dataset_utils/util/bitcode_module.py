@@ -159,6 +159,8 @@ def get_function_properties(bitcode_function_path,
   output_lines = opt_process.stdout.split('\n')[1:-2]
   for output_line in output_lines:
     line_parts = output_line.split(': ')
+    if len(line_parts) < 2:
+      return ('invalid opt output', None)
     properties_dict[line_parts[0]] = [line_parts[1]]
   return (None, properties_dict)
 
