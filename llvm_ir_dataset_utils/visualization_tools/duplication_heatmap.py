@@ -16,6 +16,9 @@ flags.DEFINE_multi_string(
     'hash_file', None,
     'A CSV file containing a header and a list of function hashes.')
 flags.DEFINE_string('output_file', None, 'The path to the output image.')
+flags.DEFINE_enum('hash_key', 'function_hashes',
+                  ['function_hashes', 'module_hashes'],
+                  'The column name in the CSV containing the hashes.')
 
 flags.mark_flag_as_required('hash_file')
 flags.mark_flag_as_required('output_file')
@@ -26,7 +29,7 @@ def load_haash_histogram_from_file(file_path):
   with open(file_path) as hash_file:
     reader = csv.DictReader(hash_file)
     for row in reader:
-      hash_value = row['function_hashes']
+      hash_value = row[FLAGS.hash_key]
       if hash_value in hash_histogram:
         hash_histogram[hash_value] += 1
       else:
