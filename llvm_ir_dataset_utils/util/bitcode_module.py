@@ -13,9 +13,11 @@ from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import pass_list_constants
 from llvm_ir_dataset_utils.util import parallel
 
-BITCODE_FILE_CHUNK_SIZE = 256
+BITCODE_FILE_CHUNK_SIZE = 16
 
 OPT_TIMEOUT_SECONDS = 60
+FASTBPE_TIMEOUT_SECONDS = 180
+LLVM_DIS_TIMEOUT_SECONDS = 180
 
 
 def get_function_symbols(bitcode_module):
@@ -326,7 +328,8 @@ def get_textual_ir(bitcode_module):
       stdin=subprocess.PIPE) as dis_process:
     try:
       output = dis_process.communicate(
-          input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
+          input=bitcode_module,
+          timeout=LLVM_DIS_TIMEOUT_SECONDS)[0].decode('utf-8')
     except subprocess.TimeoutExpired:
       return ('timeout', None)
     if dis_process.returncode != 0:
@@ -351,8 +354,12 @@ def get_token_count(bitcode_module, vocab_path):
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT,
       stdin=subprocess.PIPE) as fast_process:
-    output = fast_process.communicate(
-        input=textual_ir_or_error[1].encode('utf-8'))[0].decode('utf-8')
+    try:
+      output = fast_process.communicate(
+          input=textual_ir_or_error[1].encode('utf-8'),
+          timeout=FASTBPE_TIMEOUT_SECONDS)[0].decode('utf-8')
+    except subprocess.TimeoutExpired:
+      return ('fastbpe timeout expired', None)
     return (None, output.count('@@'))
 
 
