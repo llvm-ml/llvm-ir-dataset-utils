@@ -19,7 +19,7 @@ MODULE_STATISTICS_TYPES = [
     'parsing', 'module_size', 'module_size_text', 'get_lowered_size',
     'get_opt_lowered_size', 'call_names', 'function_hashes',
     'module_properties', 'module_hashes', 'module_instruction_distribution',
-    'defined_function_names'
+    'defined_function_names', 'token_count'
 ]
 
 FUNCTION_STATISTICS_TYPES = [
@@ -44,6 +44,10 @@ flags.DEFINE_enum(
     'language_filter', 'none', ['c', 'cpp', 'none'], 'Specify a '
     'language to filter for. This is mostly aimed at filtering '
     'for c/c++ which can coexist in the same project.')
+flags.DEFINE_string(
+    'vocab_path', None, 'The path to the vocab '
+    'file for doing BPE tokenization. Only used for the '
+    'token_count module statistics.')
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
@@ -62,7 +66,8 @@ def get_statistics_module_functions(project_dir, bitcode_file_path,
 
 
 @ray.remote(num_cpus=1)
-def process_single_project(project_dir, statistics_type, language_filter):
+def process_single_project(project_dir, statistics_type, language_filter,
+                           extra_properties):
   statistics = []
   try:
     bitcode_modules = dataset_corpus.get_bitcode_file_paths(
@@ -78,7 +83,7 @@ def process_single_project(project_dir, statistics_type, language_filter):
     for batch in batches:
       module_futures.append(
           bitcode_module.get_module_statistics_batch.remote(
-              project_dir, batch, statistics_type))
+              project_dir, batch, statistics_type, extra_properties))
   else:
     for bitcode_file_path in bitcode_modules:
       module_futures.append(
@@ -96,9 +101,10 @@ def collect_statistics(projects_list, statistics_type):
 
   for project_dir in projects_list:
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
+    extra_properties = {'bpe_vocab_path': FLAGS.vocab_path}
     project_futures.append(
         process_single_project.remote(full_project_path, statistics_type,
-                                      FLAGS.language_filter))
+                                      FLAGS.language_filter, extra_properties))
     if len(project_futures) >= FLAGS.max_projects:
       break
 

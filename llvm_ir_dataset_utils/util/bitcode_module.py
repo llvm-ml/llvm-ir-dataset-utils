@@ -341,6 +341,21 @@ def get_size_text(bitcode_module):
   return (None, {'size': [len(textual_ir_or_error[1])]})
 
 
+def get_token_count(bitcode_module, vocab_path):
+  textual_ir_or_error = get_textual_ir(bitcode_module)
+  if textual_ir_or_error[0]:
+    return (textual_ir_or_error[0], None)
+  fast_command_vector = ['fast', 'applybpe_stream', vocab_path]
+  with subprocess.Popen(
+      fast_command_vector,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      stdin=subprocess.PIPE) as fast_process:
+    output = fast_process.communicate(
+        input=textual_ir_or_error[1].encode('utf-8'))[0].decode('utf-8')
+    return (None, output.count('@@'))
+
+
 def get_lowered_size(bitcode_module):
   # Run llc on the bitcode to lower to assembly
   llc_command_vector = ['llc', '-filetype=obj', '-']
@@ -457,7 +472,10 @@ def get_function_hashes(bitcode_module):
 
 
 @ray.remote(num_cpus=1)
-def get_module_statistics_batch(project_dir, module_paths, statistics_type):
+def get_module_statistics_batch(project_dir,
+                                module_paths,
+                                statistics_type,
+                                extra_properties={}):
   statistics = []
   for relative_module_path in module_paths:
     bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
@@ -526,6 +544,14 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
         for defined_function_name in function_names_or_error[1]:
           function_name_wrapped = {'defined_function': [defined_function_name]}
           statistics.append((None, function_name_wrapped, module_path))
+    elif statistics_type == 'token_count':
+      token_count_or_error = get_token_count(bitcode_file,
+                                             extra_properties['bpe_vocab_path'])
+      if token_count_or_error[0]:
+        statistics.append((token_count_or_error[0], None, module_path))
+      else:
+        token_count_wrapped = {'token_count': [token_count_or_error[1]]}
+        statistics.append((None, token_count_wrapped, module_path))
   return statistics
 
 
