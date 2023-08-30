@@ -25,18 +25,6 @@ flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file')
 
 
-# TODO(boomanaiden154): Could probably be unified with part of the get_size_text
-# implementation in bitcode_module.py
-def get_textual_ir(bitcode_module):
-  dis_command_vector = ['llvm-dis', '-']
-  with subprocess.Popen(
-      dis_command_vector,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
-      stdin=subprocess.PIPE) as dis_process:
-    return dis_process.communicate(input=bitcode_module)[0].decode('utf-8')
-
-
 def process_single_project(project_dir):
   all_textual_ir = ''
   try:
@@ -44,10 +32,12 @@ def process_single_project(project_dir):
   except:
     return ''
   for bitcode_path in bitcode_paths:
-    bitcode_module = dataset_corpus.load_file_from_corpus(
+    bitcode_file_data = dataset_corpus.load_file_from_corpus(
         project_dir, bitcode_path)
-    textual_ir = get_textual_ir(bitcode_module)
-    all_textual_ir += textual_ir
+    textual_ir_or_error = bitcode_module.get_textual_ir(bitcode_file_data)
+    if textual_ir_or_error[0]:
+      continue
+    all_textual_ir += textual_ir_or_error[1]
   return all_textual_ir
 
 

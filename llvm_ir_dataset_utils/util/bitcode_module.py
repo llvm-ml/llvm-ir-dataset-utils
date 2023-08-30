@@ -317,7 +317,7 @@ def get_size(bitcode_module):
   return (None, {'size': [len(bitcode_module)]})
 
 
-def get_size_text(bitcode_module):
+def get_textual_ir(bitcode_module):
   dis_command_vector = ['llvm-dis', '-']
   with subprocess.Popen(
       dis_command_vector,
@@ -331,7 +331,14 @@ def get_size_text(bitcode_module):
       return ('timeout', None)
     if dis_process.returncode != 0:
       return ('llvm-dis returned code other than 0', None)
-    return (None, {'size': [len(output)]})
+    return (None, output)
+
+
+def get_size_text(bitcode_module):
+  textual_ir_or_error = get_textual_ir(bitcode_module)
+  if textual_ir_or_error[0]:
+    return (textual_ir_or_error[0], None)
+  return (None, {'size': [len(textual_ir_or_error[1])]})
 
 
 def get_lowered_size(bitcode_module):
@@ -465,7 +472,7 @@ def get_module_statistics_batch(project_dir, module_paths, statistics_type):
     elif statistics_type == 'module_size':
       statistics.append((None, get_size(bitcode_file)[1], module_path))
     elif statistics_type == 'module_size_text':
-      text_size_or_error = get_size_text(bitcode_file)[1]
+      text_size_or_error = get_size_text(bitcode_file)
       if text_size_or_error[0]:
         statistics.append((text_size_or_error[0], None, module_path))
       else:
