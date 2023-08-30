@@ -148,6 +148,11 @@ def collect_statistics(projects_list, statistics_type):
 def main(_):
   ray.init()
 
+  # Perform some basic input validation
+  if FLAGS.type == 'token_count' and FLAGS.vocab_path is None:
+    logging.fatal('A vocab path must be specified when gathering token counts.')
+    sys.exit(1)
+
   projects = os.listdir(FLAGS.corpus_dir)
 
   collect_statistics(projects, FLAGS.type)
