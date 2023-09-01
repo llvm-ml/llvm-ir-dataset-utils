@@ -49,6 +49,12 @@ You'll then receive a set of `.bc` files in `/path/to/store/dataset/to/corpus/tr
 llvm-dis *.bc
 ```
 
+> Last steps into the dataloader to be described here.
+
+## Corpus Description
+
+> Basics of the corpus description to be outlined here to easily enable someone to point the package at a new source.
+
 ## IR Sources
 
 The package contains a number of builders to target the LLVM-based languages, and extract IR. The current status of builders for individual sources is as follows:
