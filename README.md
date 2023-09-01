@@ -60,5 +60,5 @@ The package contains a number of builders to target the LLVM-based languages, an
 - [x] Cmake
 - [x] Julia packages
 - [x] Swift packages
-- [ ] Haskell packages
+- ~~[ ] Haskell packages~~ (deferred to a later version of the package)
 - [ ] Python packages (numba)
