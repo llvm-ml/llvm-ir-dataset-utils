@@ -1,4 +1,5 @@
 __pycache__
+llvm_ir_dataset_utils.egg-info/
 *.crt
 *.tar.gz
 *.tar
