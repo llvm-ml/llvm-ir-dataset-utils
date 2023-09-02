@@ -30,16 +30,21 @@ flags.mark_flag_as_required('output_path')
 
 
 def load_module_hashes(file_path):
+  logging.info(f'Loading data from {file_path}')
   module_hash_map = {}
+  all_modules_count = 0
   with open(file_path) as module_hashes_file:
     module_hash_reader = csv.DictReader(module_hashes_file)
     for module_hash_entry in module_hash_reader:
+      all_modules_count += 1
       module_hash = module_hash_entry['module_hashes']
       file_path = module_hash_entry['name']
       # Skip empty modules which get hashes to the default value of 4
       if module_hash == '4':
         continue
       module_hash_map[module_hash] = file_path
+  logging.info(f'Read {all_modules_count} modules.')
+  logging.info(f'Found {len(module_hash_map)} unique modules.')
   return module_hash_map
 
 
