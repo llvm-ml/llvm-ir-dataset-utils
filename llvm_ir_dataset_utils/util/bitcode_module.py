@@ -468,14 +468,24 @@ def get_function_hashes(bitcode_module):
       return ('opt did not exit with code 0', None, None)
     function_hashes = {}
     output_lines = opt_output.split('\n')
-    first_line_parts = output_lines[0].split()
-    module_hash = first_line_parts[2]
-    for output_line in output_lines[1:-1]:
+
+    start_line_index = 0
+    while start_line_index < len(output_lines):
+      if output_lines[start_line_index].startswith("Module Hash:"):
+        break
+      start_line_index += 1
+
+    if start_line_index == output_lines:
+      return ('invalid output from opt - did not find module hash line.', None)
+
+    module_hash_line_parts = output_lines[start_line_index].split()
+    module_hash = module_hash_line_parts[2]
+    for output_line in output_lines[(start_line_index + 1):-1]:
       output_line_parts = output_line.split()
-      if len(output_line_parts) != 4:
+      if len(output_line_parts) < 4:
         return ('invalid output from opt', None)
-      function_name = output_line_parts[1]
-      function_hash = output_line_parts[3]
+      function_name = output_line_parts[-3]
+      function_hash = output_line_parts[-1]
       function_hashes[function_name] = function_hash
     return (None, function_hashes, module_hash)
 
