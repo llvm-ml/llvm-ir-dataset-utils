@@ -17,8 +17,8 @@ from llvm_ir_dataset_utils.util import parallel
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('module_hash_list', None,
-                    'A list of module hashes to pull from.')
+flags.DEFINE_multi_string('module_hash_list', None,
+                          'A list of module hashes to pull from.')
 flags.DEFINE_string(
     'output_path', None,
     'The output path to place all the deduplicated modules into.')
@@ -98,7 +98,11 @@ def extract_files_from_hash_map(module_hash_map, output_path):
 def main(_):
   ray.init()
 
-  module_hash_map = load_module_hashes(FLAGS.module_hash_list)
+  module_hash_map = {}
+
+  for module_hash_list_path in FLAGS.module_hash_list:
+    module_hash_map.update(load_module_hashes(module_hash_list_path))
+
   extract_files_from_hash_map(module_hash_map, FLAGS.output_path)
 
 
