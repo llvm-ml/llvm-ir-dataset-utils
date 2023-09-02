@@ -5,6 +5,7 @@ import os
 import logging
 import csv
 import shutil
+import json
 
 from absl import flags
 from absl import app
@@ -42,6 +43,16 @@ def load_module_hashes(file_path):
   return module_hash_map
 
 
+def create_manifest(file_path, modules_list):
+  corpus_description = {'has_thinlto': False, 'modules': []}
+  for module_tuple in modules_list:
+    # Omit the .bc file extension because it gets added on by different
+    # tooling.
+    corpus_description['modules'].append(f'{module_tuple[1]}')
+  with open(file_path, 'w') as corpus_description_file:
+    json.dump(corpus_description, corpus_description_file, indent=2)
+
+
 @ray.remote(num_cpus=1)
 def process_module_batch(batch_path, modules_to_process):
   os.mkdir(batch_path)
@@ -54,6 +65,8 @@ def process_module_batch(batch_path, modules_to_process):
     with open(os.path.join(batch_path, f'{module_hash}.bc'),
               'wb') as bitcode_file_handle:
       bitcode_file_handle.write(bitcode_file)
+  create_manifest(
+      os.path.join(batch_path, 'corpus_description.json'), modules_to_process)
   shutil.make_archive(batch_path, 'tar', batch_path)
   shutil.rmtree(batch_path)
 
