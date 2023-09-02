@@ -462,6 +462,8 @@ def get_function_hashes(bitcode_module):
           input=bitcode_module, timeout=OPT_TIMEOUT_SECONDS)[0].decode('utf-8')
     except subprocess.TimeoutExpired:
       return ('timeout', None, None)
+    except UnicodeDecodeError:
+      return ('unicode error, opt returned invalid output', None, None)
     if opt_process.returncode != 0:
       return ('opt did not exit with code 0', None, None)
     function_hashes = {}
