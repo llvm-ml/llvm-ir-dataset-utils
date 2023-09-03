@@ -68,3 +68,17 @@ def get_corpus_name(corpus_path):
   if corpus_path[-3:] == 'tar':
     return os.path.basename(corpus_path)[:-4]
   return os.path.basename(corpus_path)
+
+
+def is_file_in_corpus(corpus_path, file_to_test):
+  if corpus_path[-3:] == 'tar':
+    with tarfile.open(corpus_path) as corpus_archive:
+      if file_to_test in corpus_archive.getnames():
+        return True
+      else:
+        return False
+  else:
+    if os.path.exists(os.path.join(corpus_path, file_to_test)):
+      return True
+    else:
+      return False

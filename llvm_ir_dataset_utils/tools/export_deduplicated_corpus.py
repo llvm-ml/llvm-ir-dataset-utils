@@ -70,6 +70,19 @@ def process_module_batch(batch_path, modules_to_process):
     with open(os.path.join(batch_path, f'{module_hash}.bc'),
               'wb') as bitcode_file_handle:
       bitcode_file_handle.write(bitcode_file)
+    # Process the .cmd file
+    command_line_file_path = file_path_parts[1][:-3] + '.cmd'
+    command_line_data = ''
+    if dataset_corpus.is_file_in_corpus(file_path_parts[0],
+                                        command_line_file_path):
+      command_line_data = dataset_corpus.load_file_from_corpus(
+          file_path_parts[0], command_line_file_path).decode('utf-8')
+    else:
+      command_line_data = ''
+    with open(os.path.join(batch_path, f'{module_hash}.cmd'),
+              'w') as command_line_file_handle:
+      command_line_file_handle.write(command_line_data)
+
   create_manifest(
       os.path.join(batch_path, 'corpus_description.json'), modules_to_process)
   shutil.make_archive(batch_path, 'tar', batch_path)
