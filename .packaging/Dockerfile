@@ -193,7 +193,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   x11-xkb-utils \
   libx11-xcb-dev \
   libxkbcommon-x11-dev \
-  generate-ninja
+  generate-ninja \
+  cbindgen \
+  nasm \
+  libdbus-glib-1-dev
 
 # Setup a custom certificate/SSL settings depending upon build arguments
 # Include README.md here so that the build doesn't fail if there is no custom
