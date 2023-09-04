@@ -109,12 +109,8 @@ def parse_and_build_from_description(corpus_description,
                                             corpus_dir)
     cmake_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "manual":
-    if 'environment_variables' in corpus_description:
-      environment_variables = corpus_description['environment_variables']
-    else:
-      environment_variables = {}
     build_log = manual_builder.perform_build(corpus_description["commands"],
-                                             build_dir, threads, corpus_dir, environment_variables)
+                                             build_dir, threads, corpus_dir)
     manual_builder.extract_ir(build_dir, corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
