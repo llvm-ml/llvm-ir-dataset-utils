@@ -9,12 +9,14 @@ from compiler_opt.tools import extract_ir_lib
 BUILD_LOG_NAME = './build.log'
 
 
-def perform_build(commands_list, build_dir, threads, corpus_dir):
+def perform_build(commands_list, build_dir, threads, corpus_dir, environment_variables):
   command_statuses = []
   build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
   for command in commands_list:
     environment = os.environ.copy()
     environment['JOBS'] = str(threads)
+    for environment_variable in environment_variables:
+      environment[environment_variable] = environment_variables[environment_variable]
     with open(build_log_path, 'w') as build_log_file:
       build_process = subprocess.run(
           command,
