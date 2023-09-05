@@ -5,6 +5,7 @@ import os
 import logging
 import csv
 import shutil
+import pathlib
 import json
 
 from absl import flags
@@ -24,6 +25,10 @@ flags.DEFINE_string(
     'The output path to place all the deduplicated modules into.')
 flags.DEFINE_integer('batch_size', 256,
                      'The number of modules to put in each batch.')
+flags.DEFINE_boolean(
+    'split_by_corpora', True,
+    'Whether or not to put separate corpora (defined by module hash lists) into separate folders.'
+)
 
 flags.mark_flag_as_required('module_hash_list')
 flags.mark_flag_as_required('output_path')
@@ -32,6 +37,7 @@ flags.mark_flag_as_required('output_path')
 def load_module_hashes(file_path):
   logging.info(f'Loading data from {file_path}')
   module_hash_map = {}
+  corpus_name = os.path.splitext(os.path.basename(file_path))[0]
   all_modules_count = 0
   with open(file_path) as module_hashes_file:
     module_hash_reader = csv.DictReader(module_hashes_file)
@@ -42,7 +48,7 @@ def load_module_hashes(file_path):
       # Skip empty modules which get hashes to the default value of 4
       if module_hash == '4':
         continue
-      module_hash_map[module_hash] = file_path
+      module_hash_map[module_hash] = (file_path, corpus_name)
   logging.info(f'Read {all_modules_count} modules.')
   logging.info(f'Found {len(module_hash_map)} unique modules.')
   return module_hash_map
@@ -60,7 +66,7 @@ def create_manifest(file_path, modules_list):
 
 @ray.remote(num_cpus=1)
 def process_module_batch(batch_path, modules_to_process):
-  os.mkdir(batch_path)
+  pathlib.Path(batch_path).mkdir(parents=True)
   for module_path in modules_to_process:
     file_path_full = module_path[0]
     module_hash = module_path[1]
@@ -90,18 +96,45 @@ def process_module_batch(batch_path, modules_to_process):
 
 
 def extract_files_from_hash_map(module_hash_map, output_path):
-  modules_to_process = []
+  modules_to_process = {}
 
   for module_hash in module_hash_map:
-    # format is (path, hash)
-    modules_to_process.append((module_hash_map[module_hash], module_hash))
+    # Each key in the map accesses a tuple with the format(file path, corpus name)
+    # format to use is (path, hash)
+    file_path, corpus_name = module_hash_map[module_hash]
+    if corpus_name in modules_to_process:
+      modules_to_process[corpus_name].append((file_path, module_hash))
+    else:
+      modules_to_process[corpus_name] = [(file_path, module_hash)]
 
-  module_batches = parallel.split_batches(modules_to_process, FLAGS.batch_size)
+  module_batches = []
+
+  for corpus_name in modules_to_process:
+    current_module_batches = parallel.split_batches(
+        modules_to_process[corpus_name], FLAGS.batch_size)
+    output_module_batches = []
+    for current_module_batch in current_module_batches:
+      # Once the issue in the parallel module related to creating empty batches
+      # on boundaries gets fixed, remove this.
+      # TODO(boomanaiden154)
+      if len(current_module_batch) == 0:
+        continue
+      output_module_batch = []
+      for module_info in current_module_batch:
+        file_path, module_hash = module_info
+        output_module_batch.append((file_path, module_hash, corpus_name))
+      output_module_batches.append(output_module_batch)
+    module_batches.extend(output_module_batches)
 
   module_batch_futures = []
 
   for index, module_batch in enumerate(module_batches):
-    batch_path = os.path.join(FLAGS.output_path, f'batch-{index}')
+    if FLAGS.split_by_corpora:
+      corpus_name = module_batch[0][2]
+      batch_path = os.path.join(FLAGS.output_path, corpus_name,
+                                f'batch-{index}')
+    else:
+      batch_path = os.path.join(FLAGS.output_path, f'batch-{index}')
     module_batch_futures.append(
         process_module_batch.remote(batch_path, module_batch))
 
@@ -115,6 +148,8 @@ def extract_files_from_hash_map(module_hash_map, output_path):
 
 def main(_):
   ray.init()
+
+  pathlib.Path(FLAGS.output_path).mkdir(exist_ok=True, parents=True)
 
   module_hash_map = {}
 
