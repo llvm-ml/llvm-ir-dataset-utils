@@ -54,9 +54,9 @@ def get_bitcode_file_paths(corpus_path, filter='none'):
     # This is a very hacky heuristic, mostly based on how many include paths
     # the driver tries to add to the frontend command line. Might need to be
     # fixed in the future for portability.
-    if filter == 'cpp' and command_line.count('c++') >= 4:
+    if filter == 'cpp' and command_line.count('c++') > 1:
       modules_matching_filter.append('./' + module + '.bc')
-    elif filter == 'c' and command_line.count('c++') <= 1:
+    elif filter == 'c':
       modules_matching_filter.append('./' + module + '.bc')
     else:
       raise ValueError('Invalid filter')
