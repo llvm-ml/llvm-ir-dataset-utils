@@ -48,6 +48,10 @@ flags.DEFINE_string(
     'vocab_path', None, 'The path to the vocab '
     'file for doing BPE tokenization. Only used for the '
     'token_count module statistics.')
+flags.DEFINE_string(
+    'project_filter', None,
+    'A filter for projects. If the filter string is present in the project '
+    'name, it is included in the statistics.')
 
 flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_file_path')
@@ -100,6 +104,9 @@ def collect_statistics(projects_list, statistics_type):
   project_futures = []
 
   for project_dir in projects_list:
+    if FLAGS.project_filter:
+      if FLAGS.project_filter not in project_dir:
+        continue
     full_project_path = os.path.join(FLAGS.corpus_dir, project_dir)
     extra_properties = {'bpe_vocab_path': FLAGS.vocab_path}
     project_futures.append(
