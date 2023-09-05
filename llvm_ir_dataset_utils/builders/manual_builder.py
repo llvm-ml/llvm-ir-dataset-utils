@@ -5,6 +5,7 @@ import subprocess
 import os
 
 from compiler_opt.tools import extract_ir_lib
+from compiler_opt.tools import make_corpus_lib
 
 BUILD_LOG_NAME = './build.log'
 
@@ -49,3 +50,9 @@ def extract_ir(build_dir, corpus_dir, threads):
                                                         None, ".llvmcmd",
                                                         ".llvmbc")
   extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
+
+def extract_raw_ir(build_dir, corpus_dir, threads):
+  relative_paths = make_corpus_lib.load_bitcode_from_directory(build_dir)
+  make_corpus_lib.copy_bitcode(relative_paths, build_dir, corpus_dir)
+  make_corpus_lib.write_corpus_manifest(relative_paths, corpus_dir, '')
+

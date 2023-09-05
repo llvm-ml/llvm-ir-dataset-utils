@@ -117,6 +117,10 @@ def parse_and_build_from_description(corpus_description,
                                              build_dir, threads, corpus_dir,
                                              environment_variables)
     manual_builder.extract_ir(build_dir, corpus_dir, threads)
+    if 'raw_bc_corpus' in corpus_description:
+      bc_corpus_dir = f'{corpus_dir}-{corpus_description["raw_bc_corpus"]}'
+      os.makedirs(bc_corpus_dir)
+      manual_builder.extract_raw_ir(build_dir, bc_corpus_dir, threads)
   elif corpus_description["build_system"] == "autoconf":
     configure_command_vector = autoconf_builder.generate_configure_command(
         source_dir, corpus_description["autoconf_flags"])
