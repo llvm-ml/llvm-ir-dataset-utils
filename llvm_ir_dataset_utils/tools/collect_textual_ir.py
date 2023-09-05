@@ -28,7 +28,7 @@ flags.mark_flag_as_required('output_file')
 def process_single_project(project_dir):
   all_textual_ir = ''
   try:
-    bitcode_paths = dataset_corpus.get_bitcode_file_paths(project_dir, 'none')
+    bitcode_paths = dataset_corpus.get_bitcode_file_paths(project_dir)
   except:
     return ''
   for bitcode_path in bitcode_paths:

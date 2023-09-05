@@ -74,8 +74,7 @@ def process_single_project(project_dir, statistics_type, language_filter,
                            extra_properties):
   statistics = []
   try:
-    bitcode_modules = dataset_corpus.get_bitcode_file_paths(
-        project_dir, language_filter)
+    bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
   except:
     return []
 
@@ -87,7 +86,8 @@ def process_single_project(project_dir, statistics_type, language_filter,
     for batch in batches:
       module_futures.append(
           bitcode_module.get_module_statistics_batch.remote(
-              project_dir, batch, statistics_type, extra_properties))
+              project_dir, batch, statistics_type, language_filter,
+              extra_properties))
   else:
     for bitcode_file_path in bitcode_modules:
       module_futures.append(

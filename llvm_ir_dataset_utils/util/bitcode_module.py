@@ -494,11 +494,23 @@ def get_function_hashes(bitcode_module):
 def get_module_statistics_batch(project_dir,
                                 module_paths,
                                 statistics_type,
+                                filter='none',
                                 extra_properties={}):
   statistics = []
   for relative_module_path in module_paths:
     bitcode_file = dataset_corpus.load_file_from_corpus(project_dir,
                                                         relative_module_path)
+    command_line_path = os.path.splitext(relative_module_path)[0] + '.cmd'
+    command_line = dataset_corpus.load_file_from_corpus(
+        project_dir, command_line_path).decode('utf-8')
+    # This is a very hacky heuristic, mostly based on how many include paths
+    # the driver tries to add to the frontend command line. Might need to be
+    # fixed in the future for portability.
+    if filter == 'cpp' and command_line.count('c++') <= 1:
+      continue
+    elif filter == 'c' and command_line.count('c++') > 1:
+      continue
+
     module_path = f'{project_dir}:{relative_module_path}'
     if statistics_type == 'parsing':
       parse_result = test_parsing(bitcode_file)
