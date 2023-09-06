@@ -1,7 +1,6 @@
 """A tool for counting tokens from gathered statistics CSV files."""
 
 import logging
-import os
 import csv
 
 from absl import app
@@ -12,6 +11,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_multi_string(
     'stats_path', None,
     'The path to a statistics file containing a token count.')
+flags.DEFINE_string('key', 'token_count', 'The column in the CSV to sum over.')
 
 
 def count_tokens_from_file(file_path):
@@ -19,7 +19,7 @@ def count_tokens_from_file(file_path):
   with open(file_path) as token_count_file:
     token_count_reader = csv.DictReader(token_count_file)
     for token_count_entry in token_count_reader:
-      token_count += int(token_count_entry['token_count'])
+      token_count += int(token_count_entry[FLAGS.key])
   return token_count
 
 
