@@ -8,6 +8,7 @@ import csv
 
 import pandas
 import plotly.express
+import plotly.io
 
 from absl import app
 from absl import flags
@@ -41,6 +42,7 @@ def main(_):
   distributions = {}
   instruction_names = []
   for bc_dist_file_path in FLAGS.bc_dist_file:
+    logging.info(f'Loading data from {bc_dist_file_path}')
     language_name = os.path.basename(bc_dist_file_path)[:-4]
     distribution = compute_cumulative_histogram_from_file(bc_dist_file_path)
     instruction_names = list(set(instruction_names + list(distribution.keys())))
@@ -72,13 +74,25 @@ def main(_):
       instruction_counts.append(distributions[language_name][instruction])
 
   data_frame = pandas.DataFrame({
-      'language': language_names,
-      'instruction': instructions,
-      'count': instruction_counts
+      'Language': language_names,
+      'Instruction': instructions,
+      'Count': instruction_counts
   })
 
+  processed_dataframe = data_frame.sort_values(by=['Count'], ascending=False)
+
+  logging.info('Generating figure.')
+
   figure = plotly.express.bar(
-      data_frame, x='language', y='count', color='instruction')
+      processed_dataframe,
+      x='Language',
+      y='Count',
+      color='Instruction',
+      color_discrete_sequence=plotly.express.colors.qualitative.Alphabet_r)
+
+  logging.info('Writing figure to file.')
+
+  plotly.io.kaleido.scope.mathjax = None
 
   figure.write_image(FLAGS.output_file)
 
