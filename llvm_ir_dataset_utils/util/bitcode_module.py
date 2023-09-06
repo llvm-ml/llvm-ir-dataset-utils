@@ -348,16 +348,22 @@ def get_token_count(bitcode_module, vocab_path):
   textual_ir_or_error = get_textual_ir(bitcode_module)
   if textual_ir_or_error[0]:
     return (textual_ir_or_error[0], None)
-  fast_command_vector = ['fast', 'applybpe_stream', vocab_path]
-  with subprocess.Popen(
-      fast_command_vector,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
-      stdin=subprocess.PIPE) as fast_process:
+  with tempfile.NamedTemporaryFile(
+  ) as textual_ir_file, tempfile.NamedTemporaryFile() as tokenized_file:
+    textual_ir_file.write(textual_ir_or_error[1].encode('utf-8'))
+    fast_command_vector = [
+        'fast', 'applybpe', tokenized_file.name, textual_ir_file.name,
+        vocab_path
+    ]
     try:
-      output = fast_process.communicate(
-          input=textual_ir_or_error[1].encode('utf-8'),
-          timeout=FASTBPE_TIMEOUT_SECONDS)[0].decode('utf-8')
+      fast_process = subprocess.run(
+          fast_command_vector,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.STDOUT,
+          timeout=FASTBPE_TIMEOUT_SECONDS)
+      if fast_process.returncode != 0:
+        return ('fastbpe returned non-zero exit code', None)
+      output = tokenized_file.read().decode('utf-8')
     except subprocess.TimeoutExpired:
       return ('fastbpe timeout expired', None)
     return (None, output.count('@@'))
