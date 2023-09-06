@@ -186,7 +186,16 @@ def get_function_properties_module(bitcode_module):
       return ('timout', None)
     if opt_process.returncode != 0:
       return (stdout.replace('\n', ''), None)
-    output_lines = stdout.split('\n')[1:-2]
+
+    start_index = 0
+    output_lines_raw = stdout.split('\n')[:-2]
+
+    while start_index < len(output_lines_raw):
+      if output_lines_raw[start_index].startswith('Printing'):
+        break
+      start_index += 1
+
+    output_lines = output_lines_raw[start_index:]
     if len(output_lines) == 0:
       return ('no functions found in bitcode file', None)
     for output_line in output_lines:
