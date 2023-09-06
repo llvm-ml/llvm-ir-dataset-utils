@@ -135,7 +135,10 @@ def collect_statistics(projects_list, statistics_type):
       if len(individual_data) != 0:
         data_length = len(next(iter(individual_data.values())))
       individual_data['name'] = [statistic[2]] * data_length
-      fill_value = 0 if 'instruction_distribution' in statistics_type else False
+      if 'instruction_distribution' in statistics_type or 'properties' in statistics_type:
+        fill_value = 0
+      else:
+        fill_value = False
       combined_statistics = bitcode_module.combine_statistics(
           combined_statistics, individual_data, fill_value)
 
