@@ -4,6 +4,7 @@ between languages."""
 import logging
 import os
 import csv
+import sys
 
 import plotly.express
 
@@ -92,4 +93,6 @@ def main(_):
 
 
 if __name__ == '__main__':
+  csv.field_size_limit(sys.maxsize)
+
   app.run(main)
