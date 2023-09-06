@@ -7,6 +7,7 @@ import csv
 import sys
 
 import plotly.express
+import plotly.io
 
 from absl import app
 from absl import flags
@@ -89,6 +90,9 @@ def main(_):
   languages = list(histograms.keys())
   figure = plotly.express.imshow(
       duplication_matrix, text_auto=True, x=languages, y=languages)
+
+  plotly.io.kaleido.scope.mathjax = None
+
   figure.write_image(FLAGS.output_file)
 
 
