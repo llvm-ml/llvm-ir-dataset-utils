@@ -18,7 +18,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_multi_string('data_path', None, 'The path to the data file.')
 flags.DEFINE_string('output_path', None,
                     'The path to a folder to write the histograms to.')
-flags.DEFINE_integer('num_bins', 20,
+flags.DEFINE_integer('num_bins', 12,
                      'The number of bins to use for the histograms.')
 flags.DEFINE_multi_string(
     'sub_plot_sections', None,
@@ -95,10 +95,11 @@ def main(_):
           col=column,
           row=row)
       subplot_figure.update_yaxes(type="log", col=column, row=row)
-      logging.info(f'Finished generating figure for {sub_plot_section}')
+      logging.info(
+          f'Finished generating figure for {sub_plot_section} in {language}')
 
   subplot_figure.update_layout(
-      width=2200, height=1000, barmode='stack', font=dict(size=20))
+      width=2200, height=1000, barmode='group', font=dict(size=30))
   subplot_figure.update_annotations(font_size=40)
 
   logging.info('Writing image to file')
