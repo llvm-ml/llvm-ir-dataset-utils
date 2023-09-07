@@ -33,6 +33,7 @@ def main(_):
   languages = []
 
   for data_path in FLAGS.data_path:
+    logging.info(f'Loading data from {data_path}')
     data_frame = pandas.read_csv(data_path)
     data_frame.drop(['name'], axis=1, inplace=True)
     language_name = os.path.basename(data_path)[:-4]
@@ -41,9 +42,6 @@ def main(_):
     data_frames.append(data_frame)
 
   data_frame = pandas.concat(data_frames)
-
-  for column in data_frame:
-    print(column)
 
   logging.info('Finished loading data, generating histograms.')
 
@@ -69,21 +67,28 @@ def main(_):
     column = (index % 4) + 1
     row = int(index / 4 + 1)
 
-    for language in languages:
+    for language_index, language in enumerate(languages):
       data_frame_subset = data_frame[data_frame['language'] == language]
+      to_show_legend = True if index == 0 else False
       subplot_figure.add_trace(
           plotly.graph_objects.Histogram(
               x=data_frame_subset[sub_plot_section].to_numpy(),
               nbinsx=FLAGS.num_bins,
-              name=language),
+              name=language,
+              marker_color=plotly.colors.qualitative.Plotly[language_index],
+              showlegend=to_show_legend),
           col=column,
           row=row)
       subplot_figure.update_yaxes(type="log", col=column, row=row)
 
-  subplot_figure.update_layout(width=2200, height=1000)
+  subplot_figure.update_layout(
+      width=2200, height=1000, barmode='stack', font=dict(size=30), bargap=0)
+  subplot_figure.update_annotations(font_size=40)
+
+  logging.info('Writing image to file')
 
   subplot_figure.write_image(
-      os.path.join(FLAGS.output_path, 'subplot_figure.png'))
+      os.path.join(FLAGS.output_path, 'subplot_figure.pdf'))
 
 
 if __name__ == '__main__':
