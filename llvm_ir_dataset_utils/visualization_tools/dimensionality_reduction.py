@@ -11,6 +11,7 @@ import umap
 from sklearn.preprocessing import StandardScaler
 
 import plotly.express
+import plotly.io
 
 from absl import app
 from absl import flags
@@ -23,13 +24,9 @@ flags.DEFINE_multi_string(
     'properties_file', None,
     'The path to a file containing a list of functions and their numerical properties.'
 )
-flags.DEFINE_multi_string(
-    'bitcode_distribution_file', None,
-    'The path to a file containing a list of functions and opcode counts.')
 flags.DEFINE_string('output_file', None, 'The path to the output image.')
 
 flags.mark_flag_as_required('properties_file')
-flags.mark_flag_as_required('bitcode_distribution_file')
 flags.mark_flag_as_required('output_file')
 
 
@@ -92,8 +89,6 @@ def main(_):
   # TODO(boomanaiden154): Add in support for adding in opcodes here too.
   # This needs to account for variability in opcodes between languages
   # though. Some functions are already implemented above.
-  #for distribution_file in FLAGS.bitcode_distribution_file:
-  #  add_bitcode_distribution(distribution_file, function_properties)
 
   function_feature_vectors = convert_to_feature_vector(function_properties)
 
@@ -113,6 +108,8 @@ def main(_):
   data_frame.insert(2, "colors", colors)
 
   figure = plotly.express.scatter(data_frame, x='x', y='y', color='colors')
+
+  plotly.io.kaleido.scope.mathjax = None
 
   figure.write_image(FLAGS.output_file)
 
