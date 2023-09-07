@@ -8,6 +8,7 @@ import pandas
 import plotly.express
 import plotly.subplots
 import plotly.graph_objects
+import plotly.io
 
 from absl import app
 from absl import flags
@@ -26,6 +27,17 @@ flags.DEFINE_multi_string(
 
 flags.mark_flag_as_required('data_path')
 flags.mark_flag_as_required('output_path')
+
+FANCY_PROPERTY_NAMES = {
+    'BasicBlockCount': 'Basic Blocks',
+    'TotalInstructionCount': 'Instructions',
+    'TopLevelLoopCount': 'Top-level Loops',
+    'LoadInstCount': 'Load Instructions',
+    'StoreInstCount': 'Store Instructions',
+    'DirectCallCount': 'Direct Calls',
+    'IntegerInstructionCount': 'Integer Instructions',
+    'FloatingPointInstructionCount': 'Floating Point Instructions'
+}
 
 
 def main(_):
@@ -58,10 +70,13 @@ def main(_):
       logging.info(f'Finished generating figure for {column}')
     return
 
-  # TODO(boomanaiden154): More elegant support for multiple languages
-  # with a subplot figure.
-  subplot_figure = fig = plotly.subplots.make_subplots(
-      rows=2, cols=4, subplot_titles=FLAGS.sub_plot_sections)
+  subplot_titles = [
+      FANCY_PROPERTY_NAMES[property_key]
+      for property_key in FLAGS.sub_plot_sections
+  ]
+
+  subplot_figure = plotly.subplots.make_subplots(
+      rows=2, cols=4, subplot_titles=subplot_titles)
 
   for index, sub_plot_section in enumerate(FLAGS.sub_plot_sections):
     column = (index % 4) + 1
@@ -80,12 +95,15 @@ def main(_):
           col=column,
           row=row)
       subplot_figure.update_yaxes(type="log", col=column, row=row)
+      logging.info(f'Finished generating figure for {sub_plot_section}')
 
   subplot_figure.update_layout(
-      width=2200, height=1000, barmode='stack', font=dict(size=30), bargap=0)
+      width=2200, height=1000, barmode='stack', font=dict(size=20))
   subplot_figure.update_annotations(font_size=40)
 
   logging.info('Writing image to file')
+
+  plotly.io.kaleido.scope.mathjax = None
 
   subplot_figure.write_image(
       os.path.join(FLAGS.output_path, 'subplot_figure.pdf'))
