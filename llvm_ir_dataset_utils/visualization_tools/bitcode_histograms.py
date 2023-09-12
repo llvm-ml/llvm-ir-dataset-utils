@@ -17,6 +17,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_multi_string('bc_dist_file', None, 'The path to a data file.')
 flags.DEFINE_string('output_file', None, 'The path to the output image.')
+flags.DEFINE_string(
+    'output_data_file', None,
+    'The path to a CSV file to place the data used to generate the figure.')
 
 flags.mark_flag_as_required('bc_dist_file')
 flags.mark_flag_as_required('output_file')
@@ -79,12 +82,17 @@ def main(_):
       'Count': instruction_counts
   })
 
-  processed_dataframe = data_frame.sort_values(by=['Count'], ascending=False)
+  data_frame.sort_values(by=['Count'], ascending=False, inplace=True)
+
+  if FLAGS.output_data_file:
+    data_frame.pivot(
+        index='Language', columns='Instruction', values='Count').to_csv(
+            FLAGS.output_data_file, index_label='index')
 
   logging.info('Generating figure.')
 
   figure = plotly.express.bar(
-      processed_dataframe,
+      data_frame,
       x='Language',
       y='Count',
       color='Instruction',
