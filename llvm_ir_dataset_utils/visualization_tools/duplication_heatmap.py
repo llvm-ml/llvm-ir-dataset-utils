@@ -21,6 +21,9 @@ flags.DEFINE_string('output_file', None, 'The path to the output image.')
 flags.DEFINE_enum('hash_key', 'function_hashes',
                   ['function_hashes', 'module_hashes'],
                   'The column name in the CSV containing the hashes.')
+flags.DEFINE_string(
+    'output_data_file', None,
+    'The output file to save data in or load data from if it already exists.')
 
 flags.mark_flag_as_required('hash_file')
 flags.mark_flag_as_required('output_file')
@@ -63,7 +66,7 @@ def calculate_duplication(hash_histogram):
   return duplicate_functions / (unique_functions + duplicate_functions)
 
 
-def main(_):
+def load_and_compute():
   histograms = {}
   for hash_file_path in FLAGS.hash_file:
     logging.info(f'Loading data from {hash_file_path}')
@@ -85,9 +88,48 @@ def main(_):
                               histograms[language_name_y]))
     duplication_matrix.append(duplication_matrix_row)
 
+  languages = list(histograms.keys())
+
+  return (languages, duplication_matrix)
+
+
+def write_to_csv(languages, duplication_matrix):
+  with open(FLAGS.output_data_file, 'w') as data_file:
+    data_file_writer = csv.writer(data_file)
+    data_file_writer.writerow(languages)
+
+    for duplication_row in duplication_matrix:
+      data_file_writer.writerow(duplication_row)
+
+
+def read_from_csv():
+  with open(FLAGS.output_data_file) as data_file:
+    data_file_reader = csv.reader(data_file)
+
+    languages = next(data_file_reader)
+
+    duplication_matrix = []
+
+    for duplication_row in data_file_reader:
+      duplication_matrix.append(duplication_row)
+
+    return (languages, duplication_matrix)
+
+
+def main(_):
+  if FLAGS.output_data_file and os.path.exists(FLAGS.output_data_file):
+    logging.info('Loading data from CSV file.')
+    languages, duplication_matrix = read_from_csv()
+  else:
+    logging.info('Loading and computing data from hash files.')
+    languages, duplication_matrix = load_and_compute()
+
+    if FLAGS.output_data_file:
+      logging.info('Saving duplication matrix to CSV file.')
+      write_to_csv(languages, duplication_matrix)
+
   logging.info('Finished generating data, generating figure.')
 
-  languages = list(histograms.keys())
   figure = plotly.express.imshow(
       duplication_matrix, text_auto=True, x=languages, y=languages)
 
