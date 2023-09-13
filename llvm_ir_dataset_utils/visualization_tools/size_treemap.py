@@ -27,18 +27,21 @@ flags.mark_flag_as_required('output_file')
 
 def load_sizes_file(size_file_path):
   other_size = 0
+  total_size = 0
   with open(size_file_path) as size_file:
     name_size_pairs = []
     for line in size_file:
       name_size_pair = line.rstrip().split(',')
       name = name_size_pair[0]
       size = int(name_size_pair[1])
+      total_size += size
       if size < FLAGS.size_threshold:
         other_size += size
         continue
       name_size_pairs.append((name, size))
   # Get the basename of the file without the extension
-  language_name = os.path.basename(size_file_path)[:-4]
+  language_name_base = os.path.basename(size_file_path)[:-4]
+  language_name = f'{language_name_base} ({str(round(total_size / 10 ** 9,0))[:-2]} GB)'
   names = [language_name]
   languages = ['ComPile']
   values = [0]
@@ -50,8 +53,8 @@ def load_sizes_file(size_file_path):
     values.append(size)
     text.append(f'{size_mb_string} MB')
   other_size_gb = str(round(other_size / 10**9, 2))
-  names.append(f'Small {language_name} projects')
-  text.append(f'Small {language_name} projects ({other_size_gb} GB).')
+  names.append(f'Small {language_name_base} projects')
+  text.append(f'Small {language_name_base} projects ({other_size_gb} GB).')
   languages.append(language_name)
   values.append(other_size)
   return (names, languages, values, text)
