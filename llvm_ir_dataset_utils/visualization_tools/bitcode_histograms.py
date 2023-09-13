@@ -24,6 +24,11 @@ flags.DEFINE_string(
 flags.mark_flag_as_required('bc_dist_file')
 flags.mark_flag_as_required('output_file')
 
+OPCODES_TO_ANALYZE = [
+    'Load', 'GetElementPtr', 'Call', 'BitCast', 'Store', 'Alloca', 'Br',
+    'AddrSpaceCast', 'Ret', 'ICmp', 'ExtractValue', 'Invoke'
+]
+
 
 def compute_cumulative_histogram_from_file(file_path):
   histogram = {}
@@ -66,6 +71,20 @@ def main(_):
       distributions[distribution][instruction_name] = distributions[
           distribution][instruction_name] / total_instruction_count
 
+  # Remove all opcodes that aren't in the set that we want.
+  for distribution in distributions:
+    for instruction_name in instruction_names:
+      if instruction_name not in OPCODES_TO_ANALYZE:
+        del distributions[distribution][instruction_name]
+
+  # Add an additional opcodes category so everything sums to one.
+  extra_percentages = {}
+  for distribution in distributions:
+    total_instruction_count = 0
+    for instruction_name in distributions[distribution]:
+      total_instruction_count += distributions[distribution][instruction_name]
+    extra_percentages[distribution] = 1 - total_instruction_count
+
   language_names = []
   instructions = []
   instruction_counts = []
@@ -84,6 +103,17 @@ def main(_):
 
   data_frame.sort_values(by=['Count'], ascending=False, inplace=True)
 
+  extra_percentages_df = pandas.DataFrame({
+      'Language': list(extra_percentages.keys()),
+      'Instruction': [
+          'Other Instructions' for _ in range(0, len(extra_percentages))
+      ],
+      'Count': list(extra_percentages.values())
+  })
+
+  data_frame = pandas.concat([data_frame, extra_percentages_df],
+                             ignore_index=True)
+
   if FLAGS.output_data_file:
     data_frame.pivot(
         index='Language', columns='Instruction', values='Count').to_csv(
@@ -97,6 +127,8 @@ def main(_):
       y='Count',
       color='Instruction',
       color_discrete_sequence=plotly.express.colors.qualitative.Alphabet_r)
+
+  figure.update_layout(legend_traceorder="reversed")
 
   logging.info('Writing figure to file.')
 
