@@ -16,6 +16,9 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_multi_string('bc_dist_file', None, 'The path to a data file.')
+flags.DEFINE_multi_string(
+    'opt_bc_dist_file', None,
+    'The path to a data file containing data gathered post-optimization.')
 flags.DEFINE_string('output_file', None, 'The path to the output image.')
 flags.DEFINE_string(
     'output_data_file', None,
@@ -49,9 +52,11 @@ def compute_cumulative_histogram_from_file(file_path):
 def main(_):
   distributions = {}
   instruction_names = []
-  for bc_dist_file_path in FLAGS.bc_dist_file:
+  for bc_dist_file_path in FLAGS.bc_dist_file + FLAGS.opt_bc_dist_file:
     logging.info(f'Loading data from {bc_dist_file_path}')
     language_name = os.path.basename(bc_dist_file_path)[:-4]
+    if bc_dist_file_path in FLAGS.opt_bc_dist_file:
+      language_name += ' (Optimized)'
     distribution = compute_cumulative_histogram_from_file(bc_dist_file_path)
     instruction_names = list(set(instruction_names + list(distribution.keys())))
     distributions[language_name] = distribution
