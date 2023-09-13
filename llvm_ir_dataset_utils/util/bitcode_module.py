@@ -462,9 +462,12 @@ def get_defined_function_names(bitcode_module):
     return (None, stdout.split('\n')[:-1])
 
 
-def get_function_hashes(bitcode_module):
+def get_function_hashes(bitcode_module, additional_passes=''):
+  if additional_passes != '':
+    additional_passes = additional_passes + ','
   opt_hashing_vector = [
-      'opt', '-passes=forceattrs,print<structural-hash><detailed>',
+      'opt',
+      f'-passes={additional_passes}forceattrs,print<structural-hash><detailed>',
       '-disable-output', '-', '-force-remove-attribute=optnone'
   ]
   with subprocess.Popen(
@@ -553,8 +556,10 @@ def get_module_statistics_batch(project_dir,
       for call_name in get_call_names(bitcode_file):
         call_names_wrapped = {'call_names': [call_name]}
         statistics.append((None, call_names_wrapped, module_path))
-    elif statistics_type == 'function_hashes':
-      function_hashes_or_error = get_function_hashes(bitcode_file)
+    elif statistics_type == 'function_hashes' or statistics_type == 'post_O3_function_hashes':
+      additional_passes = '' if statistics_type == 'function_hashes' else 'default<O3>'
+      function_hashes_or_error = get_function_hashes(bitcode_file,
+                                                     additional_passes)
       if function_hashes_or_error[0]:
         statistics.append((function_hashes_or_error[0], None, module_path))
         continue
