@@ -101,7 +101,8 @@ def main(_):
       'Count': instruction_counts
   })
 
-  data_frame.sort_values(by=['Count'], ascending=False, inplace=True)
+  data_frame.sort_values(
+      by=['Language', 'Count'], ascending=[True, False], inplace=True)
 
   extra_percentages_df = pandas.DataFrame({
       'Language': list(extra_percentages.keys()),
