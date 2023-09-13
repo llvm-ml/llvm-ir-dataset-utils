@@ -1,6 +1,5 @@
 """Visualization tool for generating a treemap of size information."""
 
-import logging
 import os
 
 import pandas
@@ -9,8 +8,6 @@ import plotly.express
 
 from absl import flags
 from absl import app
-
-import ray
 
 FLAGS = flags.FLAGS
 
@@ -43,28 +40,35 @@ def load_sizes_file(size_file_path):
   # Get the basename of the file without the extension
   language_name = os.path.basename(size_file_path)[:-4]
   names = [language_name]
-  languages = ['']
+  languages = ['ComPile']
   values = [0]
+  text = ['']
   for name, size in name_size_pairs:
-    names.append(name)
+    size_mb_string = str(round(size / 10**6, 0))[:-2]
+    names.append(name + size_mb_string)
     languages.append(language_name)
     values.append(size)
-  names.append(f'Small {language_name} projects.')
+    text.append(f'{size_mb_string} MB')
+  other_size_gb = str(round(other_size / 10**9, 2))
+  names.append(f'Small {language_name} projects')
+  text.append(f'Small {language_name} projects ({other_size_gb} GB).')
   languages.append(language_name)
   values.append(other_size)
-  return (names, languages, values)
+  return (names, languages, values, text)
 
 
 def main(_):
-  names = []
-  languages = []
-  sizes = []
+  names = ['ComPile']
+  languages = ['']
+  sizes = [0]
+  text = ['']
 
   for size_file in FLAGS.size_file:
-    new_names, new_languages, new_sizes = load_sizes_file(size_file)
+    new_names, new_languages, new_sizes, new_text = load_sizes_file(size_file)
     names.extend(new_names)
     languages.extend(new_languages)
     sizes.extend(new_sizes)
+    text.extend(new_text)
 
   data_frame = pandas.DataFrame(
       list(zip(names, languages, sizes)),
@@ -79,6 +83,9 @@ def main(_):
       color_continuous_scale='Aggrnyl',
       width=1100,
       height=550)
+
+  figure.data[0].text = text
+  figure.data[0].textinfo = 'text'
 
   figure.update_layout(margin=dict(l=20, r=20, t=20, b=20),)
 
