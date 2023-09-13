@@ -213,9 +213,14 @@ def get_function_properties_module(bitcode_module):
     return (None, properties_dict)
 
 
-def get_instruction_histogram(bitcode_module):
+def get_instruction_histogram(bitcode_module, additional_passes=''):
+  if additional_passes != '':
+    additional_passes += ','
   instruction_histogram = {}
-  opt_command_vector = ['opt', '-disable-output', '-passes=instcount', '-stats']
+  opt_command_vector = [
+      'opt', '-disable-output', f'-passes={additional_passes}instcount',
+      '-stats'
+  ]
   with subprocess.Popen(
       opt_command_vector,
       stdout=subprocess.PIPE,
@@ -231,12 +236,12 @@ def get_instruction_histogram(bitcode_module):
     output_lines = output.split('\n')
     # Skip the first five lines as they contain the stats header
     for output_line in output_lines[5:-2]:
+      if 'instcount' not in output_line:
+        continue
       output_line_parts = output_line.split()
       if len(output_line_parts) < 7:
         return ('opt returned invalid output', None)
       # Statistics line format is <count> <stat type> - number of <inst name>
-      if output_line_parts[1] == 'bitcode-reader':
-        continue
       # This check skips all non instruction statistics also collected by the pass.
       if output_line_parts[6] != 'insts':
         continue
@@ -581,8 +586,10 @@ def get_module_statistics_batch(project_dir,
         statistics.append((properties_tuple[0], None, module_path))
       else:
         statistics.append((None, properties_tuple[1], module_path))
-    elif statistics_type == 'module_instruction_distribution':
-      instruction_hist_or_error = get_instruction_histogram(bitcode_file)
+    elif statistics_type == 'module_instruction_distribution' or statistics_type == 'module_instruction_distribution_O3':
+      additional_passes = '' if statistics_type == 'module_instruction_distribution' else 'default<O3>'
+      instruction_hist_or_error = get_instruction_histogram(
+          bitcode_file, additional_passes)
       if instruction_hist_or_error[0]:
         statistics.append((instruction_hist_or_error[0], None, module_path))
       else:

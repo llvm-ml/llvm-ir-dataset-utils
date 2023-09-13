@@ -18,7 +18,8 @@ MODULE_STATISTICS_TYPES = [
     'parsing', 'module_size', 'module_size_text', 'get_lowered_size',
     'get_opt_lowered_size', 'call_names', 'function_hashes',
     'module_properties', 'module_hashes', 'module_instruction_distribution',
-    'defined_function_names', 'token_count', 'post_O3_function_hashes'
+    'defined_function_names', 'token_count', 'post_O3_function_hashes',
+    'module_instruction_distribution_O3'
 ]
 
 FUNCTION_STATISTICS_TYPES = [
