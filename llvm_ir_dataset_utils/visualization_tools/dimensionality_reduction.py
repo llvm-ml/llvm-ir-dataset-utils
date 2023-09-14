@@ -16,8 +16,6 @@ import plotly.io
 from absl import app
 from absl import flags
 
-import sys
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_multi_string(
@@ -25,6 +23,10 @@ flags.DEFINE_multi_string(
     'The path to a file containing a list of functions and their numerical properties.'
 )
 flags.DEFINE_string('output_file', None, 'The path to the output image.')
+flags.DEFINE_string(
+    'output_data_file', None,
+    'The path to a CSV file containing the dimensionality reduction to write '
+    'to or read from.')
 
 flags.mark_flag_as_required('properties_file')
 flags.mark_flag_as_required('output_file')
@@ -73,7 +75,7 @@ def convert_to_feature_vector(function_properties):
   return function_features
 
 
-def main(_):
+def load_data():
   function_properties = {}
 
   colors = []
@@ -106,6 +108,21 @@ def main(_):
       numpy.asarray(embedded_features), columns=['x', 'y'])
 
   data_frame.insert(2, "colors", colors)
+
+  return data_frame
+
+
+def main(_):
+  if FLAGS.output_data_file and os.path.exists(FLAGS.output_data_file):
+    logging.info('Loading reduction from CSV file.')
+    data_frame = pandas.read_csv(FLAGS.output_data_file)
+  else:
+    logging.info('Loading data from sources and performing reduction.')
+    data_frame = load_data()
+
+    if FLAGS.output_data_file:
+      logging.info('Writing reduction to CSV file.')
+      data_frame.to_csv(FLAGS.output_data_file)
 
   figure = plotly.express.scatter(data_frame, x='x', y='y', color='colors')
 
