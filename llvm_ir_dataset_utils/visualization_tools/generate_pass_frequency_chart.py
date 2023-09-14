@@ -28,8 +28,17 @@ flags.mark_flag_as_required('output_file')
 def main(_):
   bar_charts = []
 
+  full_data_frame = pandas.DataFrame.from_dict({
+      'language': [],
+      'label': [],
+      'percentage': []
+  })
+
+  language_names = []
+
   for language_data_path in FLAGS.data_path:
     language_name = os.path.splitext(os.path.basename(language_data_path))[0]
+    language_names.append(language_name)
     logging.info(f'Loading data from {language_data_path}.')
     data_frame = pandas.read_csv(language_data_path)
     data_frame.drop(['name'], axis=1, inplace=True)
@@ -56,13 +65,30 @@ def main(_):
         labels.append(pass_name)
         percentages.append(data_frame[column].sum() / data_frame.shape[0])
 
-    bar_charts.append(
-        go.Bar(name=language_name, x=percentages, y=labels, orientation='h'))
+    partial_data_frame = pandas.DataFrame.from_dict({
+        'language': [language_name for _ in range(0, len(labels))],
+        'label': labels,
+        'percentage': percentages
+    })
+
+    full_data_frame = pandas.concat([full_data_frame, partial_data_frame])
+
     logging.info(
-        f'Finished generating plot with {len(labels)} labels for {language_name}'
+        f'Finished generating data for plot with {len(labels)} labels for {language_name}'
     )
 
   logging.info('Finished loading data, generating figures.')
+
+  full_data_frame.sort_values(by=['percentage'], ascending=False, inplace=True)
+
+  for language_name in language_names:
+    data_frame = full_data_frame[full_data_frame['language'] == language_name]
+    bar_charts.append(
+        go.Bar(
+            name=language_name,
+            x=data_frame['percentage'],
+            y=data_frame['label'],
+            orientation='h'))
 
   figure = go.Figure(data=bar_charts)
 
