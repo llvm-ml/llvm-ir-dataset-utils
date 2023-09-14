@@ -68,7 +68,7 @@ def main(_):
 
   figure.update_layout(
       barmode='group', height=1500, width=1000, font=dict(size=20))
-  figure.update_xaxes(type="log")
+  figure.update_xaxes(type="log", exponentformat='power')
   figure.update_yaxes(autorange="reversed")
 
   figure.write_image(FLAGS.output_file)
