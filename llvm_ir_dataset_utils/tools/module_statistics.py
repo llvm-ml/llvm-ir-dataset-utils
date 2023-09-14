@@ -19,7 +19,7 @@ MODULE_STATISTICS_TYPES = [
     'get_opt_lowered_size', 'call_names', 'function_hashes',
     'module_properties', 'module_hashes', 'module_instruction_distribution',
     'defined_function_names', 'token_count', 'post_O3_function_hashes',
-    'module_instruction_distribution_O3'
+    'module_instruction_distribution_O3', 'module_properties_O3'
 ]
 
 FUNCTION_STATISTICS_TYPES = [

@@ -167,10 +167,12 @@ def get_function_properties(bitcode_function_path,
   return (None, properties_dict)
 
 
-def get_function_properties_module(bitcode_module):
+def get_function_properties_module(bitcode_module, extra_passes=''):
+  if extra_passes != '':
+    extra_passes += ','
   properties_dict = {}
   opt_command_vector = [
-      'opt', '-passes=forceattrs,print<func-properties>',
+      'opt', f'-passes={extra_passes}forceattrs,print<func-properties>',
       '-enable-detailed-function-properties', '-force-remove-attribute=optnone',
       '-disable-output', '-'
   ]
@@ -580,8 +582,10 @@ def get_module_statistics_batch(project_dir,
       else:
         hash_wrapped = {'module_hashes': [module_hash_or_error[2]]}
         statistics.append((None, hash_wrapped, module_path))
-    elif statistics_type == 'module_properties':
-      properties_tuple = get_function_properties_module(bitcode_file)
+    elif statistics_type == 'module_properties' or statistics_type == 'module_properties_O3':
+      additional_passes = '' if statistics_type == 'module_properties' else 'default<O3>'
+      properties_tuple = get_function_properties_module(bitcode_file,
+                                                        additional_passes)
       if properties_tuple[0]:
         statistics.append((properties_tuple[0], None, module_path))
       else:
