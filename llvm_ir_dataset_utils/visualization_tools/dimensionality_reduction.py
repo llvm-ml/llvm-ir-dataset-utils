@@ -126,6 +126,9 @@ def main(_):
 
   figure = plotly.express.scatter(data_frame, x='x', y='y', color='colors')
 
+  figure.update_yaxes(visible=False, showticklabels=False)
+  figure.update_xaxes(visible=False, showticklabels=False)
+
   plotly.io.kaleido.scope.mathjax = None
 
   figure.write_image(FLAGS.output_file)
