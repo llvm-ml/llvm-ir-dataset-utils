@@ -15,13 +15,19 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
+DEFAULT_SUBPLOT_SECTIONS = [
+    'TotalInstructionCount', 'BasicBlockCount', 'TopLevelLoopCount',
+    'DirectCallCount', 'LoadInstCount', 'StoreInstCount',
+    'IntegerInstructionCount', 'FloatingPointInstructionCount'
+]
+
 flags.DEFINE_multi_string('data_path', None, 'The path to the data file.')
 flags.DEFINE_string('output_path', None,
                     'The path to a folder to write the histograms to.')
 flags.DEFINE_integer('num_bins', 12,
                      'The number of bins to use for the histograms.')
 flags.DEFINE_multi_string(
-    'sub_plot_sections', None,
+    'sub_plot_sections', DEFAULT_SUBPLOT_SECTIONS,
     'The column names to include in a subplot diagram. There must be eight '
     'sections specified. If this flag is set, only one plot will be generated.')
 
@@ -94,7 +100,8 @@ def main(_):
               showlegend=to_show_legend),
           col=column,
           row=row)
-      subplot_figure.update_yaxes(type="log", col=column, row=row)
+      subplot_figure.update_yaxes(
+          type="log", col=column, row=row, exponentformat='power')
       logging.info(
           f'Finished generating figure for {sub_plot_section} in {language}')
 
