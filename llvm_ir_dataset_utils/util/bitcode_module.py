@@ -393,6 +393,8 @@ def get_lowered_size(bitcode_module):
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT) as llc_process:
+    if llc_process.returncode != 0:
+      return ('llc returned non-zero exit code', None)
     llc_output = llc_process.communicate(input=bitcode_module)[0]
   # Use llvm-size to measure the output size
   # Note that the format specified here actually impacts the output text size
@@ -408,7 +410,11 @@ def get_lowered_size(bitcode_module):
     llvm_size_output = llvm_size_process.communicate(
         input=llc_output)[0].decode('utf-8')
   llvm_size_output_lines = llvm_size_output.split('\n')
-  return int(llvm_size_output_lines[2].split()[1])
+  if len(llvm_size_output_lines) < 3:
+    return ('llvm-size returned invalid output', None)
+  if len(llvm_size_output_lines[2].split()) < 2:
+    return ('llvm-size returned invalid output', None)
+  return (None, int(llvm_size_output_lines[2].split()[1]))
 
 
 def get_optimized_bitcode(bitcode_module):
@@ -552,11 +558,20 @@ def get_module_statistics_batch(project_dir,
       else:
         statistics.append((None, text_size_or_error[1], module_path))
     elif statistics_type == 'get_lowered_size':
-      lowered_size = get_lowered_size(bitcode_file)
+      lowered_size_or_error = get_lowered_size(bitcode_file)
+      if lowered_size_or_error[0] is not None:
+        statistics.append((lowered_size_or_error[0], None, module_path))
+        continue
+      lowered_size = lowered_size_or_error[1]
       wrapped_result = {'lowered_size': [lowered_size]}
       statistics.append((None, wrapped_result, module_path))
     elif statistics_type == 'get_opt_lowered_size':
-      post_opt_lowered_size = get_lowered_size_post_opt(bitcode_file)
+      post_opt_lowered_size_or_error = get_lowered_size_post_opt(bitcode_file)
+      if post_opt_lowered_size_or_error[0] is not None:
+        statistics.append(
+            (post_opt_lowered_size_or_error[0], None, module_path))
+        continue
+      post_opt_lowered_size = post_opt_lowered_size_or_error[1]
       wrapped_result = {'post_opt_lowered_size': [post_opt_lowered_size]}
       statistics.append((None, wrapped_result, module_path))
     elif statistics_type == 'call_names':
