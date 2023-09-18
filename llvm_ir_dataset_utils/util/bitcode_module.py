@@ -393,9 +393,9 @@ def get_lowered_size(bitcode_module):
       stdin=subprocess.PIPE,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT) as llc_process:
+    llc_output = llc_process.communicate(input=bitcode_module)[0]
     if llc_process.returncode != 0:
       return ('llc returned non-zero exit code', None)
-    llc_output = llc_process.communicate(input=bitcode_module)[0]
   # Use llvm-size to measure the output size
   # Note that the format specified here actually impacts the output text size
   # as certain modes that LLVM aims to be compatible with count things differently.
