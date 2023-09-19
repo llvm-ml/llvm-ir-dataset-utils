@@ -48,16 +48,20 @@ def extract_individual_function(bitcode_module, extraction_path,
   extract_command_vector = [
       'llvm-extract', '-func', function_symbol, '-o', function_module_name
   ]
-  with subprocess.Popen(
-      extract_command_vector,
-      stderr=subprocess.STDOUT,
-      stdout=subprocess.PIPE,
-      stdin=subprocess.PIPE) as extraction_process:
-    stdout = extraction_process.communicate(
-        input=bitcode_module)[0].decode('utf-8')
-    if extraction_process.returncode != 0:
-      logging.info(f'Failed to extract {function_symbol}')
-      return (stdout.replace('\n', ''), None)
+  try:
+    with subprocess.Popen(
+        extract_command_vector,
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE) as extraction_process:
+      stdout = extraction_process.communicate(
+          input=bitcode_module)[0].decode('utf-8')
+      if extraction_process.returncode != 0:
+        logging.info(f'Failed to extract {function_symbol}')
+        return (stdout.replace('\n', ''), None)
+  except OSError:
+    logging.info(f'Failed to extract {function_symbol} due to OSError')
+    return ('oserror', None)
 
   return (None, function_module_name)
 
