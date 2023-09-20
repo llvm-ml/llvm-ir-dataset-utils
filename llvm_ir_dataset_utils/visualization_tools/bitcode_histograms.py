@@ -90,24 +90,31 @@ def main(_):
       total_instruction_count += distributions[distribution][instruction_name]
     extra_percentages[distribution] = 1 - total_instruction_count
 
-  language_names = []
-  instructions = []
-  instruction_counts = []
+  data_frame = pandas.DataFrame({
+      'Language': [],
+      'Instruction': [],
+      'Count': []
+  })
 
   for language_name in distributions:
+    language_names = []
+    instructions = []
+    instruction_counts = []
+
     for instruction in distributions[language_name]:
       language_names.append(language_name)
       instructions.append(instruction)
       instruction_counts.append(distributions[language_name][instruction])
 
-  data_frame = pandas.DataFrame({
-      'Language': language_names,
-      'Instruction': instructions,
-      'Count': instruction_counts
-  })
+    language_data_frame = pandas.DataFrame({
+        'Language': language_names,
+        'Instruction': instructions,
+        'Count': instruction_counts
+    })
 
-  data_frame.sort_values(
-      by=['Language', 'Count'], ascending=[True, False], inplace=True)
+    language_data_frame.sort_values('Count', ascending=False, inplace=True)
+
+    data_frame = pandas.concat([data_frame, language_data_frame])
 
   extra_percentages_df = pandas.DataFrame({
       'Language': list(extra_percentages.keys()),
