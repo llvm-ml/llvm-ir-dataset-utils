@@ -432,6 +432,17 @@ def get_optimized_bitcode(bitcode_module):
     return opt_process.communicate(input=bitcode_module)[0]
 
 
+def strip_debuginfo(bitcode_module):
+  # Run opt -strip-debug to get rid of debug information.
+  opt_command_vector = ['opt', '-strip-debug', '-']
+  with subprocess.Popen(
+      opt_command_vector,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT) as opt_process:
+    return opt_process.communicate(input=bitcode_module)[0]
+
+
 def get_lowered_size_post_opt(bitcode_module):
   optimized_bc = get_optimized_bitcode(bitcode_module)
   return get_lowered_size(optimized_bc)
