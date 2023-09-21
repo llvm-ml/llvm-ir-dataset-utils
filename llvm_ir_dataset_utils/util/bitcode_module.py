@@ -665,10 +665,10 @@ def get_tokenization(bitcode_module):
       return {}
 
 
-def get_serialized_tokenization(bitcode_module):
+def get_serialized_tokenization(bitcode_module, int_constants_path):
   tokenizer_command_vector = [
       'llvm-tokenizer', '-output-mode=json', '-mode=serialize',
-      '-int-constants-list=/tmp/constants.txt'
+      f'-int-constants-list={int_constants_path}'
   ]
   with subprocess.Popen(
       tokenizer_command_vector,
@@ -678,9 +678,13 @@ def get_serialized_tokenization(bitcode_module):
     try:
       stdout = tokenizer_process.communicate(input=bitcode_module)[0]
       tokenizer_output = json.loads(stdout)
-      # Downstream tasks currently only work over individual functions.
-      assert (len(tokenizer_output['functions']) == 1)
-      return tokenizer_output['functions'][0]['tokens']
+
+      tokenization = []
+
+      for function in tokenizer_output['functions']:
+        tokenization += function['tokens']
+
+      return tokenization
     except json.JSONDecodeError:
       logging.warning('Failed to decode JSON')
       return {}
