@@ -578,6 +578,8 @@ def get_module_statistics_batch(project_dir,
       else:
         statistics.append((parse_result[0], parse_result[1], module_path))
     elif statistics_type == 'module_size':
+      if bitcode_file is None:
+        continue
       statistics.append((None, get_size(bitcode_file)[1], module_path))
     elif statistics_type == 'module_size_text':
       text_size_or_error = get_size_text(bitcode_file)

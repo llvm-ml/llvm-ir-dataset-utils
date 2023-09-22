@@ -118,7 +118,9 @@ def collect_statistics(projects_list, statistics_type):
   statistics = []
 
   while len(project_futures) > 0:
-    finished, project_futures = ray.wait(project_futures, timeout=5.0)
+    to_return = 128 if project_futures > 256 else 1
+    finished, project_futures = ray.wait(
+        project_futures, timeout=5.0, num_returns=to_return)
     logging.info(
         f'Just finished {len(finished)}, {len(project_futures)} remaining.')
     for project_statistics in ray.get(finished):
