@@ -219,6 +219,18 @@ def get_function_properties_module(bitcode_module, extra_passes=''):
     return (None, properties_dict)
 
 
+def get_instruction_counts(bitcode_module, additional_passes=''):
+  properties_or_error = get_function_properties_module(bitcode_module,
+                                                       additional_passes)
+  if properties_or_error[0]:
+    return None
+  else:
+    return [
+        int(inst_count)
+        for inst_count in properties_or_error[1]['TotalInstructionCount']
+    ]
+
+
 def get_instruction_histogram(bitcode_module, additional_passes=''):
   if additional_passes != '':
     additional_passes += ','
