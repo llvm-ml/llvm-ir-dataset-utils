@@ -702,4 +702,4 @@ def get_serialized_tokenization(bitcode_module, int_constants_path):
       return tokenization
     except json.JSONDecodeError:
       logging.warning('Failed to decode JSON')
-      return {}
+      return []
