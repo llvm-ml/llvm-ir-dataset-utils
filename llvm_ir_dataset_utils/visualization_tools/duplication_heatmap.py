@@ -24,6 +24,8 @@ flags.DEFINE_enum('hash_key', 'function_hashes',
 flags.DEFINE_string(
     'output_data_file', None,
     'The output file to save data in or load data from if it already exists.')
+flags.DEFINE_bool('include_scale', True,
+                  'Whether or not to include the scale bar.')
 
 flags.mark_flag_as_required('hash_file')
 flags.mark_flag_as_required('output_file')
@@ -132,6 +134,8 @@ def main(_):
 
   figure = plotly.express.imshow(
       duplication_matrix, text_auto=True, x=languages, y=languages)
+
+  figure.update_coloraxes(showscale=FLAGS.include_scale)
 
   plotly.io.kaleido.scope.mathjax = None
 
