@@ -53,6 +53,13 @@ def dedeuplicate_repositories(crates_list):
   return new_crates_list
 
 
+def canonicalize_license(license_string):
+  # Some of the licenses include / as a seperator. This is equivalent to OR
+  # within the rust crates index, but not standard in the SPDX format.
+  license_string = license_string.replace('/', ' OR ')
+  return license_string
+
+
 def main(_):
   with tempfile.TemporaryDirectory() as download_dir:
     file_download_path = FLAGS.db_dump_archive
@@ -90,8 +97,9 @@ def main(_):
         for version_entry in reader:
           if version_entry['crate_id'] not in versions_map or versions_map[
               version_entry['crate_id']][0] < version_entry['num']:
-            versions_map[version_entry['crate_id']] = (version_entry['num'],
-                                                       version_entry['license'])
+            versions_map[version_entry['crate_id']] = (
+                version_entry['num'],
+                canonicalize_license(version_entry['license']))
   logging.info('Generating and deduplicating repository list.')
   source_list = []
   for crate in crates_list:
