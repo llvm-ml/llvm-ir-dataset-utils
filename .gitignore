@@ -4,3 +4,4 @@ llvm_ir_dataset_utils.egg-info/
 *.tar.gz
 *.tar
 *.sif
+*.swp
