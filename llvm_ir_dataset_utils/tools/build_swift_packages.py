@@ -1,6 +1,7 @@
 """Tool for building a list of cargo packages."""
 
 import logging
+import json
 
 from absl import app
 from absl import flags
@@ -28,9 +29,7 @@ def main(_):
   ray.init()
 
   with open(FLAGS.package_list) as package_list_file:
-    package_repositories = [
-        package_repo.rstrip() for package_repo in package_list_file
-    ]
+    package_repositories = json.load(package_list_file)
 
   build_futures = []
 
@@ -38,12 +37,13 @@ def main(_):
     corpus_description = {
         'sources': [{
             'type': 'git',
-            'repo_url': package_repository,
+            'repo_url': package_repository['repo'],
             'commit_sha': None
         }],
         'folder_name': f'build-{index}',
         'build_system': 'swift',
-        'package_name': f'build-{index}'
+        'package_name': f'build-{index}',
+        'license': package_repository['license']
     }
 
     build_futures.append(

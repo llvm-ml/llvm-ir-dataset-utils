@@ -6,6 +6,8 @@ import logging
 import json
 import os
 
+from llvm_ir_dataset_utils.util import licenses
+
 from absl import app
 from absl import flags
 
@@ -13,6 +15,11 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('package_list', 'swift_package_list.txt',
                     'The path to write the list of swift packages to.')
+flags.DEFINE_string(
+    'gh_pat', None,
+    'Your github personal access token. Needed to query license information')
+
+flags.mark_flag_as_required('gh_pat')
 
 REGISTRY_REPOSITORY = 'https://github.com/SwiftPackageIndex/PackageList'
 
@@ -34,10 +41,25 @@ def main(_):
     package_list_json_path = os.path.join(registry_path, 'packages.json')
     with open(package_list_json_path) as package_list_json_file:
       package_list = json.load(package_list_json_file)
+
+  logging.info('Collecting license information')
+  sanitized_package_list = []
+  for package in package_list:
+    # We don't want the .git that is automatically at the end
+    sanitized_package_list.append(package[:-4])
+  repository_license_map = licenses.get_repository_licenses(
+      sanitized_package_list, FLAGS.gh_pat)
+
   logging.info('Writing packages to list.')
+  output_package_list = []
+  for package in package_list:
+    current_package = {
+        'repo': package,
+        'license': repository_license_map[package[:-4]]
+    }
+    output_package_list.append(current_package)
   with open(FLAGS.package_list, 'w') as package_list_file:
-    for package in package_list:
-      package_list_file.write(f'{package}\n')
+    json.dump(output_package_list, package_list_file, indent=2)
 
 
 if __name__ == '__main__':
