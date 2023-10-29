@@ -5,11 +5,14 @@ import tempfile
 import logging
 import json
 import os
+import sys
 
 from llvm_ir_dataset_utils.util import licenses
 
 from absl import app
 from absl import flags
+
+import ray
 
 FLAGS = flags.FLAGS
 
@@ -18,10 +21,26 @@ flags.DEFINE_string('package_list', 'swift_package_list.txt',
 flags.DEFINE_string(
     'gh_pat', None,
     'Your github personal access token. Needed to query license information')
+flags.DEFINE_boolean(
+    'github_ld', False,
+    'Whether or not to download the repositories that have not already been '
+    'tagged with license information and use go-license-detector to detect '
+    'license information')
+flags.DEFINE_integer('max_projects', sys.maxsize,
+                     'The maximum number of projects to process.')
 
 flags.mark_flag_as_required('gh_pat')
 
 REGISTRY_REPOSITORY = 'https://github.com/SwiftPackageIndex/PackageList'
+
+
+# TODO(boomanaiden154): This and some of the code below can be refactored
+# out into some common utilities as quite a bit is duplicated with
+# get_julia_packages.py
+@ray.remote(num_cpus=1)
+def get_detected_license_repo_future(repo_url, repo_name):
+  return (repo_name,
+          licenses.get_detected_license_from_repo(repo_url, repo_name))
 
 
 def main(_):
@@ -42,7 +61,9 @@ def main(_):
     with open(package_list_json_path) as package_list_json_file:
       package_list = json.load(package_list_json_file)
 
-  logging.info('Collecting license information')
+  package_list = package_list[:FLAGS.max_projects]
+
+  logging.info('Collecting license information from the Github API.')
   sanitized_package_list = []
   for package in package_list:
     # We don't want the .git that is automatically at the end
@@ -55,9 +76,38 @@ def main(_):
   for package in package_list:
     current_package = {
         'repo': package,
+        'name': package.split('/')[-1][:-4],
         'license': repository_license_map[package[:-4]]
     }
     output_package_list.append(current_package)
+
+  if FLAGS.github_ld:
+    logging.info('Gathering license information through license detection/')
+    ray.init()
+
+    repo_license_futures = []
+    repo_name_license_map = {}
+
+    for package_dict in output_package_list:
+      if package_dict['license'] == 'NOASSERTION':
+        repo_license_futures.append(
+            get_detected_license_repo_future.remote(package_dict['repo'],
+                                                    package_dict['name']))
+
+    while len(repo_license_futures) > 0:
+      finished, repo_license_futures = ray.wait(
+          repo_license_futures, timeout=5.0)
+      logging.info(
+          f'Just got license information in {len(finished)} repos, {len(repo_license_futures)} remaining.'
+      )
+      repo_names_licenses = ray.get(finished)
+      for repo_name, repo_license in repo_names_licenses:
+        repo_name_license_map[repo_name] = repo_license
+
+    for package_dict in output_package_list:
+      if package_dict['name'] in repo_name_license_map:
+        package_dict['license'] = repo_name_license_map[package_dict['name']]
+
   with open(FLAGS.package_list, 'w') as package_list_file:
     json.dump(output_package_list, package_list_file, indent=2)
 
