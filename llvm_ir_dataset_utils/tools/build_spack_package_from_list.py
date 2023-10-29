@@ -91,8 +91,9 @@ def main(_):
         break
     if package is None:
       raise ValueError('At least one package must be specified to be built.')
-    build_future = get_package_future(package_dict, build_futures_dict, package,
-                                      FLAGS.thread_count)
+    build_futures.append(
+        get_package_future(package_dict, build_futures_dict, package,
+                           FLAGS.thread_count))
   else:
     for package in package_dict:
       build_future = get_package_future(package_dict, build_futures_dict,
@@ -100,7 +101,7 @@ def main(_):
       build_futures.append(build_future)
       build_futures_dict[package] = build_future
 
-  ray.get(build_future)
+  ray.get(build_futures)
 
 
 if __name__ == '__main__':
