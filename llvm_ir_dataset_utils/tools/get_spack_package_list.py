@@ -11,6 +11,8 @@ import tempfile
 import os
 import subprocess
 import logging
+import sys
+import re
 
 from absl import app
 from absl import flags
@@ -31,13 +33,18 @@ flags.DEFINE_string('package_list', 'package_list.json',
 flags.DEFINE_string(
     'error_log', None,
     'The path to write the output of failed concretization commands to.')
+flags.DEFINE_integer('max_projects', sys.maxsize,
+                     'The max number of projects to process.')
 
 
 def add_concrete_package_and_all_deps(concretized_packages, spec):
+  spec_string = str(spec)
+  license_string = re.findall('license=".*?"', spec_string)[0][9:-1]
   concretized_packages[spec.dag_hash()] = {
-      'spec': str(spec),
+      'spec': spec_string,
       'deps': [dep_spec.dag_hash() for dep_spec in spec.dependencies()],
-      'name': str(spec.package.fullname.split('.')[1])
+      'name': str(spec.package.fullname.split('.')[1]),
+      'license': license_string
   }
   for dep_spec in spec.dependencies():
     if dep_spec.dag_hash() not in concretized_packages:
@@ -92,7 +99,7 @@ def main(_):
   full_package_list = []
 
   for package in packages:
-    pkg_class = spack.repo.path.get_pkg_class(package)
+    pkg_class = spack.repo.PATH.get_pkg_class(package)
     # TODO(boomanaiden154): Look into other build systems that are likely to be
     # composed of c/c++ projects.
     pkg = pkg_class(spack.spec.Spec(package))
@@ -101,6 +108,8 @@ def main(_):
         pkg.build_system_class == 'AutotoolsPackage' or
         pkg.build_system_class == 'MesonPackage'):
       full_package_list.append(pkg.name)
+
+    if len(full_package_list) >= FLAGS.max_projects:
       break
 
   logging.info('Concretizing packages')
