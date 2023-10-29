@@ -3,6 +3,11 @@
 import requests
 import json
 import logging
+import os
+import tempfile
+import subprocess
+
+from llvm_ir_dataset_utils.sources import git_source
 
 GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 
@@ -20,8 +25,8 @@ def generate_repository_spdx_request(repo_index, repository_url):
 
 
 def get_repository_licenses(repository_list, api_token):
-  if len(repository_list) > 1000:
-    # if the number of repositories is greater than 1000, split up into
+  if len(repository_list) > 200:
+    # if the number of repositories is greater than 200, split up into
     # multiple queries.
     full_repository_license_map = {}
     start_index = 0
@@ -67,3 +72,31 @@ def get_repository_licenses(repository_list, api_token):
     repository_license_map[repository_url] = license_id
 
   return repository_license_map
+
+
+def get_detected_license_from_dir(repo_dir):
+  detector_command_line = ['license-detector', '-f', 'json', './']
+  license_detector_process = subprocess.run(
+      detector_command_line, cwd=repo_dir, stdout=subprocess.PIPE, check=True)
+  license_info = json.loads(license_detector_process.stdout.decode('utf-8'))
+  primary_project = license_info[0]
+  if 'error' in primary_project:
+    return 'NOASSERTION'
+  licenses_matched = primary_project['matches']
+  if licenses_matched[0]['confidence'] > 0.9:
+    return licenses_matched[0]['license']
+  return 'NOASSERTION'
+
+
+def get_detected_license_from_repo(repo_url, repo_name):
+  with tempfile.TemporaryDirectory() as temp_dir:
+    base_dir = os.path.join(temp_dir, 'base')
+    corpus_dir = os.path.join(temp_dir, 'corpus')
+    os.mkdir(base_dir)
+    os.mkdir(corpus_dir)
+    source_status = git_source.download_source_code(repo_url, repo_name, None,
+                                                    base_dir, corpus_dir)
+    if source_status['success'] == False:
+      return 'NOASSERTION'
+    project_dir = os.path.join(base_dir, repo_name)
+    return get_detected_license_from_dir(project_dir)
