@@ -7,6 +7,7 @@ import multiprocessing
 import shutil
 import glob
 import logging
+import hashlib
 
 import ray
 
@@ -21,6 +22,7 @@ from llvm_ir_dataset_utils.builders import swift_builder
 from llvm_ir_dataset_utils.sources import source
 
 from llvm_ir_dataset_utils.util import file
+from llvm_ir_dataset_utils.util import licenses
 
 
 def get_corpus_size(corpus_dir):
@@ -50,6 +52,22 @@ def get_build_future(corpus_description,
       extra_builder_arguments=extra_builder_arguments,
       cleanup=cleanup,
       archive_corpus=archive_corpus)
+
+
+def get_license_information(source_dir, corpus_dir):
+  license_files = licenses.get_all_license_files(source_dir)
+  license_file_list = []
+  for license_file in license_files:
+    # copy each license over
+    with open(os.path.join(source_dir, license_file)) as license_file_handle:
+      license_data = license_file_handle.read()
+      license_hash = hashlib.sha256(license_data.encode('utf-8')).hexdigest()
+      new_license_path = f'./license-{license_hash}.txt'
+      license_file_list.append(new_license_path)
+    with open(os.path.join(corpus_dir, new_license_path),
+              'w') as new_license_file_handle:
+      new_license_file_handle.write(license_data)
+  return license_file_list
 
 
 @ray.remote(num_cpus=multiprocessing.cpu_count())
@@ -165,6 +183,22 @@ def parse_and_build_from_description(corpus_description,
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
+
+  # Collect license files from the build
+  source_license_dir = source_dir
+  if corpus_description['build_system'] == 'spack':
+    # Spack doesn't use the source directory, so we should instead pull
+    # information from the build directory.
+    spack_stage_dir = spack_builder.get_spack_stage_directory(
+        corpus_description['package_hash'], build_dir)
+    source_license_dir = os.path.join(spack_stage_dir, 'spack-src')
+  elif corpus_description['build_system'] == 'manual':
+    # The manual builder clones everything into the build directory, so
+    # just use that.
+    source_license_dir = build_dir
+  build_log['license_files'] = get_license_information(source_license_dir,
+                                                       corpus_dir)
+
   if cleanup:
     file.delete_directory(build_dir, corpus_dir)
     file.delete_directory(source_dir, corpus_dir)

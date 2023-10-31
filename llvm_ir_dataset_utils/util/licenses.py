@@ -100,3 +100,23 @@ def get_detected_license_from_repo(repo_url, repo_name):
       return 'NOASSERTION'
     project_dir = os.path.join(base_dir, repo_name)
     return get_detected_license_from_dir(project_dir)
+
+
+def get_all_license_files(repo_dir):
+  detector_command_line = ['license-detector', '-f', 'json', './']
+  license_detector_process = subprocess.run(
+      detector_command_line, cwd=repo_dir, stdout=subprocess.PIPE)
+  if license_detector_process.returncode != 0:
+    logging.warning('license detector failed with non-zero return code')
+    return []
+  license_info = json.loads(license_detector_process.stdout.decode('utf-8'))
+  if 'matches' not in license_info[0]:
+    return []
+  matches = license_info[0]['matches']
+  license_files_map = {}
+  for license_match in matches:
+    license_files_map[license_match['file']] = True
+  license_files = []
+  for license_file in license_files_map:
+    license_files.append(license_file)
+  return license_files

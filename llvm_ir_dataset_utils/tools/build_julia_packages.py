@@ -39,7 +39,11 @@ def main(_):
   build_futures = []
   for package in package_list:
     corpus_description = {
-        'sources': [],
+        'sources': [{
+            'type': 'git',
+            'repo_url': package['repo'],
+            'commit_sha': None
+        }],
         'folder_name': package['name'],
         'build_system': 'julia',
         'package_name': package['name']

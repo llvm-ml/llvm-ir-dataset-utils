@@ -32,6 +32,8 @@ flags.DEFINE_integer('thread_count', 16,
 flags.DEFINE_bool(
     'archive_corpus', False,
     'Whether or not to put the output corpus for each package into an archive.')
+flags.DEFINE_bool('cleanup', True,
+                  'Whether or not to clean up the build directory')
 
 flags.mark_flag_as_required('package_list')
 flags.mark_flag_as_required('corpus_dir')
@@ -70,7 +72,7 @@ def get_package_future(package_dict, current_package_futures, package, threads):
       FLAGS.corpus_dir,
       threads, {},
       extra_builder_arguments=extra_builder_arguments,
-      cleanup=True,
+      cleanup=FLAGS.cleanup,
       archive_corpus=FLAGS.archive_corpus)
   current_package_futures[package] = build_future
   return build_future
