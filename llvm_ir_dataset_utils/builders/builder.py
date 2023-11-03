@@ -60,15 +60,16 @@ def get_license_information(source_dir, corpus_dir):
   for license_description in license_files:
     # copy each license over
     license_file = license_description['file']
-    with open(os.path.join(source_dir, license_file)) as license_file_handle:
+    with open(os.path.join(source_dir, license_file),
+              'rb') as license_file_handle:
       license_data = license_file_handle.read()
-      license_hash = hashlib.sha256(license_data.encode('utf-8')).hexdigest()
+      license_hash = hashlib.sha256(license_data).hexdigest()
       new_license_path = f'./license-{license_hash}.txt'
       new_license_dict = license_description
       new_license_dict['file'] = new_license_path
       license_file_list.append(new_license_dict)
     with open(os.path.join(corpus_dir, new_license_path),
-              'w') as new_license_file_handle:
+              'wb') as new_license_file_handle:
       new_license_file_handle.write(license_data)
   return license_file_list
 
