@@ -29,7 +29,7 @@ def download_source_code(archive_url, base_dir, source_folder_name):
         success = True
       else:
         success = False
-  except (EOFError, OSError):
+  except (EOFError, OSError, tarfile.ReadError):
     logging.warning(f'Downloading tar archive {archive_url} failed.')
     success = False
   return {'type': 'tar', 'archive_url': archive_url, 'success': success}
