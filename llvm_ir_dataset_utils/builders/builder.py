@@ -57,13 +57,16 @@ def get_build_future(corpus_description,
 def get_license_information(source_dir, corpus_dir):
   license_files = licenses.get_all_license_files(source_dir)
   license_file_list = []
-  for license_file in license_files:
+  for license_description in license_files:
     # copy each license over
+    license_file = license_description['file']
     with open(os.path.join(source_dir, license_file)) as license_file_handle:
       license_data = license_file_handle.read()
       license_hash = hashlib.sha256(license_data.encode('utf-8')).hexdigest()
       new_license_path = f'./license-{license_hash}.txt'
-      license_file_list.append(new_license_path)
+      new_license_dict = license_description
+      new_license_dict['file'] = new_license_path
+      license_file_list.append(new_license_dict)
     with open(os.path.join(corpus_dir, new_license_path),
               'w') as new_license_file_handle:
       new_license_file_handle.write(license_data)

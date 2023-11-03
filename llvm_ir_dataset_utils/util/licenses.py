@@ -102,6 +102,39 @@ def get_detected_license_from_repo(repo_url, repo_name):
     return get_detected_license_from_dir(project_dir)
 
 
+def upgrade_deprecated_spdx_id(spdx_id):
+  if not spdx_id.startswith('deprecated'):
+    # Nothing to do here
+    return spdx_id
+  match (spdx_id[11:]):
+    case 'AGPL-3.0':
+      return 'AGPL-3.0-only'
+    case 'GFDL-1.3':
+      return 'GFDL-1.3-only'
+    case 'GPL-2.0':
+      return 'GPL-2.0-only'
+    case 'GPL-2.0+':
+      return 'GPL-2.0-or-later'
+    case 'GPL-3.0':
+      return 'GPL-3.0-only'
+    case 'GPL-3.0+':
+      return 'GPL-3.0-or-later'
+    case 'LGPL-2.0':
+      return 'LGPL-2.0-only'
+    case 'LGPL-2.0+':
+      return 'LGPL-2.0-or-later'
+    case 'LGPL-2.1+':
+      return 'LGPL-2.1-or-later'
+    case 'LGPL-3.0':
+      return 'LGPL-3.0-only'
+    case 'LGPL-3.0+':
+      return 'LGPL-3.0-or-later'
+    case _:
+      # Just return the deprecated ID here if we don't have a translation
+      # to ensure that we aren't losing any information.
+      return spdx_id
+
+
 def get_all_license_files(repo_dir):
   detector_command_line = ['license-detector', '-f', 'json', './']
   license_detector_process = subprocess.run(
@@ -115,8 +148,11 @@ def get_all_license_files(repo_dir):
   matches = license_info[0]['matches']
   license_files_map = {}
   for license_match in matches:
-    license_files_map[license_match['file']] = True
+    license_files_map[license_match['file']] = license_match['license']
   license_files = []
   for license_file in license_files_map:
-    license_files.append(license_file)
+    license_files.append({
+        'file': license_file,
+        'license': upgrade_deprecated_spdx_id(license_files_map[license_file])
+    })
   return license_files
