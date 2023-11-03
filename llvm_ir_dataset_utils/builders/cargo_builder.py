@@ -138,7 +138,8 @@ def perform_build(source_dir, build_dir, corpus_dir, target, threads,
         'build_log': None,
         'name': target['name'] + '.' + target['kind']
     }
-  build_command_vector.extend(["--", '--emit=llvm-bc'])
+  build_command_vector.extend(
+      ["--", '--emit=llvm-bc', '-C', 'no-prepopulate-passes'])
   try:
     build_log_path = os.path.join(corpus_dir, get_build_log_name(target))
     with open(build_log_path, 'w') as build_log_file:
