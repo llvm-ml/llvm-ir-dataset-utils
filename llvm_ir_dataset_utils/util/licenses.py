@@ -136,6 +136,10 @@ def upgrade_deprecated_spdx_id(spdx_id):
 
 
 def get_all_license_files(repo_dir):
+  if not os.path.exists(repo_dir):
+    logging.warning(
+        f'Could not find any licenses in {repo_dir} as it does not exist')
+    return []
   detector_command_line = ['license-detector', '-f', 'json', './']
   license_detector_process = subprocess.run(
       detector_command_line, cwd=repo_dir, stdout=subprocess.PIPE)
