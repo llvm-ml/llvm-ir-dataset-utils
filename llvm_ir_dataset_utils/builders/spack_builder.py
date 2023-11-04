@@ -187,7 +187,7 @@ def build_package(dependency_futures,
       )
       if cleanup_build:
         cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-      return construct_build_log(False, package_name, None)
+      return construct_build_log(False, package_name)
   spack_add_mirror(build_dir, buildcache_dir)
   spack_utils.spack_setup_compiler(build_dir)
   spack_setup_bootstrap_root(build_dir)
