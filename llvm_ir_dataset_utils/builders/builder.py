@@ -195,13 +195,19 @@ def parse_and_build_from_description(corpus_description,
     # information from the build directory.
     spack_stage_dir = spack_builder.get_spack_stage_directory(
         corpus_description['package_hash'], build_dir)
-    source_license_dir = os.path.join(spack_stage_dir, 'spack-src')
+    if spack_stage_dir is None:
+      source_license_dir = None
+    else:
+      source_license_dir = os.path.join(spack_stage_dir, 'spack-src')
   elif corpus_description['build_system'] == 'manual':
     # The manual builder clones everything into the build directory, so
     # just use that.
     source_license_dir = build_dir
-  build_log['license_files'] = get_license_information(source_license_dir,
-                                                       corpus_dir)
+  if source_license_dir is not None:
+    build_log['license_files'] = get_license_information(
+        source_license_dir, corpus_dir)
+  else:
+    build_log['license_files'] = []
 
   if cleanup:
     file.delete_directory(build_dir, corpus_dir)
