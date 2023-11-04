@@ -26,7 +26,7 @@ def get_spec_command_vector_section(spec):
 
 def generate_build_command(package_to_build, threads, build_dir):
   command_vector = [
-      'spack', '-c', f'config:build_stage:{build_dir}', 'install',
+      'spack', '--insecure', '-c', f'config:build_stage:{build_dir}', 'install',
       '--keep-stage', '--overwrite', '-y', '--use-buildcache',
       'package:never,dependencies:only', '-j',
       f'{SPACK_THREAD_OVERSUBSCRIPTION_FACTOR * threads}',
