@@ -59,7 +59,11 @@ def main(_):
       # Exclude failures that happen because a dependency fails to build.
       if failure_row[2] != 'NULL':
         package_name_hash = os.path.dirname(failure_row[2])
-        package_hash = package_name_hash.split('-')[-1]
+        # Cut off the last six characters to get rid of the .tar: at the
+        # end of every line in an archived corpus.
+        # TODO(boomanaiden154): Make this robust against usage in a non-archived
+        # corpus.
+        package_hash = package_name_hash.split('-')[1][:-6]
         package_hash_failures.append(package_hash)
 
   dependents_dict = get_dependents_dict(package_dict)
