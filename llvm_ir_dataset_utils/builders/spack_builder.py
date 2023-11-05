@@ -91,22 +91,27 @@ def extract_ir(package_hash, corpus_dir, build_dir, threads):
     logging.getLogger().setLevel(current_verbosity)
 
 
-def push_to_buildcache(package_spec, buildcache_dir, corpus_dir):
+def push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir):
   command_vector = [
       'spack', 'buildcache', 'push', '--unsigned', '--allow-root', '--only',
       'package', buildcache_dir
   ]
   command_vector.extend(get_spec_command_vector_section(package_spec))
   buildcache_push_log_path = os.path.join(corpus_dir, 'buildcache_push.log')
+  environment = os.environ.copy()
+  environment['HOME'] = build_dir
   with open(buildcache_push_log_path, 'w') as buildcache_push_log_file:
     subprocess.run(
         command_vector,
         check=True,
+        env=environment,
         stdout=buildcache_push_log_file,
         stderr=buildcache_push_log_file)
 
 
-def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
+def cleanup(package_name, package_spec, corpus_dir, build_dir, uninstall=True):
+  environment = os.environ.copy()
+  environment['HOME'] = build_dir
   if uninstall:
     uninstall_command_vector = ['spack', 'uninstall', '-y']
     uninstall_command_vector.extend(
@@ -116,6 +121,7 @@ def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
       subprocess.run(
           uninstall_command_vector,
           check=True,
+          env=environment,
           stdout=uninstall_log_file,
           stderr=uninstall_log_file)
   # Garbage collect dependencies
@@ -126,6 +132,7 @@ def cleanup(package_name, package_spec, corpus_dir, uninstall=True):
       subprocess.run(
           gc_command_vector,
           check=True,
+          env=environment,
           stdout=gc_log_file,
           stderr=gc_log_file,
           timeout=SPACK_GARBAGE_COLLECTION_TIMEOUT)
@@ -198,11 +205,12 @@ def build_package(dependency_futures,
                                build_dir)
   if build_result:
     extract_ir(package_hash, corpus_dir, build_dir, threads)
-    push_to_buildcache(package_spec, buildcache_dir, corpus_dir)
+    push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
     if build_result:
-      cleanup(package_name, package_spec, corpus_dir, package_hash)
+      cleanup(package_name, package_spec, corpus_dir, build_dir, package_hash)
     else:
-      cleanup(package_name, package_spec, corpus_dir, uninstall=False)
+      cleanup(
+          package_name, package_spec, corpus_dir, build_dir, uninstall=False)
   return construct_build_log(build_result, package_name)
