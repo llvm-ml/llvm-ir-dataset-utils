@@ -5,6 +5,7 @@ import os
 import tempfile
 import logging
 import pathlib
+import shutil
 
 import ray
 
@@ -158,7 +159,9 @@ def spack_add_mirror(build_dir, buildcache_dir):
 def spack_setup_bootstrap_root(build_dir):
   # TODO(boomanaiden154): Pull out the hardcoded /tmp/spack-boostrap path and
   # make it a configurable somewhere.
-  command_vector = ['spack', 'bootstrap', 'root', '/tmp/spack-bootstrap']
+  bootstrap_dir = os.path.join(build_dir, 'spack-bootstrap')
+  shutil.copytree('/tmp/spack-bootstrap', bootstrap_dir)
+  command_vector = ['spack', 'bootstrap', 'root', bootstrap_dir]
   environment = os.environ.copy()
   environment['HOME'] = build_dir
   subprocess.run(
