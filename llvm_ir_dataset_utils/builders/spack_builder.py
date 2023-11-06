@@ -93,8 +93,8 @@ def extract_ir(package_hash, corpus_dir, build_dir, threads):
 
 def push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir):
   command_vector = [
-      'spack', 'buildcache', 'push', '--unsigned', '--allow-root', '--only',
-      'package', buildcache_dir
+      'spack', 'buildcache', 'push', '--unsigned', '--only', 'package',
+      buildcache_dir
   ]
   command_vector.extend(get_spec_command_vector_section(package_spec))
   buildcache_push_log_path = os.path.join(corpus_dir, 'buildcache_push.log')
