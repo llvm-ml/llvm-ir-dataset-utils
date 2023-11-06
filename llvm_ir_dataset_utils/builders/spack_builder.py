@@ -103,7 +103,7 @@ def push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir):
   # to the buildcache after installation due to the patches string.
   # TODO(boomanaiden154): Investigate why this is and remove it once this gets
   # fixed.
-  filtered_spec = re.sub(r'patches=".*?" ', '', package_spec)
+  filtered_spec = re.sub(r'patches=.*? ', '', package_spec)
   command_vector.extend(get_spec_command_vector_section(filtered_spec))
   buildcache_push_log_path = os.path.join(corpus_dir, 'buildcache_push.log')
   environment = os.environ.copy()
