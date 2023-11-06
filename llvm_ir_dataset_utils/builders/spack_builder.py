@@ -6,6 +6,7 @@ import tempfile
 import logging
 import pathlib
 import shutil
+import re
 
 import ray
 
@@ -22,7 +23,8 @@ BUILD_LOG_NAME = './spack_build.log'
 
 
 def get_spec_command_vector_section(spec):
-  return spec.split(' ')
+  filtered_spec = re.sub(r'license=".*?" ', '', spec)
+  return filtered_spec.split(' ')
 
 
 def generate_build_command(package_to_build, threads, build_dir):
