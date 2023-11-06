@@ -104,7 +104,7 @@ def push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir):
       'spack', 'buildcache', 'push', '--unsigned', '--only', 'package',
       buildcache_dir
   ]
-  command_vector.extend(get_spec_command_vector_section(filtered_spec))
+  command_vector.extend(get_spec_command_vector_section(package_spec))
   buildcache_push_log_path = os.path.join(corpus_dir, 'buildcache_push.log')
   environment = os.environ.copy()
   environment['HOME'] = build_dir
