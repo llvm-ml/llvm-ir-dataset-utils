@@ -151,8 +151,19 @@ def get_all_license_files(repo_dir):
     return []
   matches = license_info[0]['matches']
   license_files_map = {}
+  license_files_confidence = {}
   for license_match in matches:
+    if license_match['file'] not in license_files_confidence:
+      license_files_map[license_match['file']] = license_match['license']
+      license_files_confidence[
+          license_match['file']] = license_match['confidence']
+      continue
+    if license_files_confidence[
+        license_match['file']] > license_match['confidence']:
+      continue
     license_files_map[license_match['file']] = license_match['license']
+    license_files_confidence[
+        license_match['file']] = license_match['confidence']
   license_files = []
   for license_file in license_files_map:
     license_files.append({

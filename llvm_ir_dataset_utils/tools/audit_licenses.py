@@ -77,11 +77,7 @@ def main(_):
       if FLAGS.ignore_license_files and license_part in PERMISSIVE_LICENSES:
         has_valid_license = True
         break
-      license_files_list = package_license_info[2]
-      for i in range(0, len(license_files_list)):
-        if license_files_list[i] == 'MIT-0':
-          license_files_list[i] = 'MIT'
-      if license_part in license_files_list:
+      if license_part in package_license_info[2]:
         has_valid_license = True
         break
 
