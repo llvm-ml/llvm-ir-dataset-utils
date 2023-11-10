@@ -227,5 +227,5 @@ def parse_and_build_from_description(corpus_description,
     # Use corpus_dir for the file path as make_archive automatically adds the
     # .tar extension to the path
     shutil.make_archive(corpus_dir, 'tar', corpus_dir)
-    shutil.rmtree(corpus_dir)
+    shutil.rmtree(corpus_dir, ignore_errors=True)
   return build_log
