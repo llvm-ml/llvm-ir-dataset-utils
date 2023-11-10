@@ -17,6 +17,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('corpus_dir', None, 'The base directory of the corpus')
 flags.DEFINE_integer('max_projects', sys.maxsize,
                      'The maximum number of projects to consider')
+flags.DEFINE_boolean(
+    'ignore_license_files', False,
+    'Whether or not to ignore the constraint that license files must be present for attribution'
+)
 
 flags.mark_flag_as_required('corpus_dir')
 
@@ -40,7 +44,8 @@ def get_information_from_manifest(corpus_path):
       for license_file in build_manifest['license_files']
   ]
   package_license = build_manifest['license']
-  return (package_name, package_license, license_files_ids)
+  return (package_name, package_license, license_files_ids,
+          build_manifest['size'])
 
 
 def main(_):
@@ -59,6 +64,7 @@ def main(_):
 
   valid_licenses = 0
   invalid_licenses = 0
+  total_usable_bitcode = 0
 
   for package_license_info in license_information:
     license_parts = [
@@ -68,6 +74,9 @@ def main(_):
     for license_part in license_parts:
       if license_part not in PERMISSIVE_LICENSES:
         continue
+      if FLAGS.ignore_license_files and license_part in PERMISSIVE_LICENSES:
+        has_valid_license = True
+        break
       license_files_list = package_license_info[2]
       for i in range(0, len(license_files_list)):
         if license_files_list[i] == 'MIT-0':
@@ -78,11 +87,16 @@ def main(_):
 
     if has_valid_license:
       valid_licenses += 1
+      total_usable_bitcode += package_license_info[3]
     else:
       invalid_licenses += 1
 
   logging.info(
       f'Found {valid_licenses} packages with valid license information and {invalid_licenses} packages with invalid license information'
+  )
+
+  logging.info(
+      f'A total of {total_usable_bitcode} is usable given the current licensing constraints.'
   )
 
 
