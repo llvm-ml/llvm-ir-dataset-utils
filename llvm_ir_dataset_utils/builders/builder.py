@@ -103,7 +103,7 @@ def parse_and_build_from_description(corpus_description,
     return {}
   else:
     if os.path.exists(corpus_dir):
-      shutil.rmtree(corpus_dir)
+      shutil.rmtree(corpus_dir, ignore_errors=True)
     if os.path.exists(build_dir):
       shutil.rmtree(build_dir)
     if os.path.exists(source_dir):
