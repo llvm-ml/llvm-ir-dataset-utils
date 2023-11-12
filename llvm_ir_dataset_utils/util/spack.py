@@ -49,11 +49,23 @@ def get_spack_compiler_config():
   return compiler_config
 
 
+def get_spack_config(build_dir):
+  spack_config = ("config:\n"
+                  "  build_stage:\n"
+                  f"    - {build_dir}/build-stage\n"
+                  f"  test_stage: {build_dir}/test-stage\n"
+                  f"  source_cache: {build_dir}/source-cache\n"
+                  f"  misc_cache: {build_dir}/misc-cache")
+  return spack_config
+
+
 def spack_setup_compiler(build_dir):
-  # TODO(boomanaiden154): The following path is variable depending upon the
-  # system. For example, on some systems itis ~/.spack/linux and on others it
-  # is ~/.spack/cray. We should grab this path more intelligently from spack
-  # somehow.
   compiler_config_path = os.path.join(build_dir, '.spack/compilers.yaml')
   with open(compiler_config_path, 'w') as compiler_config_file:
     compiler_config_file.writelines(get_spack_compiler_config())
+
+
+def spack_setup_config(build_dir):
+  spack_config_path = os.path.join(build_dir, '.spack/config.yaml')
+  with open(spack_config_path, 'w') as spack_config_file:
+    spack_config_file.writelines(get_spack_config(build_dir))

@@ -208,6 +208,7 @@ def build_package(dependency_futures,
       return construct_build_log(False, package_name)
   spack_add_mirror(build_dir, buildcache_dir)
   spack_utils.spack_setup_compiler(build_dir)
+  spack_utils.spack_setup_config(build_dir)
   spack_setup_bootstrap_root(build_dir)
   build_command = generate_build_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir,
