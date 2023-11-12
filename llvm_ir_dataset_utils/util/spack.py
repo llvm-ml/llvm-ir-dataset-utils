@@ -53,6 +53,7 @@ def get_spack_config(build_dir):
   spack_config = ("config:\n"
                   "  install_tree:\n"
                   f"    root: {build_dir}/spack-installs\n"
+                  "    padded_length: True\n"
                   "  build_stage:\n"
                   f"    - {build_dir}/build-stage\n"
                   f"  test_stage: {build_dir}/test-stage\n"
