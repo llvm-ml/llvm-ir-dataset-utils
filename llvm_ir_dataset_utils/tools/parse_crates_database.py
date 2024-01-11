@@ -112,6 +112,7 @@ def main(_):
       crate_source_dict[
           'tar_archive'] = f'https://crates.io/api/v1/crates/{crate["name"]}/{crate_version}/download'
       crate_source_dict['license'] = versions_map[crate['id']][1]
+      crate_source_dict['license_source'] = 'crates'
     else:
       crate_source_dict['tar_archive'] = None
     source_list.append(crate_source_dict)
