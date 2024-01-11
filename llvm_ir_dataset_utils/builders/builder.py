@@ -220,6 +220,11 @@ def parse_and_build_from_description(corpus_description,
   else:
     build_log['license'] = None
 
+  if 'license_source' in corpus_description:
+    build_log['license_source'] = corpus_description['license_source']
+  else:
+    build_log['license_source'] = None
+
   with open(os.path.join(corpus_dir, 'build_manifest.json'),
             'w') as build_manifest:
     json.dump(build_log, build_manifest, indent=2)

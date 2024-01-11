@@ -12,5 +12,6 @@
     "make CC=clang KCFLAGS='-Xclang -fembed-bitcode=all' allyesconfig",
     "make CC=clang KCFLAGS='-Xclang -fembed-bitcode=all' -j128"
   ],
-  "license": "GPL-2.0-only"
+  "license": "GPL-2.0-only",
+  "license_source": "manual"
 }
