@@ -560,8 +560,12 @@ def get_module_statistics_batch(project_dir,
                                                         relative_module_path)
     if filter != 'none':
       command_line_path = os.path.splitext(relative_module_path)[0] + '.cmd'
-      command_line = dataset_corpus.load_file_from_corpus(
-          project_dir, command_line_path).decode('utf-8')
+      command_line_raw = dataset_corpus.load_file_from_corpus(
+          project_dir, command_line_path)
+      if command_line_raw is None:
+        continue
+
+      command_line = command_line_raw.decode('utf-8')
       # This is a very hacky heuristic, mostly based on how many include paths
       # the driver tries to add to the frontend command line. Might need to be
       # fixed in the future for portability.
