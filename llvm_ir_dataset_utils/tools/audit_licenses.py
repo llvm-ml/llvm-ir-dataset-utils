@@ -11,6 +11,7 @@ from absl import app
 import ray
 
 from llvm_ir_dataset_utils.util import dataset_corpus
+from llvm_ir_dataset_utils.util import licenses
 
 FLAGS = flags.FLAGS
 
@@ -23,13 +24,6 @@ flags.DEFINE_boolean(
 )
 
 flags.mark_flag_as_required('corpus_dir')
-
-PERMISSIVE_LICENSES = {
-    'MIT': True,
-    'Apache-2.0': True,
-    'BSD-3-Clause': True,
-    'BSD-2-Clause': True
-}
 
 
 @ray.remote
@@ -67,21 +61,9 @@ def main(_):
   total_usable_bitcode = 0
 
   for package_license_info in license_information:
-    license_parts = [
-        part.strip() for part in package_license_info[1].split('OR')
-    ]
-    has_valid_license = False
-    for license_part in license_parts:
-      if license_part not in PERMISSIVE_LICENSES:
-        continue
-      if FLAGS.ignore_license_files and license_part in PERMISSIVE_LICENSES:
-        has_valid_license = True
-        break
-      if license_part in package_license_info[2]:
-        has_valid_license = True
-        break
-
-    if has_valid_license:
+    if licenses.is_license_valid(package_license_info[1],
+                                 package_license_info[2],
+                                 FLAGS.ignore_license_files):
       valid_licenses += 1
       total_usable_bitcode += package_license_info[3]
     else:
