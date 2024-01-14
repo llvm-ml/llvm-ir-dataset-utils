@@ -31,10 +31,14 @@ def get_license_information(corpus_path):
     return None
 
   archive_url = ""
-  if build_manifest["sources"][-1]["type"] == "git":
-    archive_url = build_manifest["sources"][-1]["repo_url"]
-  elif build_manifest["sources"][-1]["type"] == "tar":
-    archive_url = build_manifest["sources"][-1]["archive_url"]
+  if len(build_manifest["sources"]) == 0:
+    # If we don't have any sources listed, this is a spack package
+    archive_url = f'spack:{build_manifest["targets"][0]["name"]}'
+  else:
+    if build_manifest["sources"][-1]["type"] == "git":
+      archive_url = build_manifest["sources"][-1]["repo_url"]
+    elif build_manifest["sources"][-1]["type"] == "tar":
+      archive_url = build_manifest["sources"][-1]["archive_url"]
 
   return (corpus_path, build_manifest['license'],
           build_manifest['license_source'], build_manifest["license_files"],
