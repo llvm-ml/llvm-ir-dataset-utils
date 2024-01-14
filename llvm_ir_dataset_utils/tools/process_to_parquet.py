@@ -20,7 +20,8 @@ from llvm_ir_dataset_utils.util import dataset_corpus
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('corpus_dir', None, 'The corpus to pull bitcode from.')
+flags.DEFINE_multi_string('corpus_dir', None,
+                          'The corpus to pull bitcode from.')
 flags.DEFINE_integer('max_batches', sys.maxsize,
                      'The maximum number of projects to process')
 flags.DEFINE_string('output_path', None,
@@ -32,7 +33,7 @@ flags.mark_flag_as_required('output_path')
 
 
 @ray.remote(num_cpus=1)
-def process_single_batch(batch_dirs, dataset_path):
+def process_single_batch(batch_dirs, dataset_path, corpus_name):
   bitcode_paths = []
   license_information = {}
 
@@ -75,7 +76,8 @@ def process_single_batch(batch_dirs, dataset_path):
       'license_expression': license_expression,
       'license_source': license_source,
       'license_files': license_file,
-      'package_source': package_source
+      'package_source': package_source,
+      'language': corpus_name
   })
 
   table = pyarrow.Table.from_pandas(dataframe, preserve_index=False)
@@ -84,7 +86,13 @@ def process_single_batch(batch_dirs, dataset_path):
 
 
 def main(_):
-  projects_list = os.listdir(FLAGS.corpus_dir)
+  projects_list = []
+
+  for corpus_dir in FLAGS.corpus_dir:
+    new_projects_list = os.listdir(corpus_dir)
+    corpus_name = os.path.basename(corpus_dir)
+    for project_path in new_projects_list:
+      projects_list.append((corpus_dir, corpus_name, project_path))
 
   logging.info(f'Processing {len(projects_list)} projects')
 
@@ -94,14 +102,16 @@ def main(_):
 
   parquet_batches = []
 
-  for index, project_dir in enumerate(projects_list):
-    batch_path = os.path.join(FLAGS.corpus_dir, project_dir)
+  for index, project_info in enumerate(projects_list):
+    corpus_dir, corpus_name, project_dir = project_info
+    batch_path = os.path.join(corpus_dir, project_dir)
     batch_size = os.stat(batch_path).st_size / (2**20)
     current_parquet_paths.append(batch_path)
     current_parquet_size += batch_size
 
     if current_parquet_size > FLAGS.chunk_size:
-      parquet_batches.append((current_parquet_index, current_parquet_paths))
+      parquet_batches.append(
+          (current_parquet_index, current_parquet_paths, corpus_name))
       current_parquet_index += 1
       current_parquet_paths = []
       current_parquet_size = 0
@@ -112,11 +122,12 @@ def main(_):
   parquet_batch_futures = []
 
   for parquet_batch in parquet_batches:
-    parquet_index, parquet_paths = parquet_batch
+    parquet_index, parquet_paths, corpus_name = parquet_batch
     parquet_batch_futures.append(
         process_single_batch.remote(
             parquet_paths,
-            os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet')))
+            os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet'),
+            corpus_name))
 
   while len(parquet_batch_futures) > 0:
     finished, parquet_batch_futures = ray.wait(parquet_batch_futures, timeout=5)
