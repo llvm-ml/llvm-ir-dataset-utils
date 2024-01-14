@@ -31,7 +31,7 @@ flags.DEFINE_boolean(
     'Whether or not to put separate corpora (defined by module hash lists) into separate folders.'
 )
 flags.DEFINE_multi_string(
-    'project_license_info', None,
+    'project_license_info', [],
     'A JSON file containing license information on a set of projects. Setting this flag will force the script to validate license information'
 )
 
@@ -84,7 +84,8 @@ def load_project_licenses(file_path):
   return project_license_map
 
 
-def create_manifest(file_path, modules_list):
+def create_manifest(folder_path, modules_list):
+  file_path = os.path.join(folder_path, 'corpus_description.json')
   corpus_description = {'has_thinlto': False, 'modules': []}
   for module_tuple in modules_list:
     # Omit the .bc file extension because it gets added on by different
@@ -93,6 +94,14 @@ def create_manifest(file_path, modules_list):
   with open(file_path, 'w') as corpus_description_file:
     json.dump(corpus_description, corpus_description_file, indent=2)
 
+  license_info_file_path = os.path.join(folder_path, 'license_info.json')
+  license_info_map = {}
+  for module_tuple in modules_list:
+    module_file_path, module_hash, corpus_name, license_info = module_tuple
+    license_info_map[module_hash] = license_info
+  with open(license_info_file_path, 'w') as license_info_file:
+    json.dump(license_info_map, license_info_file, indent=2)
+
 
 @ray.remote(num_cpus=1)
 def process_module_batch(batch_path, modules_to_process):
@@ -100,6 +109,7 @@ def process_module_batch(batch_path, modules_to_process):
   for module_path in modules_to_process:
     file_path_full = module_path[0]
     module_hash = module_path[1]
+    license_info = module_path[3]
     file_path_parts = file_path_full.split(':')
     bitcode_file = dataset_corpus.load_file_from_corpus(file_path_parts[0],
                                                         file_path_parts[1])
@@ -119,8 +129,7 @@ def process_module_batch(batch_path, modules_to_process):
               'w') as command_line_file_handle:
       command_line_file_handle.write(command_line_data)
 
-  create_manifest(
-      os.path.join(batch_path, 'corpus_description.json'), modules_to_process)
+  create_manifest(batch_path, modules_to_process)
   shutil.make_archive(batch_path, 'tar', batch_path)
   shutil.rmtree(batch_path)
 
@@ -131,11 +140,14 @@ def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
   for module_hash in module_hash_map:
     # Each key in the map accesses a tuple with the format(file path, corpus name)
     # format to use is (path, hash)
-    file_path, corpus_name = module_hash_map[module_hash]
+    file_path, corpus_name, license_id, license_source, license_files = module_hash_map[
+        module_hash]
+    tuple_to_append = (file_path, module_hash, (license_id, license_source,
+                                                license_files))
     if corpus_name in modules_to_process:
-      modules_to_process[corpus_name].append((file_path, module_hash))
+      modules_to_process[corpus_name].append(tuple_to_append)
     else:
-      modules_to_process[corpus_name] = [(file_path, module_hash)]
+      modules_to_process[corpus_name] = [tuple_to_append]
 
   module_batches = []
 
@@ -151,8 +163,9 @@ def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
         continue
       output_module_batch = []
       for module_info in current_module_batch:
-        file_path, module_hash = module_info
-        output_module_batch.append((file_path, module_hash, corpus_name))
+        file_path, module_hash, license_info = module_info
+        output_module_batch.append(
+            (file_path, module_hash, corpus_name, license_info))
       output_module_batches.append(output_module_batch)
     module_batches.extend(output_module_batches)
 
@@ -176,14 +189,27 @@ def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
     )
 
 
-def check_module_licenses(module_hash_map, license_info_map):
+def check_and_add_module_licenses(module_hash_map, license_info_map):
+  # We're adding a tuple onto the end of every module_hash, particularly
+  # with the values (license_id, license_source, license_files)
   validated_module_hash_map = {}
+  if len(license_info_map) == 0:
+    for module_hash in module_hash_map:
+      validated_module_hash_map[module_hash] = module_hash_map[module_hash] + (
+          None, None, None)
   logging.info('Checking module licenses')
   for module_hash in module_hash_map:
     file_path, corpus_name = module_hash_map[module_hash]
     corpus_archive_path = file_path.split(':')[0]
     if corpus_archive_path in license_info_map:
-      validated_module_hash_map[module_hash] = module_hash_map[module_hash]
+      extra_license_info = (
+          license_info_map[corpus_archive_path]['license_id'],
+          license_info_map[corpus_archive_path]['license_source'], [
+              license_struct['file'] for license_struct in
+              license_info_map[corpus_archive_path]['license_files']
+          ])
+      validated_module_hash_map[
+          module_hash] = module_hash_map[module_hash] + extra_license_info
   logging.info(
       f'Finished checking module licenses, ended up with {len(validated_module_hash_map)} out of {len(module_hash_map)} original modules.'
   )
@@ -205,8 +231,8 @@ def main(_):
   for project_license_list_path in FLAGS.project_license_info:
     license_info_map.update(load_project_licenses(project_license_list_path))
 
-  if len(FLAGS.project_license_info) > 0:
-    module_hash_map = check_module_licenses(module_hash_map, license_info_map)
+  module_hash_map = check_and_add_module_licenses(module_hash_map,
+                                                  license_info_map)
 
   extract_files_from_hash_map(module_hash_map, FLAGS.output_path,
                               license_info_map)
