@@ -15,6 +15,7 @@ import ray
 
 from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import parallel
+from llvm_ir_dataset_utils.util import licenses
 
 FLAGS = flags.FLAGS
 
@@ -28,6 +29,10 @@ flags.DEFINE_integer('batch_size', 256,
 flags.DEFINE_boolean(
     'split_by_corpora', True,
     'Whether or not to put separate corpora (defined by module hash lists) into separate folders.'
+)
+flags.DEFINE_multi_string(
+    'project_license_info', None,
+    'A JSON file containing license information on a set of projects. Setting this flag will force the script to validate license information'
 )
 
 flags.mark_flag_as_required('module_hash_list')
@@ -52,6 +57,31 @@ def load_module_hashes(file_path):
   logging.info(f'Read {all_modules_count} modules.')
   logging.info(f'Found {len(module_hash_map)} unique modules.')
   return module_hash_map
+
+
+def load_project_licenses(file_path):
+  logging.info(f'Loading license data from {file_path}')
+  project_license_map = {}
+  with open(file_path) as project_licenses_file:
+    project_license_array = json.load(project_licenses_file)
+    for project_license_info in project_license_array:
+      corpus_name = project_license_info[0]
+      license_id = project_license_info[1]
+      license_source = project_license_info[2]
+      license_files = project_license_info[3]
+      license_file_ids = [
+          license_file["license"] for license_file in license_files
+      ]
+      if licenses.is_license_valid(license_id, license_file_ids):
+        project_license_map[corpus_name] = {
+            'license_id': license_id,
+            'license_source': license_source,
+            'license_files': license_files
+        }
+  logging.info(
+      f'Finished loading license info from {file_path}, found {len(project_license_map)} valid licenses'
+  )
+  return project_license_map
 
 
 def create_manifest(file_path, modules_list):
@@ -95,7 +125,7 @@ def process_module_batch(batch_path, modules_to_process):
   shutil.rmtree(batch_path)
 
 
-def extract_files_from_hash_map(module_hash_map, output_path):
+def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
   modules_to_process = {}
 
   for module_hash in module_hash_map:
@@ -146,6 +176,20 @@ def extract_files_from_hash_map(module_hash_map, output_path):
     )
 
 
+def check_module_licenses(module_hash_map, license_info_map):
+  validated_module_hash_map = {}
+  logging.info('Checking module licenses')
+  for module_hash in module_hash_map:
+    file_path, corpus_name = module_hash_map[module_hash]
+    corpus_archive_path = file_path.split(':')[0]
+    if corpus_archive_path in license_info_map:
+      validated_module_hash_map[module_hash] = module_hash_map[module_hash]
+  logging.info(
+      f'Finished checking module licenses, ended up with {len(validated_module_hash_map)} out of {len(module_hash_map)} original modules.'
+  )
+  return validated_module_hash_map
+
+
 def main(_):
   ray.init()
 
@@ -156,7 +200,16 @@ def main(_):
   for module_hash_list_path in FLAGS.module_hash_list:
     module_hash_map.update(load_module_hashes(module_hash_list_path))
 
-  extract_files_from_hash_map(module_hash_map, FLAGS.output_path)
+  license_info_map = {}
+
+  for project_license_list_path in FLAGS.project_license_info:
+    license_info_map.update(load_project_licenses(project_license_list_path))
+
+  if len(FLAGS.project_license_info) > 0:
+    module_hash_map = check_module_licenses(module_hash_map, license_info_map)
+
+  extract_files_from_hash_map(module_hash_map, FLAGS.output_path,
+                              license_info_map)
 
 
 if __name__ == '__main__':
