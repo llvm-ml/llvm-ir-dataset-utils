@@ -14,6 +14,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('dataset_dir', None,
                     'The path to the folder containing the parquet files.')
+flags.DEFINE_string('start_after', None, 'A specific path to start at.')
 
 flags.mark_flag_as_required('dataset_dir')
 
@@ -22,6 +23,10 @@ def main(_):
   logging.info('Starting the upload')
   api = HfApi()
   for file_to_upload in os.listdir(FLAGS.dataset_dir):
+    if FLAGS.start_after and file_to_upload <= FLAGS.start_after:
+      logging.info(f'Skipping uploading {file_to_upload}')
+      continue
+
     full_file_path = os.path.join(FLAGS.dataset_dir, file_to_upload)
     api.upload_file(
         path_or_fileobj=full_file_path,
