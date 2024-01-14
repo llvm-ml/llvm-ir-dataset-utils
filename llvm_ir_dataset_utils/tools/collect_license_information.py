@@ -30,8 +30,15 @@ def get_license_information(corpus_path):
   if build_manifest is None:
     return None
 
+  archive_url = ""
+  if build_manifest["sources"][-1]["type"] == "git":
+    archive_url = build_manifest["sources"][-1]["repo_url"]
+  elif build_manifest["sources"][-1]["type"] == "tar":
+    archive_url = build_manifest["sources"][-1]["archive_url"]
+
   return (corpus_path, build_manifest['license'],
-          build_manifest['license_source'], build_manifest["license_files"])
+          build_manifest['license_source'], build_manifest["license_files"],
+          archive_url)
 
 
 def main(_):

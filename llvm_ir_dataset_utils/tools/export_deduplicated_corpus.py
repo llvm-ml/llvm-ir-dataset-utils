@@ -72,11 +72,13 @@ def load_project_licenses(file_path):
       license_file_ids = [
           license_file["license"] for license_file in license_files
       ]
+      source_url = project_license_info[4]
       if licenses.is_license_valid(license_id, license_file_ids):
         project_license_map[corpus_name] = {
             'license_id': license_id,
             'license_source': license_source,
-            'license_files': license_files
+            'license_files': license_files,
+            'source_url': source_url
         }
   logging.info(
       f'Finished loading license info from {file_path}, found {len(project_license_map)} valid licenses'
@@ -140,10 +142,10 @@ def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
   for module_hash in module_hash_map:
     # Each key in the map accesses a tuple with the format(file path, corpus name)
     # format to use is (path, hash)
-    file_path, corpus_name, license_id, license_source, license_files = module_hash_map[
+    file_path, corpus_name, license_id, license_source, license_files, source_url = module_hash_map[
         module_hash]
     tuple_to_append = (file_path, module_hash, (license_id, license_source,
-                                                license_files))
+                                                license_files, source_url))
     if corpus_name in modules_to_process:
       modules_to_process[corpus_name].append(tuple_to_append)
     else:
@@ -207,7 +209,7 @@ def check_and_add_module_licenses(module_hash_map, license_info_map):
           license_info_map[corpus_archive_path]['license_source'], [
               license_struct['file'] for license_struct in
               license_info_map[corpus_archive_path]['license_files']
-          ])
+          ], license_info_map[corpus_archive_path]['source_url'])
       validated_module_hash_map[
           module_hash] = module_hash_map[module_hash] + extra_license_info
   logging.info(
