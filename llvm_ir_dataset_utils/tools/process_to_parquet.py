@@ -23,25 +23,40 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('corpus_dir', None, 'The corpus to pull bitcode from.')
 flags.DEFINE_integer('max_batches', sys.maxsize,
                      'The maximum number of projects to process')
+flags.DEFINE_string('output_path', None,
+                    'The output path to place the parquet files in.')
+flags.DEFINE_integer('chunk_size', 500, 'The number of MB per parquet file.')
 
 flags.mark_flag_as_required('corpus_dir')
+flags.mark_flag_as_required('output_path')
 
 
-def process_single_batch(batch_dir, dataset_dir):
-  try:
-    bitcode_paths = dataset_corpus.get_bitcode_file_paths(batch_dir)
-    license_information = dataset_corpus.load_json_from_corpus(
-        batch_dir, './license_info.json')
-  except:
-    logging.warning('Failed to get bitcode_paths')
-    return
+def process_single_batch(batch_dirs, dataset_path):
+  bitcode_paths = []
+  license_information = {}
+
+  for batch_dir in batch_dirs:
+    try:
+      new_bitcode_paths = [
+          (batch_dir, bitcode_path)
+          for bitcode_path in dataset_corpus.get_bitcode_file_paths(batch_dir)
+      ]
+      bitcode_paths.extend(new_bitcode_paths)
+      license_information.update(
+          dataset_corpus.load_json_from_corpus(batch_dir,
+                                               './license_info.json'))
+    except:
+      logging.warning('Failed to get bitcode_paths')
+      continue
+
   module_content = []
   license_expression = []
   license_source = []
   license_file = []
   package_source = []
 
-  for bitcode_path in bitcode_paths:
+  for bitcode_path_info in bitcode_paths:
+    batch_dir, bitcode_path = bitcode_path_info
     bitcode_file_data = dataset_corpus.load_file_from_corpus(
         batch_dir, bitcode_path)
     module_content.append(bitcode_file_data)
@@ -64,7 +79,7 @@ def process_single_batch(batch_dir, dataset_dir):
 
   table = pyarrow.Table.from_pandas(dataframe, preserve_index=False)
 
-  parquet.write_table(table, dataset_dir)
+  parquet.write_table(table, dataset_path, compression='NONE')
 
 
 def main(_):
@@ -72,13 +87,32 @@ def main(_):
 
   logging.info(f'Processing {len(projects_list)} projects')
 
+  current_parquet_size = 0
+  current_parquet_paths = []
+  current_parquet_index = 0
+
+  parquet_batches = []
+
   for index, project_dir in enumerate(projects_list):
     batch_path = os.path.join(FLAGS.corpus_dir, project_dir)
-    process_single_batch(batch_path, '/tmp/test.parquet')
-    logging.info(f'Just finished processing {project_dir}')
+    batch_size = os.stat(batch_path).st_size / (2**20)
+    current_parquet_paths.append(batch_path)
+    current_parquet_size += batch_size
+
+    if current_parquet_size > FLAGS.chunk_size:
+      parquet_batches.append((current_parquet_index, current_parquet_paths))
+      current_parquet_index += 1
+      current_parquet_paths = []
+      current_parquet_size = 0
 
     if index >= FLAGS.max_batches:
       break
+
+  for parquet_batch in parquet_batches:
+    parquet_index, parquet_paths = parquet_batch
+    process_single_batch(
+        parquet_paths,
+        os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet'))
 
 
 if __name__ == '__main__':
