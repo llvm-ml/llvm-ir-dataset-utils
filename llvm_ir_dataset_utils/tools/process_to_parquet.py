@@ -11,8 +11,8 @@ from absl import app
 from absl import flags
 
 import pandas
-
 import pyarrow
+import ray
 
 from pyarrow import parquet
 
@@ -31,6 +31,7 @@ flags.mark_flag_as_required('corpus_dir')
 flags.mark_flag_as_required('output_path')
 
 
+@ray.remote(num_cpus=1)
 def process_single_batch(batch_dirs, dataset_path):
   bitcode_paths = []
   license_information = {}
@@ -108,11 +109,22 @@ def main(_):
     if index >= FLAGS.max_batches:
       break
 
+  parquet_batch_futures = []
+
   for parquet_batch in parquet_batches:
     parquet_index, parquet_paths = parquet_batch
-    process_single_batch(
-        parquet_paths,
-        os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet'))
+    parquet_batch_futures.append(
+        process_single_batch.remote(
+            parquet_paths,
+            os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet')))
+
+  while len(parquet_batch_futures) > 0:
+    finished, parquet_batch_futures = ray.wait(parquet_batch_futures, timeout=5)
+
+    logging.info(
+        f'Just finished {len(finished)}, {len(parquet_batch_futures)} remaining.'
+    )
+    finished_data = ray.get(finished)
 
 
 if __name__ == '__main__':
