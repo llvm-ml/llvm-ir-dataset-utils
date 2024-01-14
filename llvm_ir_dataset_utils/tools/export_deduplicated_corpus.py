@@ -7,6 +7,7 @@ import csv
 import shutil
 import pathlib
 import json
+import random
 
 from absl import flags
 from absl import app
@@ -150,6 +151,9 @@ def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
       modules_to_process[corpus_name].append(tuple_to_append)
     else:
       modules_to_process[corpus_name] = [tuple_to_append]
+
+  for corpus_name in modules_to_process:
+    random.shuffle(modules_to_process[corpus_name])
 
   module_batches = []
 
