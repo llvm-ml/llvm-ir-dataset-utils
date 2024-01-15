@@ -1,5 +1,5 @@
-"""Tool for collecting license information on all projects and putting it into a CSV
-file.
+"""Tool for collecting license information on all projects and putting it into a
+JSON file.
 """
 
 import os
