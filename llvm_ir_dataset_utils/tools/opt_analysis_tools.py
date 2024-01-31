@@ -14,8 +14,10 @@ import random
 from datasets import load_dataset
 
 from yaspin import yaspin
-import ray
-from ray.util.multiprocessing import Pool
+from alive_progress import alive_bar
+
+# import ray
+# from ray.util.multiprocessing import Pool
 
 # pool = Pool()
 
@@ -223,7 +225,7 @@ def parse_section(data: list[str], line_start: int, relative: bool):
             break
 
     # extract data
-    result = [[]] * (last_section_line - line_start + 1)
+    result = [[]] * (last_section_line - line_start)
     try:
         for i in range(line_start, last_section_line):
             line_data = extract_alphanum(data[i])
@@ -231,7 +233,7 @@ def parse_section(data: list[str], line_start: int, relative: bool):
                 line_data[-2] if relative else total_wall_time * line_data[-2],
                 line_data[-1],
             ]
-            result[i] = tmp
+            result[i - line_start] = tmp
     except IndexError:
         print("Index out of range!")
         print("DEBUG parse_section: index", i, "line:", line_data)
@@ -313,32 +315,29 @@ def sampling(
     wall_time = {k: [] for k in OPT_O3_PASS_LIST}
     passes = set(OPT_O3_PASS_LIST)
     files = listdir(dir_path)
-    # fn = lambda i: (
-    #    f"bc{i}.bc" if bitcode_file else f"bc{i}.bc.out"
-    # )  # TODO: change to fit general file name later
     r = random.sample(range(len(listdir(dir_path)) - 1), n)
     failed = 0
 
-    for i in r:
-        fp = join(dir_path, files[i])
-        print(fp)
-        if not isfile(fp):
-            failed += 1
-        else:
-            data = parse_pass_analysis_exec(fp, relative, bitcode_file, opt)
-            if data is None:  # wrong files & format
+    with alive_bar(n) as bar:
+        for i in r:
+            fp = join(dir_path, files[i])
+            if not isfile(fp):
                 failed += 1
-                continue
-            pass_exec_data = data["pass-exec"]
-            print(pass_exec_data)
-            n_passes = len(pass_exec_data)
+            else:
+                data = parse_pass_analysis_exec(fp, relative, bitcode_file, opt)
+                if data is None:  # wrong files & format
+                    failed += 1
+                    continue
+                pass_exec_data = data["pass-exec"]
+                n_passes = len(pass_exec_data)
 
-            for i in range(n_passes):
-                pass_name = pass_exec_data[i][-1]
-                if pass_name not in passes:
-                    wall_time[pass_name] = [pass_exec_data[i][-2]]
-                else:
-                    wall_time[pass_name].append(pass_exec_data[i][-2])
+                for i in range(n_passes):
+                    pass_name = pass_exec_data[i][-1]
+                    if pass_name not in passes:
+                        wall_time[pass_name] = [pass_exec_data[i][-2]]
+                    else:
+                        wall_time[pass_name].append(pass_exec_data[i][-2])
+            bar()
     print(
         f"{n-failed}/{n} files have successfully sampled ({round((n-failed)/n * 100,2)}% success rate)."
     )
