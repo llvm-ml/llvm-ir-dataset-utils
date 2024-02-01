@@ -16,10 +16,11 @@ from datasets import load_dataset
 from yaspin import yaspin
 from alive_progress import alive_bar
 
-# import ray
-# from ray.util.multiprocessing import Pool
+from multiprocessing import Pool
+from itertools import repeat
+import parallelbar
 
-# pool = Pool()
+pool = Pool()
 
 OPT_O3_PASS_LIST = [
     "Annotation2MetadataPass",
@@ -205,6 +206,19 @@ def find_start_line(data):
     return None
 
 
+""" Extract wall time and pass name from each extracted line of data
+"""
+
+
+def extract_wall_pass_name(
+    line_data: list[Union[float, str]], relative: bool, total_wall_time: float
+):
+    return [
+        line_data[-2] if relative else total_wall_time * line_data[-2],
+        line_data[-1],
+    ]
+
+
 """ Parse section with line line_start (first line containing the correct line input format)
 """
 
@@ -227,13 +241,19 @@ def parse_section(data: list[str], line_start: int, relative: bool):
     # extract data
     result = [[]] * (last_section_line - line_start)
     try:
-        for i in range(line_start, last_section_line):
-            line_data = extract_alphanum(data[i])
-            tmp = [  # get time by multiplying by fraction for higher precision
-                line_data[-2] if relative else total_wall_time * line_data[-2],
-                line_data[-1],
-            ]
-            result[i - line_start] = tmp
+        # for i in range(line_start, last_section_line):
+        #    line_data = extract_alphanum(data[i])
+        #    tmp = [  # get time by multiplying by fraction for higher precision
+        #        line_data[-2] if relative else total_wall_time * line_data[-2],
+        #        line_data[-1],
+        #    ]
+        #    result[i - line_start] = tmp
+        tmp = pool.map(extract_alphanum, data[line_start:last_section_line])
+        # print(tmp)
+        # result = [helper(tmp[i]) for i in range(len(tmp))]
+        result = pool.starmap(
+            extract_wall_pass_name, zip(tmp, repeat(relative), repeat(total_wall_time))
+        )
     except IndexError:
         print("Index out of range!")
         print("DEBUG parse_section: index", i, "line:", line_data)
@@ -300,6 +320,10 @@ def read_data(file_path: str, bitcode_file: bool, opt: str):
             return f.read()
 
 
+def sampling_fp_helper():
+    pass
+
+
 """ Return wall time from n random samples
 """
 
@@ -318,6 +342,11 @@ def sampling(
     r = random.sample(range(len(listdir(dir_path)) - 1), n)
     failed = 0
 
+    # fp = pool.starmap(join, zip(repeat(dir_path), files))  # list of file paths
+    # data = pool.starmap(
+    #    parse_pass_analysis_exec,
+    #    zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
+    # )
     with alive_bar(n) as bar:
         for i in r:
             fp = join(dir_path, files[i])
