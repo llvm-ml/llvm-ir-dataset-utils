@@ -241,10 +241,14 @@ def parse_section(data: list[str], line_start: int, relative: bool):
     # extract data
     result = [[]] * (last_section_line - line_start)
     try:
-        tmp = pool.map(extract_alphanum, data[line_start:last_section_line])
-        result = pool.starmap(
-            extract_wall_pass_name, zip(tmp, repeat(relative), repeat(total_wall_time))
-        )
+        data = data[line_start:last_section_line]
+        # tmp = pool.map(extract_alphanum, data)
+        # result = pool.starmap(
+        #    extract_wall_pass_name, zip(tmp, repeat(relative), repeat(total_wall_time))
+        # )
+        tmp = [extract_alphanum(d) for d in data]
+        result = [extract_wall_pass_name(t, relative, total_wall_time) for t in tmp]
+
     except IndexError:
         print("Index out of range!")
         print("DEBUG parse_section: index", i, "line:", line_data)
@@ -311,8 +315,11 @@ def read_data(file_path: str, bitcode_file: bool, opt: str):
             return f.read()
 
 
-def sampling_fp_helper():
-    pass
+def sampling_fp_helper(files: list[str], r: list[int]):
+    result = []
+    for i in r:
+        result.append(files[i])
+    return result
 
 
 """ Return wall time from n random samples
@@ -341,27 +348,47 @@ def sampling(
     fp = parallelbar.progress_starmap(
         join, zip(repeat(dir_path), files), total=len(files)
     )
+    fp = sampling_fp_helper(fp, r)
+    data = parallelbar.progress_starmap(
+        parse_pass_analysis_exec,
+        zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
+        total=n,
+    )
 
-    with alive_bar(n) as bar:
-        for i in r:
-            # fp = join(dir_path, files[i])
-            if not isfile(fp[i]):
-                failed += 1
+    for d in data:
+        if d is None:
+            failed += 1
+            continue
+        pass_exec_data = d["pass-exec"]
+        n_passes = len(pass_exec_data)
+
+        for i in range(n_passes):
+            pass_name = pass_exec_data[i][-1]
+            if pass_name not in passes:
+                wall_time[pass_name] = [pass_exec_data[i][-2]]
             else:
-                data = parse_pass_analysis_exec(fp[i], relative, bitcode_file, opt)
-                if data is None:  # wrong files & format
-                    failed += 1
-                    continue
-                pass_exec_data = data["pass-exec"]
-                n_passes = len(pass_exec_data)
+                wall_time[pass_name].append(pass_exec_data[i][-2])
 
-                for i in range(n_passes):
-                    pass_name = pass_exec_data[i][-1]
-                    if pass_name not in passes:
-                        wall_time[pass_name] = [pass_exec_data[i][-2]]
-                    else:
-                        wall_time[pass_name].append(pass_exec_data[i][-2])
-            bar()
+    # with alive_bar(n) as bar:
+    # for i in r:
+    # fp = join(dir_path, files[i])
+    # if not isfile(fp[i]):
+    # failed += 1
+    # else:
+    # data = parse_pass_analysis_exec(fp[i], relative, bitcode_file, opt)
+    #   if data[i] is None:  # wrong files & format
+    #        failed += 1
+    #        continue
+    # pass_exec_data = data[i]["pass-exec"]
+    # n_passes = len(pass_exec_data)
+
+    # for i in range(n_passes):
+    #    pass_name = pass_exec_data[i][-1]
+    #    if pass_name not in passes:
+    #        wall_time[pass_name] = [pass_exec_data[i][-2]]
+    #    else:
+    #       wall_time[pass_name].append(pass_exec_data[i][-2])
+    #    bar()
     print(
         f"{n-failed}/{n} files have successfully sampled ({round((n-failed)/n * 100,2)}% success rate)."
     )
