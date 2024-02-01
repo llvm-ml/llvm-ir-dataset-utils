@@ -2,7 +2,7 @@
 
 from typing import Union
 
-from os import listdir
+from os import listdir, cpu_count
 from os.path import isfile, isdir, join
 
 import json
@@ -241,16 +241,7 @@ def parse_section(data: list[str], line_start: int, relative: bool):
     # extract data
     result = [[]] * (last_section_line - line_start)
     try:
-        # for i in range(line_start, last_section_line):
-        #    line_data = extract_alphanum(data[i])
-        #    tmp = [  # get time by multiplying by fraction for higher precision
-        #        line_data[-2] if relative else total_wall_time * line_data[-2],
-        #        line_data[-1],
-        #    ]
-        #    result[i - line_start] = tmp
         tmp = pool.map(extract_alphanum, data[line_start:last_section_line])
-        # print(tmp)
-        # result = [helper(tmp[i]) for i in range(len(tmp))]
         result = pool.starmap(
             extract_wall_pass_name, zip(tmp, repeat(relative), repeat(total_wall_time))
         )
@@ -339,7 +330,7 @@ def sampling(
     wall_time = {k: [] for k in OPT_O3_PASS_LIST}
     passes = set(OPT_O3_PASS_LIST)
     files = listdir(dir_path)
-    r = random.sample(range(len(listdir(dir_path)) - 1), n)
+    r = random.sample(range(len(files) - 1), n)
     failed = 0
 
     # fp = pool.starmap(join, zip(repeat(dir_path), files))  # list of file paths
@@ -347,13 +338,17 @@ def sampling(
     #    parse_pass_analysis_exec,
     #    zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
     # )
+    fp = parallelbar.progress_starmap(
+        join, zip(repeat(dir_path), files), total=len(files)
+    )
+
     with alive_bar(n) as bar:
         for i in r:
-            fp = join(dir_path, files[i])
-            if not isfile(fp):
+            # fp = join(dir_path, files[i])
+            if not isfile(fp[i]):
                 failed += 1
             else:
-                data = parse_pass_analysis_exec(fp, relative, bitcode_file, opt)
+                data = parse_pass_analysis_exec(fp[i], relative, bitcode_file, opt)
                 if data is None:  # wrong files & format
                     failed += 1
                     continue
