@@ -2,7 +2,7 @@
 
 from typing import Union
 
-from os import listdir, cpu_count
+from os import listdir
 from os.path import isfile, isdir, join
 import subprocess
 
@@ -11,7 +11,6 @@ from textwrap import fill
 import json
 import csv
 import pandas as pd
-import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import random
@@ -20,6 +19,7 @@ from datasets import load_dataset
 
 from itertools import repeat
 import parallelbar
+from yaspin import yaspin
 
 OPT_O3_PASS_LIST = [
     "Annotation2MetadataPass",
@@ -361,6 +361,7 @@ def sampling(
     )
     return wall_time
 
+
 ### CSV format for sampling
 def sampling_csv(
     dir_path: str,
@@ -371,12 +372,12 @@ def sampling_csv(
 ):
     files = listdir(dir_path)
     r = random.sample(range(len(files)), n)
-    print('Getting all file name...')
+    print("Getting all file name...")
     fp = parallelbar.progress_starmap(
         join, zip(repeat(dir_path), files), total=len(files)
     )
     fp = sampling_fp_helper(fp, r)
-    print('Extracting data...')
+    print("Extracting data...")
     data = parallelbar.progress_starmap(
         parse_pass_analysis_exec,
         zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
@@ -385,8 +386,9 @@ def sampling_csv(
 
     result = []
     for d in data:
-        result.extend(d['pass-exec'])
+        result.extend(d["pass-exec"])
     return result
+
 
 def sample_then_export_csv(
     source_dir: str,
@@ -400,6 +402,7 @@ def sample_then_export_csv(
 ):
     o = sampling_csv(source_dir, nsamples, relative, bitcode_file, opt)
     return export_to_csv(o, fp, ncols, col_labels)
+
 
 def export_pass_name(pass_collection: list[str], fp, append=True):
     # append_cond = lambda append: 'a' if append else 'w'
@@ -422,56 +425,66 @@ def import_pass_from_file(fp, delimeter="\n"):
     return data
 
 
-def export_to_json(data: Union[str, list[float]], fn: str="", indent: int=2):
+def export_to_json(data: Union[str, list[float]], fn: str = "", indent: int = 2):
     out = json.dumps(data, indent=indent)
     name = fn if fn != "" else "json_file.json"
     with open(name, "w") as f:
         f.write(out)
 
 
-def import_from_json(file_path: str, encoding: bool=False):
+def import_from_json(file_path: str, encoding: bool = False):
     decoding_scheme = [None, lambda pairs: {int(k): v for k, v in pairs}]
     data = None
     with open(file_path) as f:
-        data = json.load(
-            f, object_pairs_hook=decoding_scheme[int(encoding)]
-        )
+        data = json.load(f, object_pairs_hook=decoding_scheme[int(encoding)])
     return data
 
-def export_to_csv(data: list[list[Union[str, float]]], fp: str, ncols: int, col_labels: list[str]):
-    print('Checking data validity...')
+
+def export_to_csv(
+    data: list[list[Union[str, float]]], fp: str, ncols: int, col_labels: list[str]
+):
+    print("Checking data validity...")
     if not (isinstance(data, list) and all(isinstance(d, list) for d in data)):
-        print('Data is not valid type')
+        print("Data is not valid type")
         return None
-    
+
     if len(col_labels) != len(data[0]):
-        print('Number of labels must be equal to number of columns')
+        print("Number of labels must be equal to number of columns")
         return None
-    
-    print('Exporting as csv...')
-    with open(fp, 'w', newline='') as f:
+
+    print("Exporting as csv...")
+    with open(fp, "w", newline="") as f:
         o = csv.writer(f)
         o.writerow(col_labels)
         o.writerows(data)
-    print('Exported successfully!')
+    print("Exported successfully!")
     return 0
-    
+
+
 def convert_to_csv_struct_helper(k: str, v: float) -> list[Union[str, float]]:
     return [k, v]
 
-def convert_to_csv_struct(data: Union[str, list[float]]) -> list[list[Union[str, float]]]:
+
+def convert_to_csv_struct(
+    data: Union[str, list[float]]
+) -> list[list[Union[str, float]]]:
     result = []
     keys = list(data.keys())
     for k in keys:
         n = len(data[k])
         if n == 0:
-            print('Skipped:', k)
-            continue # likely this version doesn't have empty labels (labels have no data on)
-        print('Processing:', k)
-        result.extend(parallelbar.progress_starmap(convert_to_csv_struct_helper, zip(repeat(k), data[k]), total=n))
+            print("Skipped:", k)
+            continue  # likely this version doesn't have empty labels (labels have no data on)
+        print("Processing:", k)
+        result.extend(
+            parallelbar.progress_starmap(
+                convert_to_csv_struct_helper, zip(repeat(k), data[k]), total=n
+            )
+        )
     return result
 
-def plot( # deprecating
+
+def plot(  # deprecating
     samples: Union[str, list[float]],
     export_png: str = "",
     kind="point",
@@ -494,14 +507,22 @@ def plot( # deprecating
     ):  # if not empty string, export png with that string value as file name
         plt.savefig(export_png + ".png")
 
-def plot_df(df: pd.DataFrame, num_col: str, cat_col: str, ncols: int=4, suptitle='', save: str=''):
+
+def plot_df(
+    df: pd.DataFrame,
+    num_col: str,
+    cat_col: str,
+    ncols: int = 4,
+    suptitle="",
+    save: str = "",
+):
     group_values = list(pd.unique(df[cat_col]))
 
     # calculate number of rows in the plot
     nrows = len(group_values) // ncols + (len(group_values) % ncols > 0)
 
-    # Define the plot 
-    plt.figure(figsize = (20, 40))
+    # Define the plot
+    plt.figure(figsize=(20, 40))
     plt.subplots_adjust(hspace=0.9)
     plt.suptitle(suptitle, fontsize=16, y=0.95)
 
@@ -509,28 +530,30 @@ def plot_df(df: pd.DataFrame, num_col: str, cat_col: str, ncols: int=4, suptitle
         try:
             # add a new subplot at each iteration using nrows and cols
             ax = plt.subplot(nrows, ncols, n + 1)
-            
+
             # Filter the dataframe data for each state
             df_temp = df[df[cat_col] == col]
-            df_temp[num_col].hist(ax=ax, bins=20)
-            ax2 = df_temp[num_col].plot.kde(ax=ax, secondary_y=True, title=col)
-            ax2.set_xlim(left=0)
-            
+            df_temp[num_col].hist(ax=ax, bins=50)
+            if len(df_temp) > 1:
+                ax2 = df_temp[num_col].plot.kde(ax=ax, secondary_y=True, title=col)
+                ax2.set_xlim(left=0)
+
             # chart formatting
-            ax.set_title(fill(col, 40),size=12)
-            ax.set_xlabel('% of total time')
+            ax.set_title(fill(col, 40), size=12)
+            ax.set_xlabel("% of total time")
             if n % ncols == 0:
-                ax.set_ylabel('Frequency')
+                ax.set_ylabel("Frequency")
             else:
-                ax.set_ylabel('')
-        except ValueError: # continue with the loop
-            print(col, 'only has 1 value')
+                ax.set_ylabel("")
+        except ValueError:  # continue with the loop
+            print(col, "only has 1 value. Ignoring...")
             pass
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.93)
-    if save != '':
+    if save != "":
         plt.savefig(save)
+
 
 def sort_data(data: Union[str, list[float]]):
     sorted_keys = sorted(list(data.keys()))
@@ -592,3 +615,4 @@ def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
 
     print(f"{counter} bitcode files have been downloaded to directory {target_dir}.")
     return 0
+
