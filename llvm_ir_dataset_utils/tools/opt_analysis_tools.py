@@ -4,23 +4,22 @@ from typing import Union
 
 from os import listdir, cpu_count
 from os.path import isfile, isdir, join
+import subprocess
+
+from textwrap import fill
 
 import json
-import subprocess
+import csv
+import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import random
 
 from datasets import load_dataset
 
-from yaspin import yaspin
-from alive_progress import alive_bar
-
-from multiprocessing import Pool
 from itertools import repeat
 import parallelbar
-
-pool = Pool()
 
 OPT_O3_PASS_LIST = [
     "Annotation2MetadataPass",
@@ -239,13 +238,8 @@ def parse_section(data: list[str], line_start: int, relative: bool):
             break
 
     # extract data
-    result = [[]] * (last_section_line - line_start)
     try:
         data = data[line_start:last_section_line]
-        # tmp = pool.map(extract_alphanum, data)
-        # result = pool.starmap(
-        #    extract_wall_pass_name, zip(tmp, repeat(relative), repeat(total_wall_time))
-        # )
         tmp = [extract_alphanum(d) for d in data]
         result = [extract_wall_pass_name(t, relative, total_wall_time) for t in tmp]
 
@@ -259,7 +253,7 @@ def parse_section(data: list[str], line_start: int, relative: bool):
 """ Parse pass and analysis execution timing sections
     input: output_file_path: path to output file
     output: dict{'pass-exec': list[float, float, float, str], 
-                 'analysis-exec': list[float, float, float str]} 
+                 'analysis-exec': list[float, float, float, str]} 
 """
 
 
@@ -339,12 +333,6 @@ def sampling(
     files = listdir(dir_path)
     r = random.sample(range(len(files) - 1), n)
     failed = 0
-
-    # fp = pool.starmap(join, zip(repeat(dir_path), files))  # list of file paths
-    # data = pool.starmap(
-    #    parse_pass_analysis_exec,
-    #    zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
-    # )
     fp = parallelbar.progress_starmap(
         join, zip(repeat(dir_path), files), total=len(files)
     )
@@ -368,32 +356,50 @@ def sampling(
                 wall_time[pass_name] = [pass_exec_data[i][-2]]
             else:
                 wall_time[pass_name].append(pass_exec_data[i][-2])
-
-    # with alive_bar(n) as bar:
-    # for i in r:
-    # fp = join(dir_path, files[i])
-    # if not isfile(fp[i]):
-    # failed += 1
-    # else:
-    # data = parse_pass_analysis_exec(fp[i], relative, bitcode_file, opt)
-    #   if data[i] is None:  # wrong files & format
-    #        failed += 1
-    #        continue
-    # pass_exec_data = data[i]["pass-exec"]
-    # n_passes = len(pass_exec_data)
-
-    # for i in range(n_passes):
-    #    pass_name = pass_exec_data[i][-1]
-    #    if pass_name not in passes:
-    #        wall_time[pass_name] = [pass_exec_data[i][-2]]
-    #    else:
-    #       wall_time[pass_name].append(pass_exec_data[i][-2])
-    #    bar()
     print(
         f"{n-failed}/{n} files have successfully sampled ({round((n-failed)/n * 100,2)}% success rate)."
     )
     return wall_time
 
+### CSV format for sampling
+def sampling_csv(
+    dir_path: str,
+    n: int,
+    relative: bool = False,
+    bitcode_file: bool = False,
+    opt: str = "O3",
+):
+    files = listdir(dir_path)
+    r = random.sample(range(len(files)), n)
+    print('Getting all file name...')
+    fp = parallelbar.progress_starmap(
+        join, zip(repeat(dir_path), files), total=len(files)
+    )
+    fp = sampling_fp_helper(fp, r)
+    print('Extracting data...')
+    data = parallelbar.progress_starmap(
+        parse_pass_analysis_exec,
+        zip(fp, repeat(relative), repeat(bitcode_file), repeat(opt)),
+        total=n,
+    )
+
+    result = []
+    for d in data:
+        result.extend(d['pass-exec'])
+    return result
+
+def sample_then_export_csv(
+    source_dir: str,
+    fp: str,
+    nsamples: int,
+    ncols: int,
+    col_labels: list[str],
+    relative: bool = False,
+    bitcode_file: bool = False,
+    opt: str = "O3",
+):
+    o = sampling_csv(source_dir, nsamples, relative, bitcode_file, opt)
+    return export_to_csv(o, fp, ncols, col_labels)
 
 def export_pass_name(pass_collection: list[str], fp, append=True):
     # append_cond = lambda append: 'a' if append else 'w'
@@ -416,41 +422,115 @@ def import_pass_from_file(fp, delimeter="\n"):
     return data
 
 
-def export_to_json(data: Union[str, list[float]], fn="", indent=2):
+def export_to_json(data: Union[str, list[float]], fn: str="", indent: int=2):
     out = json.dumps(data, indent=indent)
     name = fn if fn != "" else "json_file.json"
     with open(name, "w") as f:
         f.write(out)
 
 
-def import_from_json(file_path: str):
+def import_from_json(file_path: str, encoding: bool=False):
+    decoding_scheme = [None, lambda pairs: {int(k): v for k, v in pairs}]
     data = None
     with open(file_path) as f:
         data = json.load(
-            f, object_pairs_hook=lambda pairs: {int(k): v for k, v in pairs}
+            f, object_pairs_hook=decoding_scheme[int(encoding)]
         )
     return data
 
+def export_to_csv(data: list[list[Union[str, float]]], fp: str, ncols: int, col_labels: list[str]):
+    print('Checking data validity...')
+    if not (isinstance(data, list) and all(isinstance(d, list) for d in data)):
+        print('Data is not valid type')
+        return None
+    
+    if len(col_labels) != len(data[0]):
+        print('Number of labels must be equal to number of columns')
+        return None
+    
+    print('Exporting as csv...')
+    with open(fp, 'w', newline='') as f:
+        o = csv.writer(f)
+        o.writerow(col_labels)
+        o.writerows(data)
+    print('Exported successfully!')
+    return 0
+    
+def convert_to_csv_struct_helper(k: str, v: float) -> list[Union[str, float]]:
+    return [k, v]
 
-def plot(
+def convert_to_csv_struct(data: Union[str, list[float]]) -> list[list[Union[str, float]]]:
+    result = []
+    keys = list(data.keys())
+    for k in keys:
+        n = len(data[k])
+        if n == 0:
+            print('Skipped:', k)
+            continue # likely this version doesn't have empty labels (labels have no data on)
+        print('Processing:', k)
+        result.extend(parallelbar.progress_starmap(convert_to_csv_struct_helper, zip(repeat(k), data[k]), total=n))
+    return result
+
+def plot( # deprecating
     samples: Union[str, list[float]],
     export_png: str = "",
     kind="point",
     size: int = 5,
     xlabel="",
     ylabel="",
-    labelsize=5,
+    xrotation=90,
+    yrotation=0,
+    labelsize=10,
 ):
     sns.set(style="darkgrid")
-    plt.figure(figsize=(12, 10))
-    ax = sns.catplot(data=samples, kind=kind)
+    # ax = sns.catplot(data=samples, s=10, height=5, aspect=3)
+    ax = sns.violinplot(data=samples, orient="h", split=True, inner="quart")
     ax.set(xlabel=xlabel, ylabel=ylabel)
     ax.tick_params(labelsize=labelsize)
+    # ax.set_yticklabels(rotation=yrotation)
+    # ax.set_xticklabels(rotation=xrotation)
     if (
         export_png != ""
     ):  # if not empty string, export png with that string value as file name
         plt.savefig(export_png + ".png")
 
+def plot_df(df: pd.DataFrame, num_col: str, cat_col: str, ncols: int=4, suptitle='', save: str=''):
+    group_values = list(pd.unique(df[cat_col]))
+
+    # calculate number of rows in the plot
+    nrows = len(group_values) // ncols + (len(group_values) % ncols > 0)
+
+    # Define the plot 
+    plt.figure(figsize = (20, 40))
+    plt.subplots_adjust(hspace=0.9)
+    plt.suptitle(suptitle, fontsize=16, y=0.95)
+
+    for n, col in enumerate(group_values):
+        try:
+            # add a new subplot at each iteration using nrows and cols
+            ax = plt.subplot(nrows, ncols, n + 1)
+            
+            # Filter the dataframe data for each state
+            df_temp = df[df[cat_col] == col]
+            df_temp[num_col].hist(ax=ax, bins=20)
+            ax2 = df_temp[num_col].plot.kde(ax=ax, secondary_y=True, title=col)
+            ax2.set_xlim(left=0)
+            
+            # chart formatting
+            ax.set_title(fill(col, 40),size=12)
+            ax.set_xlabel('% of total time')
+            if n % ncols == 0:
+                ax.set_ylabel('Frequency')
+            else:
+                ax.set_ylabel('')
+        except ValueError: # continue with the loop
+            print(col, 'only has 1 value')
+            pass
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.93)
+    if save != '':
+        plt.savefig(save)
 
 def sort_data(data: Union[str, list[float]]):
     sorted_keys = sorted(list(data.keys()))
@@ -512,11 +592,3 @@ def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
 
     print(f"{counter} bitcode files have been downloaded to directory {target_dir}.")
     return 0
-
-
-# sns.set(style='darkgrid')
-# ax = sns.catplot(sorted_data, s=10, height=5, aspect=3)
-# ax.set(xlabel='pass', ylabel='fraction of total time')
-# ax.tick_params(labelsize=10)
-# ax.set_yticklabels(rotation=0)
-# ax.set_xticklabels(rotation=90)
