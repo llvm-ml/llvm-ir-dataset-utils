@@ -10,7 +10,7 @@ import re
 
 import ray
 
-from compiler_opt.tools import extract_ir_lib
+from mlgo.corpus import extract_ir_lib
 
 from llvm_ir_dataset_utils.util import file
 from llvm_ir_dataset_utils.util import spack as spack_utils

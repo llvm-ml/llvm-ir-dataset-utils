@@ -1,6 +1,6 @@
 [packages]
 absl-py = ">=1.4.0"
-ml-compiler-opt = ">=0.0.1.dev202308100007"
+mlgo-utils = ">=18.0.0.dev202401210722"
 ray = ">=2.5.1"
 toml = ">=0.10.2"
 pandas = ">=2.0.3"

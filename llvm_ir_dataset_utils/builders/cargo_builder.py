@@ -10,10 +10,8 @@ import logging
 
 import ray
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-from compiler_opt.tools import make_corpus_lib
-from compiler_opt.tools import combine_training_corpus_lib
+from mlgo.corpus import make_corpus_lib
+from mlgo.corpus import combine_training_corpus_lib
 
 BUILD_TIMEOUT = 900
 
