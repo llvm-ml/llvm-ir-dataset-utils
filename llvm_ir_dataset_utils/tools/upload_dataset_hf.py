@@ -20,6 +20,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('dataset_dir', None,
                     'The path to the folder containing the parquet files.')
 flags.DEFINE_string('start_after', None, 'A specific path to start at.')
+flags.DEFINE_integer('operations_per_commit', 50,
+                     'The number of operations to cache before committing')
 
 flags.mark_flag_as_required('dataset_dir')
 
@@ -27,8 +29,9 @@ flags.mark_flag_as_required('dataset_dir')
 @ray.remote(num_cpus=4)
 def upload_file(api, full_file_path, file_to_upload):
   try:
+    hf_file_path = 'data/' + file_to_upload
     operation = CommitOperationAdd(
-        path_in_repo=file_to_upload, path_or_fileobj=full_file_path)
+        path_in_repo=hf_file_path, path_or_fileobj=full_file_path)
     preupload_lfs_files(
         'llvm-ml/ComPile', additions=[operation], repo_type='dataset')
     logging.warning(f'Finished uploading {file_to_upload}')
@@ -71,7 +74,7 @@ def main(_):
         file_upload_futures.append(
             upload_file.remote(api, returned_upload[0], returned_upload[1]))
 
-    if len(current_operations) > 50:
+    if len(current_operations) > FLAGS.operations_per_commit:
       create_commit(
           'llvm-ml/ComPile',
           operations=current_operations,
