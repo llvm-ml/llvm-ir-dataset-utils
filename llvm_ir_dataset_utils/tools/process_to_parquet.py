@@ -71,6 +71,8 @@ def process_single_batch(batch_dirs, dataset_path, corpus_name):
     license_file.append(bitcode_license_info[2])
     package_source.append(bitcode_license_info[3])
 
+  assert (len(corpus_name) > 0)
+
   dataframe = pandas.DataFrame.from_dict({
       'content': module_content,
       'license_expression': license_expression,
@@ -90,7 +92,7 @@ def main(_):
 
   for corpus_dir in FLAGS.corpus_dir:
     new_projects_list = os.listdir(corpus_dir)
-    corpus_name = os.path.basename(corpus_dir)
+    corpus_name = os.path.basename(os.path.abspath(corpus_dir))
     for project_path in new_projects_list:
       projects_list.append((corpus_dir, corpus_name, project_path))
 
