@@ -53,7 +53,7 @@ def main(_):
 
   for data_path in FLAGS.data_path:
     logging.info(f'Loading data from {data_path}')
-    data_frame = pandas.read_csv(data_path)
+    data_frame = pandas.read_csv(data_path, engine='pyarrow')
     data_frame.drop(['name'], axis=1, inplace=True)
     language_name = os.path.basename(data_path)[:-4]
     languages.append(language_name)
