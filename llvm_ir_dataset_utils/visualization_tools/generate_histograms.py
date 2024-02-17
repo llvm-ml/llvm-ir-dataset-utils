@@ -25,6 +25,8 @@ DEFAULT_SUBPLOT_SECTIONS = [
 flags.DEFINE_multi_string('data_path', None, 'The path to the data file.')
 flags.DEFINE_string('output_path', None,
                     'The path to a folder to write the histograms to.')
+flags.DEFINE_string('data_output_path', None,
+                    'The path to a CSV where the data is written to.')
 flags.DEFINE_integer('num_bins', 12,
                      'The number of bins to use for the histograms.')
 flags.DEFINE_multi_string(
@@ -85,6 +87,10 @@ def main(_):
   subplot_figure = plotly.subplots.make_subplots(
       rows=2, cols=4, subplot_titles=subplot_titles)
 
+  output_data_path_handle = None
+  if FLAGS.data_output_path:
+    output_data_path_handle = open(FLAGS.data_output_path, 'w')
+
   for index, sub_plot_section in enumerate(FLAGS.sub_plot_sections):
     column = (index % 4) + 1
     row = int(index / 4 + 1)
@@ -96,6 +102,17 @@ def main(_):
       data = data_frame_subset[sub_plot_section].to_numpy()
       counts, bins = numpy.histogram(
           data, bins=FLAGS.num_bins, range=(0, column_max))
+
+      if output_data_path_handle:
+        output_data_path_handle.write(f'{language}-{sub_plot_section}\n')
+
+        for current_bin in bins:
+          output_data_path_handle.write(f'{current_bin},')
+        output_data_path_handle.write('\n')
+
+        for current_count in counts:
+          output_data_path_handle.write(f'{current_count},')
+        output_data_path_handle.write('\n')
 
       subplot_figure.add_bar(
           x=bins,
@@ -110,6 +127,8 @@ def main(_):
           type="log", col=column, row=row, exponentformat='power')
       logging.info(
           f'Finished generating figure for {sub_plot_section} in {language}')
+
+  output_data_path_handle.close()
 
   subplot_figure.update_layout(width=2200, height=1000, font=dict(size=30))
   subplot_figure.update_annotations(font_size=40)
