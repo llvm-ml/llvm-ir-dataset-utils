@@ -137,7 +137,7 @@ def process_module_batch(batch_path, modules_to_process):
   shutil.rmtree(batch_path)
 
 
-def extract_files_from_hash_map(module_hash_map, output_path, license_info_map):
+def extract_files_from_hash_map(module_hash_map, output_path):
   modules_to_process = {}
 
   for module_hash in module_hash_map:
@@ -202,7 +202,7 @@ def check_and_add_module_licenses(module_hash_map, license_info_map):
   if len(license_info_map) == 0:
     for module_hash in module_hash_map:
       validated_module_hash_map[module_hash] = module_hash_map[module_hash] + (
-          None, None, None)
+          None, None, None, None)
   logging.info('Checking module licenses')
   for module_hash in module_hash_map:
     file_path, corpus_name = module_hash_map[module_hash]
@@ -240,8 +240,7 @@ def main(_):
   module_hash_map = check_and_add_module_licenses(module_hash_map,
                                                   license_info_map)
 
-  extract_files_from_hash_map(module_hash_map, FLAGS.output_path,
-                              license_info_map)
+  extract_files_from_hash_map(module_hash_map, FLAGS.output_path)
 
 
 if __name__ == '__main__':
