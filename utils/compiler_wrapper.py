@@ -23,11 +23,28 @@ def run_compiler_invocation(mode, compiler_arguments):
   subprocess.run(command_vector)
 
 
-def save_source(source_files, output_file):
+def save_preprocessed_source(mode, compiler_arguments, source_file_stem):
+  # We shouldn't fail to find the output here if the argument parsing
+  # succeeded.
+  output_index = compiler_arguments.index('-o') + 1
+  arguments_copy = compiler_arguments.copy()
+  output_path = arguments_copy[
+      output_index] + f'.{source_file_stem}.preprocessed_source'
+  arguments_copy[output_index] = output_path
+
+  # Add -E to the compiler invocation to run just the preprocessor.
+  arguments_copy.append('-E')
+
+  run_compiler_invocation(mode, arguments_copy)
+
+
+def save_source(source_files, output_file, mode, compiler_arguments):
   for source_file in source_files:
     current_file_stem = os.path.basename(source_file).split('.')[0]
     new_file_name = output_file + f'.{current_file_stem}.source'
     shutil.copy(source_file, new_file_name)
+
+    save_preprocessed_source(mode, compiler_arguments, current_file_stem)
 
 
 def parse_args(arguments_split):
@@ -62,7 +79,7 @@ def main(args):
 
   output_file_path, input_files, mode = parsed_arguments
 
-  save_source(input_files, output_file_path)
+  save_source(input_files, output_file_path, mode, args[1:])
 
   run_compiler_invocation(mode, args[1:])
 
