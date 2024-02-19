@@ -401,6 +401,16 @@ def get_token_count(bitcode_module, vocab_path):
     return (None, output.count('@@'))
 
 
+def get_hf_token_count(bitcode_module, tokenizer_json):
+  textual_ir_or_error = get_textual_ir(bitcode_module)
+  if textual_ir_or_error[0]:
+    return (textual_ir_or_error[0], None)
+
+  from transformers import PreTrainedTokenizerFast
+  tokenizer_object = PreTrainedTokenizerFast(tokenizer_file=tokenizer_json)
+  return (None, len(tokenizer_object.encode(textual_ir_or_error[1])))
+
+
 def get_lowered_size(bitcode_module):
   # Run llc on the bitcode to lower to assembly
   llc_command_vector = ['llc', '-filetype=obj', '-']
@@ -663,6 +673,11 @@ def get_module_statistics_batch(project_dir,
       else:
         token_count_wrapped = {'token_count': [token_count_or_error[1]]}
         statistics.append((None, token_count_wrapped, module_path))
+    elif statistics_type == 'hf_token_count':
+      token_count_or_error = get_hf_token_count(
+          bitcode_file, extra_properties['bpe_vocab_path'])
+      token_count_wrapped = {'hf_token_count': [token_count_or_error[1]]}
+      statistics.append((None, token_count_wrapped, module_path))
   return statistics
 
 
