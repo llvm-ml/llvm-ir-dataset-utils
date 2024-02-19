@@ -48,12 +48,16 @@ def save_source(source_files, output_file, mode, compiler_arguments):
 
 
 def parse_args(arguments_split):
+  mode = 'c++'
+  if not arguments_split[0].endswith('++'):
+    mode = 'c'
+
   output_file_path = None
   try:
     output_arg_index = arguments_split.index('-o') + 1
     output_file_path = arguments_split[output_arg_index]
   except:
-    return None
+    return mode
 
   input_files = []
 
@@ -62,20 +66,18 @@ def parse_args(arguments_split):
       if argument.endswith(recognized_extension):
         input_files.append(argument)
 
-  mode = 'c++'
-  if not arguments_split[0].endswith('++'):
-    mode = 'c'
-
   return (output_file_path, input_files, mode)
 
 
 def main(args):
   parsed_arguments = parse_args(args)
-  if not parsed_arguments:
+  if len(parsed_arguments) == 1:
     # We couldn't parse the arguments. This could be for a varietey of reasons.
     # In this case, don't copy over any files and just run the compiler
     # invocation.
-    run_compiler_invocation(args[1:])
+    mode = parsed_arguments
+    run_compiler_invocation(mode, args[1:])
+    return
 
   output_file_path, input_files, mode = parsed_arguments
 
