@@ -6,6 +6,7 @@ import tempfile
 import logging
 import json
 import shutil
+import textwrap
 
 import ray
 
@@ -408,7 +409,18 @@ def get_hf_token_count(bitcode_module, tokenizer_json):
 
   from transformers import PreTrainedTokenizerFast
   tokenizer_object = PreTrainedTokenizerFast(tokenizer_file=tokenizer_json)
-  return (None, len(tokenizer_object.encode(textual_ir_or_error[1])))
+
+  token_count = 0
+
+  # Chunk the textual IR so that the tokenizer memory usage does not explode.
+  # This is not really the optimal way to do things and does slightly impact
+  # output accuracey (2-3% wrappinga at 10^6 from my testing). The number is
+  # somewhat arbitrary, but seems to work for most corpora on a machine with
+  # 96 threads/256GB of RAM.
+  for string_part in textwrap.wrap(textual_ir_or_error[1], 5000000):
+    token_count += len(tokenizer_object.encode(string_part))
+
+  return (None, token_count)
 
 
 def get_lowered_size(bitcode_module):
