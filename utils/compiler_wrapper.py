@@ -5,6 +5,7 @@ the source files that are used within the compilation step."""
 import os
 import subprocess
 import sys
+import shutil
 
 RECOGNIZED_SOURCE_FILE_EXTENSIONS = ['.c', 'cpp', '.cxx', '.cc']
 
@@ -23,9 +24,10 @@ def run_compiler_invocation(mode, compiler_arguments):
 
 
 def save_source(source_files, output_file):
-  # TODO(boomanaiden154): Flesh this function out
   for source_file in source_files:
-    print(f'saving {source_file}')
+    current_file_stem = os.path.basename(source_file).split('.')[0]
+    new_file_name = output_file + f'.{current_file_stem}.source'
+    shutil.copy(source_file, new_file_name)
 
 
 def parse_args(arguments_split):
