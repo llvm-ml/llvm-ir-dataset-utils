@@ -407,8 +407,8 @@ def get_hf_token_count(bitcode_module, tokenizer_json):
   if textual_ir_or_error[0]:
     return (textual_ir_or_error[0], None)
 
-  from transformers import PreTrainedTokenizerFast
-  tokenizer_object = PreTrainedTokenizerFast(tokenizer_file=tokenizer_json)
+  import sentencepiece as snp
+  tokenizer_object = snp.SentencePieceProcessor(model_file=tokenizer_json)
 
   token_count = 0
 
