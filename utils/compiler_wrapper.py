@@ -9,9 +9,14 @@ import sys
 RECOGNIZED_SOURCE_FILE_EXTENSIONS = ['.c', 'cpp', '.cxx', '.cc']
 
 
-def run_compiler_invocation(compiler_arguments):
-  # TODO(boomanaiden154): Detect if we're using a c or c++ invocation
-  command_vector = ['clang']
+def run_compiler_invocation(mode, compiler_arguments):
+  command_vector = []
+
+  if mode == 'c++':
+    command_vector.append('clang++')
+  else:
+    command_vector.append('clang')
+
   command_vector.extend(compiler_arguments)
 
   subprocess.run(command_vector)
@@ -38,7 +43,11 @@ def parse_args(arguments_split):
       if argument.endswith(recognized_extension):
         input_files.append(argument)
 
-  return (output_file_path, input_files)
+  mode = 'c++'
+  if not arguments_split[0].endswith('++'):
+    mode = 'c'
+
+  return (output_file_path, input_files, mode)
 
 
 def main(args):
@@ -47,14 +56,14 @@ def main(args):
     # We couldn't parse the arguments. This could be for a varietey of reasons.
     # In this case, don't copy over any files and just run the compiler
     # invocation.
-    run_compiler_invocation(args)
+    run_compiler_invocation(args[1:])
 
-  output_file_path, input_files = parsed_arguments
+  output_file_path, input_files, mode = parsed_arguments
 
   save_source(input_files, output_file_path)
 
-  run_compiler_invocation(args)
+  run_compiler_invocation(mode, args[1:])
 
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  main(sys.argv)
