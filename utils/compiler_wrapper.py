@@ -7,7 +7,7 @@ import subprocess
 import sys
 import shutil
 
-RECOGNIZED_SOURCE_FILE_EXTENSIONS = ['.c', 'cpp', '.cxx', '.cc']
+RECOGNIZED_SOURCE_FILE_EXTENSIONS = ['.c', '.cpp', '.cxx', '.cc']
 
 
 def run_compiler_invocation(mode, compiler_arguments):
@@ -23,13 +23,12 @@ def run_compiler_invocation(mode, compiler_arguments):
   subprocess.run(command_vector)
 
 
-def save_preprocessed_source(mode, compiler_arguments, source_file_stem):
+def save_preprocessed_source(mode, compiler_arguments):
   # We shouldn't fail to find the output here if the argument parsing
   # succeeded.
   output_index = compiler_arguments.index('-o') + 1
   arguments_copy = compiler_arguments.copy()
-  output_path = arguments_copy[
-      output_index] + f'.{source_file_stem}.preprocessed_source'
+  output_path = arguments_copy[output_index] + f'.preprocessed_source'
   arguments_copy[output_index] = output_path
 
   # Add -E to the compiler invocation to run just the preprocessor.
@@ -39,12 +38,12 @@ def save_preprocessed_source(mode, compiler_arguments, source_file_stem):
 
 
 def save_source(source_files, output_file, mode, compiler_arguments):
+  assert (len(source_files) <= 1)
   for source_file in source_files:
-    current_file_stem = os.path.basename(source_file).split('.')[0]
-    new_file_name = output_file + f'.{current_file_stem}.source'
+    new_file_name = output_file + f'.source'
     shutil.copy(source_file, new_file_name)
 
-    save_preprocessed_source(mode, compiler_arguments, current_file_stem)
+    save_preprocessed_source(mode, compiler_arguments)
 
 
 def parse_args(arguments_split):
