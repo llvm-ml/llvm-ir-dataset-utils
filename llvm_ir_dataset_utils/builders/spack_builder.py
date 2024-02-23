@@ -15,6 +15,7 @@ from mlgo.corpus import extract_ir_lib
 
 from llvm_ir_dataset_utils.util import file
 from llvm_ir_dataset_utils.util import spack as spack_utils
+from llvm_ir_dataset_utils.util import extract_source_lib
 
 SPACK_THREAD_OVERSUBSCRIPTION_FACTOR = 1
 
@@ -98,6 +99,7 @@ def extract_ir(package_hash, corpus_dir, build_dir, threads):
     extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
                                          corpus_dir)
     logging.getLogger().setLevel(current_verbosity)
+    extract_source_lib.copy_source(build_directory, corpus_dir)
 
 
 def push_to_buildcache(package_spec, buildcache_dir, corpus_dir, build_dir):
