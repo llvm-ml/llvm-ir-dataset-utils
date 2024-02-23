@@ -119,6 +119,7 @@ def process_module_batch(batch_path, modules_to_process):
     with open(os.path.join(batch_path, f'{module_hash}.bc'),
               'wb') as bitcode_file_handle:
       bitcode_file_handle.write(bitcode_file)
+
     # Process the .cmd file
     command_line_file_path = file_path_parts[1][:-3] + '.cmd'
     command_line_data = ''
@@ -126,11 +127,30 @@ def process_module_batch(batch_path, modules_to_process):
                                         command_line_file_path):
       command_line_data = dataset_corpus.load_file_from_corpus(
           file_path_parts[0], command_line_file_path).decode('utf-8')
-    else:
-      command_line_data = ''
     with open(os.path.join(batch_path, f'{module_hash}.cmd'),
               'w') as command_line_file_handle:
       command_line_file_handle.write(command_line_data)
+
+    # Process .source and .preprocessed_source files
+    source_path = file_path_parts[1][:-3] + '.source'
+    source_data = ''
+    if dataset_corpus.is_file_in_corpus(file_path_parts[0], source_path):
+      source_data = dataset_corpus.load_file_from_corpus(
+          file_path_parts[0], source_path).decode('utf-8')
+    with open(os.path.join(batch_path, f'{module_hash}.source'),
+              'w') as source_file_handle:
+      source_file_handle.write(source_data)
+
+    preprocessed_source_path = file_path_parts[1][:-3] + '.preprocessed_source'
+    preprocessed_source_data = ''
+    if dataset_corpus.is_file_in_corpus(file_path_parts[0],
+                                        preprocessed_source_path):
+      preprocessed_source_data = dataset_corpus.load_file_from_corpus(
+          file_path_parts[0], preprocessed_source_path).decode('utf-8')
+    with open(
+        os.path.join(batch_path, f'{module_hash}.preprocessed_source'),
+        'w') as preprocessed_source_file_handle:
+      preprocessed_source_file_handle.write(preprocessed_source_data)
 
   create_manifest(batch_path, modules_to_process)
   shutil.make_archive(batch_path, 'tar', batch_path)
