@@ -7,6 +7,7 @@ import logging
 import pathlib
 import shutil
 import re
+import getpass
 
 import ray
 
@@ -68,7 +69,7 @@ def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
 
 
 def get_spack_stage_directory(package_hash, build_dir):
-  spack_build_directory = os.path.join(build_dir, os.getlogin())
+  spack_build_directory = os.path.join(build_dir, getpass.getuser())
   if not os.path.exists(spack_build_directory):
     return None
   spack_stages = os.listdir(spack_build_directory)
