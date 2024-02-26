@@ -20,7 +20,9 @@ def run_compiler_invocation(mode, compiler_arguments):
 
   command_vector.extend(compiler_arguments)
 
-  subprocess.run(command_vector)
+  compiler_process = subprocess.run(command_vector)
+
+  return compiler_process.returncode
 
 
 def save_preprocessed_source(mode, compiler_arguments):
@@ -75,14 +77,15 @@ def main(args):
     # In this case, don't copy over any files and just run the compiler
     # invocation.
     mode = parsed_arguments
-    run_compiler_invocation(mode, args[1:])
-    return
+    return_code = run_compiler_invocation(mode, args[1:])
+    sys.exit(return_code)
 
   output_file_path, input_files, mode = parsed_arguments
 
   save_source(input_files, output_file_path, mode, args[1:])
 
-  run_compiler_invocation(mode, args[1:])
+  return_code = run_compiler_invocation(mode, args[1:])
+  sys.exit(return_code)
 
 
 if __name__ == '__main__':
