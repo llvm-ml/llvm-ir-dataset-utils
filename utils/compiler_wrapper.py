@@ -58,7 +58,7 @@ def parse_args(arguments_split):
     output_arg_index = arguments_split.index('-o') + 1
     output_file_path = arguments_split[output_arg_index]
   except:
-    return mode
+    return (mode,)
 
   input_files = []
 
