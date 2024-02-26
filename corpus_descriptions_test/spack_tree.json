@@ -3,8 +3,8 @@
   "folder_name": "tree",
   "build_system": "spack",
   "package_name": "tree",
-  "package_spec": "tree@2.1.0%clang@18.0.0 cflags=\"-Xclang -fembed-bitcode=all\" cxxflags=\"-Xclang -fembed-bitcode=all\" build_system=generic arch=linux-ubuntu22.04-zen3",
-  "package_hash": "x7chdhmydb5fqzn47luc4ylwqsya5rff",
+  "package_spec": "tree@2.1.0%clang@18.0.0 cflags=\"-Xclang -fembed-bitcode=all\" cxxflags=\"-Xclang -fembed-bitcode=all\" build_system=generic arch=linux-ubuntu22.04-zen2",
+  "package_hash": "vxct6pkayghw5xj724depyazhaktqr2a",
   "license": "GPL-2.0-or-later",
   "license_source": "manual"
 }
