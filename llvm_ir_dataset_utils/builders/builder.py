@@ -33,6 +33,18 @@ def get_corpus_size(corpus_dir):
   return total_size
 
 
+def get_corpus_source_size(corpus_dir):
+  total_source_size = 0
+  for source_file in glob.glob(
+      os.path.join(corpus_dir, '**/*.source'), recursive=True):
+    total_source_size += os.path.getsize(source_file)
+  total_preprocessed_source_size = 0
+  for preprocessed_source_file in glob.glob(
+      os.path.join(corpus_dir, '**/*.preprocessed_source'), recursive=True):
+    total_preprocessed_source_size += os.path.getsize(preprocessed_source_file)
+  return (total_source_size, total_preprocessed_source_size)
+
+
 def get_build_future(corpus_description,
                      source_base_dir,
                      build_base_dir,
@@ -214,6 +226,10 @@ def parse_and_build_from_description(corpus_description,
     file.delete_directory(source_dir, corpus_dir)
   build_log['sources'] = source_logs
   build_log['size'] = get_corpus_size(corpus_dir)
+
+  source_size, preprocessed_source_size = get_corpus_source_size(corpus_dir)
+  build_log['source_size'] = source_size
+  build_log['preprocessed_source_size'] = preprocessed_source_size
 
   if 'license' in corpus_description:
     build_log['license'] = corpus_description['license']
