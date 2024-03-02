@@ -45,6 +45,13 @@ def process_single_batch(source_file_batch, search_string):
                                                        source_file_path)
     if source_file.find(search_string.encode('utf-8')) != -1:
       string_found_source += 1
+
+    preprocessed_source_file_path = f'{bitcode_file_path[:-3]}.preprocessed_source'
+    preprocessed_source_file = dataset_corpus.load_file_from_corpus(
+        project_path, preprocessed_source_file_path)
+
+    if preprocessed_source_file.find(search_string.encode('utf-8')) != -1:
+      string_found_preprocessed_source += 1
   return (string_found_source, string_found_preprocessed_source)
 
 
