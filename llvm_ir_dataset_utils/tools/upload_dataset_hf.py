@@ -20,7 +20,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('dataset_dir', None,
                     'The path to the folder containing the parquet files.')
 flags.DEFINE_string('commit_message', None,
-                    'Git commit message for the upload.)
+                    'Git commit message for the upload.')
 flags.DEFINE_string('start_after', None, 'A specific path to start at.')
 flags.DEFINE_integer('operations_per_commit', 50,
                      'The number of operations to cache before committing')
