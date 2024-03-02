@@ -19,11 +19,13 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('dataset_dir', None,
                     'The path to the folder containing the parquet files.')
+flags.DEFINE_string('commit_message', None,
+                    'Git commit message for the upload.)
 flags.DEFINE_string('start_after', None, 'A specific path to start at.')
 flags.DEFINE_integer('operations_per_commit', 50,
                      'The number of operations to cache before committing')
 
-flags.mark_flag_as_required('dataset_dir')
+flags.mark_flag_as_required('dataset_dir', 'commit_message')
 
 
 @ray.remote(num_cpus=4)
@@ -85,7 +87,7 @@ def main(_):
   create_commit(
       'llvm-ml/ComPile',
       operations=current_operations,
-      commit_message='Add additional data',
+      commit_message=FLAGS.commit_message,
       repo_type='dataset')
   current_operations = []
 
