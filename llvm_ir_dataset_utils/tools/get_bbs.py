@@ -29,6 +29,8 @@ flags.mark_flag_as_required('output_file')
 OPT_PASS_LIST = ['default<O0>', 'default<O1>', 'default<O2>', 'default<O3>']
 LLC_OPT_LEVELS = ['-O0', '-O1', '-O2', '-O3']
 
+PROJECT_MODULE_CHUNK_SIZE = 8
+
 
 def get_bb_addr_map(input_file_path):
   bb_addr_map_command_vector = [
@@ -40,8 +42,13 @@ def get_bb_addr_map(input_file_path):
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE) as readobj_process:
     out, err = readobj_process.communicate()
-    basic_block_address_maps = json.loads(out.decode('utf-8'))[0]['BBAddrMap']
-    return basic_block_address_maps
+    basic_block_address_maps = json.loads(out.decode('utf-8'))[0]
+    if 'BBAddrMap' not in basic_block_address_maps:
+      # TODO(boomanaiden154): More investigation here. Currently only seems to
+      # happen in the case of empty modules.
+      logging.warning(f'Failed to get BBAddrMap info {input_file_path}')
+      return []
+    return basic_block_address_maps['BBAddrMap']
 
 
 def get_text_section_offset(input_file_path):
@@ -53,7 +60,7 @@ def get_text_section_offset(input_file_path):
       stderr=subprocess.PIPE) as readobj_process:
     out, err = readobj_process.communicate()
     sections_list = json.loads(out.decode('utf-8'))[0]['Sections']
-    assert (len(sections_list) == 10)
+    #assert (len(sections_list) == 10)
     for section in sections_list:
       section_name = section['Section']['Name']['Name']
       if section_name == '.text':
@@ -119,8 +126,51 @@ def process_bitcode_file(bitcode_file_path):
   return list(set(basic_blocks))
 
 
+def process_modules_batch(project_path, modules_batch):
+  basic_blocks = []
+
+  for bitcode_module in modules_batch:
+    module_data = dataset_corpus.load_file_from_corpus(project_path,
+                                                       bitcode_module)
+    if module_data is None:
+      continue
+
+    with tempfile.NamedTemporaryFile() as temp_bc_file:
+      temp_bc_file.write(module_data)
+      basic_blocks.extend(process_bitcode_file(temp_bc_file.file.name))
+
+  return list(set(basic_blocks))
+
+
+def process_project(project_path):
+  basic_blocks = []
+  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_path)
+
+  module_batches = parallel.split_batches(bitcode_modules,
+                                          PROJECT_MODULE_CHUNK_SIZE)
+
+  for module_batch in module_batches:
+    basic_blocks.extend(process_modules_batch(project_path, module_batch))
+
+  return list(set(basic_blocks))
+
+
 def main(_):
-  print(process_bitcode_file(FLAGS.corpus_dir[0]))
+  project_dirs = []
+
+  for corpus_dir in FLAGS.corpus_dir:
+    for project_dir in os.listdir(corpus_dir):
+      project_dirs.append(os.path.join(corpus_dir, project_dir))
+
+  basic_blocks = []
+  for project_dir in project_dirs:
+    basic_blocks.extend(process_project(project_dir))
+
+  basic_blocks = list(set(basic_blocks))
+
+  with open(FLAGS.output_file, 'w') as output_file_handle:
+    for basic_block in basic_blocks:
+      output_file_handle.write(f'{basic_block}\n')
 
 
 if __name__ == '__main__':
