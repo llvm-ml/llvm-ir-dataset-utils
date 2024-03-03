@@ -126,10 +126,12 @@ def process_bitcode_file(bitcode_file_path):
   return list(set(basic_blocks))
 
 
-def process_modules_batch(project_path, modules_batch):
+@ray.remote(num_cpus=1)
+def process_modules_batch(modules_batch):
   basic_blocks = []
 
-  for bitcode_module in modules_batch:
+  for bitcode_module_info in modules_batch:
+    project_path, bitcode_module = bitcode_module_info
     module_data = dataset_corpus.load_file_from_corpus(project_path,
                                                        bitcode_module)
     if module_data is None:
@@ -142,15 +144,63 @@ def process_modules_batch(project_path, modules_batch):
   return list(set(basic_blocks))
 
 
-def process_project(project_path):
-  basic_blocks = []
-  bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_path)
+# TODO(boomanaiden154): Abstract the infrastructure to parse modules into
+# batches into somewhere common as it is used in several places already,
+# including grep_source.py.
+@ray.remote(num_cpus=1)
+def get_bc_files_in_project(project_path):
+  try:
+    bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_path)
+  except:
+    return []
 
-  module_batches = parallel.split_batches(bitcode_modules,
+  return [(project_path, bitcode_module) for bitcode_module in bitcode_modules]
+
+
+def get_bbs_from_projects(project_list):
+  logging.info(f'Processing {len(project_list)} projects.')
+
+  project_info_futures = []
+
+  for project_path in project_list:
+    project_info_futures.append(get_bc_files_in_project.remote(project_path))
+
+  project_infos = []
+
+  while len(project_info_futures) > 0:
+    to_return = 32 if len(project_info_futures) > 64 else 1
+    finished, project_info_futures = ray.wait(
+        project_info_futures, timeout=5.0, num_returns=to_return)
+    logging.info(
+        f'Just finished gathering modules from {len(finished)} projects, {len(project_info_futures)} remaining.'
+    )
+    for finished_project in ray.get(finished):
+      project_infos.extend(finished_project)
+
+  logging.info(
+      f'Finished gathering modules, currently have {len(project_infos)}')
+
+  module_batches = parallel.split_batches(project_infos,
                                           PROJECT_MODULE_CHUNK_SIZE)
 
+  logging.info(f'Setup {len(module_batches)} batches.')
+
+  module_batch_futures = []
+
   for module_batch in module_batches:
-    basic_blocks.extend(process_modules_batch(project_path, module_batch))
+    module_batch_futures.append(process_modules_batch.remote(module_batch))
+
+  basic_blocks = []
+
+  while len(module_batch_futures) > 0:
+    to_return = 32 if len(module_batch_futures) > 64 else 1
+    finished, module_batch_futures = ray.wait(
+        module_batch_futures, timeout=5.0, num_returns=to_return)
+    logging.info(
+        f'Just finished {len(finished)} batches, {len(module_batch_futures)} remaining.'
+    )
+    for finished_batch in ray.get(finished):
+      basic_blocks.extend(finished_batch)
 
   return list(set(basic_blocks))
 
@@ -162,11 +212,7 @@ def main(_):
     for project_dir in os.listdir(corpus_dir):
       project_dirs.append(os.path.join(corpus_dir, project_dir))
 
-  basic_blocks = []
-  for project_dir in project_dirs:
-    basic_blocks.extend(process_project(project_dir))
-
-  basic_blocks = list(set(basic_blocks))
+  basic_blocks = get_bbs_from_projects(project_dirs)
 
   with open(FLAGS.output_file, 'w') as output_file_handle:
     for basic_block in basic_blocks:
