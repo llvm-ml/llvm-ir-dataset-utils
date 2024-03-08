@@ -163,7 +163,7 @@ def get_bc_files_in_project(project_path):
   return [(project_path, bitcode_module) for bitcode_module in bitcode_modules]
 
 
-def get_bbs_from_projects(project_list):
+def get_bbs_from_projects(project_list, output_file_path):
   logging.info(f'Processing {len(project_list)} projects.')
 
   project_info_futures = []
@@ -196,19 +196,17 @@ def get_bbs_from_projects(project_list):
   for module_batch in module_batches:
     module_batch_futures.append(process_modules_batch.remote(module_batch))
 
-  basic_blocks = []
-
-  while len(module_batch_futures) > 0:
-    to_return = 32 if len(module_batch_futures) > 64 else 1
-    finished, module_batch_futures = ray.wait(
-        module_batch_futures, timeout=5.0, num_returns=to_return)
-    logging.info(
-        f'Just finished {len(finished)} batches, {len(module_batch_futures)} remaining.'
-    )
-    for finished_batch in ray.get(finished):
-      basic_blocks.extend(finished_batch)
-
-  return list(set(basic_blocks))
+  with open(output_file_path, 'w') as output_file_handle:
+    while len(module_batch_futures) > 0:
+      to_return = 32 if len(module_batch_futures) > 64 else 1
+      finished, module_batch_futures = ray.wait(
+          module_batch_futures, timeout=5.0, num_returns=to_return)
+      logging.info(
+          f'Just finished {len(finished)} batches, {len(module_batch_futures)} remaining.'
+      )
+      for finished_batch in ray.get(finished):
+        for basic_block in finished_batch:
+          output_file_handle.write(f'{basic_block}\n')
 
 
 def main(_):
@@ -218,11 +216,7 @@ def main(_):
     for project_dir in os.listdir(corpus_dir):
       project_dirs.append(os.path.join(corpus_dir, project_dir))
 
-  basic_blocks = get_bbs_from_projects(project_dirs)
-
-  with open(FLAGS.output_file, 'w') as output_file_handle:
-    for basic_block in basic_blocks:
-      output_file_handle.write(f'{basic_block}\n')
+  basic_blocks = get_bbs_from_projects(project_dirs, FLAGS.output_file)
 
 
 if __name__ == '__main__':
