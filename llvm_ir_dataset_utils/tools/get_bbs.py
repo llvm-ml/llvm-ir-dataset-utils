@@ -108,7 +108,9 @@ def get_asm_lowering(input_file_path, opt_level, output_file_path):
   ]
   llc_output = subprocess.run(
       llc_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  assert (llc_output.returncode == 0)
+  if llc_output.returncode != 0:
+    logging.warning(f'Failed to lower {input_file_path} to asm')
+  return llc_output.returncode == 0
 
 
 def process_bitcode_file(bitcode_file_path):
@@ -120,8 +122,12 @@ def process_bitcode_file(bitcode_file_path):
       output_optimized_bc(bitcode_file_path, opt_pass, bc_output_path)
       for index, llc_level in enumerate(LLC_OPT_LEVELS):
         asm_output_path = f'{bc_output_path}.{index}.o'
-        get_asm_lowering(bc_output_path, llc_level, asm_output_path)
-        basic_blocks.extend(get_basic_blocks(asm_output_path))
+        asm_lowering_output = get_asm_lowering(bc_output_path, llc_level,
+                                               asm_output_path)
+        # Only get the basic blocks from the lowered file if we successfully
+        # lower the bitcode.
+        if asm_lowering_output:
+          basic_blocks.extend(get_basic_blocks(asm_output_path))
 
   return list(set(basic_blocks))
 
