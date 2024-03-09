@@ -32,64 +32,16 @@ LLC_OPT_LEVELS = ['-O0', '-O1', '-O2', '-O3']
 PROJECT_MODULE_CHUNK_SIZE = 8
 
 
-def get_bb_addr_map(input_file_path):
-  bb_addr_map_command_vector = [
-      'llvm-readobj', '--bb-addr-map', '--elf-output-style=JSON',
-      input_file_path
-  ]
-  with subprocess.Popen(
-      bb_addr_map_command_vector,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE) as readobj_process:
-    out, err = readobj_process.communicate()
-    basic_block_address_maps = json.loads(out.decode('utf-8'))[0]
-    if 'BBAddrMap' not in basic_block_address_maps:
-      # TODO(boomanaiden154): More investigation here. Currently only seems to
-      # happen in the case of empty modules.
-      logging.warning(f'Failed to get BBAddrMap info {input_file_path}')
-      return []
-    return basic_block_address_maps['BBAddrMap']
-
-
-def get_text_section_offset(input_file_path):
-  readobj_command_vector = [
-      'llvm-readobj', '--sections', '--elf-output-style=JSON', input_file_path
-  ]
-  with subprocess.Popen(
-      readobj_command_vector, stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE) as readobj_process:
-    out, err = readobj_process.communicate()
-    sections_list = json.loads(out.decode('utf-8'))[0]['Sections']
-    #assert (len(sections_list) == 10)
-    for section in sections_list:
-      section_name = section['Section']['Name']['Name']
-      if section_name == '.text':
-        section_offset = section['Section']['Offset']
-        return section_offset
-
-
-def get_basic_blocks(input_file_path):
-  basic_block_map = get_bb_addr_map(input_file_path)
-
+def get_basic_blocks(input_file_path, module_id):
   basic_blocks = []
 
-  text_section_offset = get_text_section_offset(input_file_path)
-
-  with open(input_file_path, 'rb') as input_file_handle:
-    binary_data = input_file_handle.read()
-    for function in basic_block_map:
-      function_start = function['Function']['At']
-      for bb_entry in function['Function']['BB entries']:
-        # TODO(boomanaiden154): This needs to be updated once we bump the toolchain
-        # and end up using BBAddrMap v2 (or after some cutoff).
-        bb_offset = bb_entry["Offset"]
-        bb_size = bb_entry["Size"]
-        current_index = function_start + text_section_offset + bb_offset
-        bb_hex = binascii.hexlify(binary_data[current_index:current_index +
-                                              bb_size]).decode("utf-8")
-        basic_blocks.append(bb_hex)
-
-  return basic_blocks
+  command_vector = ['PrintBasicBlocks', input_file_path]
+  command_output = subprocess.run(
+      command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  if (command_output.returncode != 0):
+    logging.warning(f'Failed to get basic blocks from {module_id}')
+    return []
+  return command_output.stdout.decode('utf-8').split('\n')
 
 
 def output_optimized_bc(input_file_path, pass_list, output_file_path):
@@ -101,7 +53,7 @@ def output_optimized_bc(input_file_path, pass_list, output_file_path):
   assert (opt_output.returncode == 0)
 
 
-def get_asm_lowering(input_file_path, opt_level, output_file_path):
+def get_asm_lowering(input_file_path, opt_level, output_file_path, module_id):
   llc_command_vector = [
       'llc', opt_level, input_file_path, '-filetype=obj',
       '-basic-block-sections=labels', '-o', output_file_path
@@ -109,11 +61,11 @@ def get_asm_lowering(input_file_path, opt_level, output_file_path):
   llc_output = subprocess.run(
       llc_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   if llc_output.returncode != 0:
-    logging.warning(f'Failed to lower {input_file_path} to asm')
+    logging.warning(f'Failed to lower {module_id} to asm')
   return llc_output.returncode == 0
 
 
-def process_bitcode_file(bitcode_file_path):
+def process_bitcode_file(bitcode_file_path, module_id):
   # Get basic blocks from the unoptimized version, and at all optimization levels.
   basic_blocks = []
   with tempfile.TemporaryDirectory() as temp_dir:
@@ -123,11 +75,11 @@ def process_bitcode_file(bitcode_file_path):
       for index, llc_level in enumerate(LLC_OPT_LEVELS):
         asm_output_path = f'{bc_output_path}.{index}.o'
         asm_lowering_output = get_asm_lowering(bc_output_path, llc_level,
-                                               asm_output_path)
+                                               asm_output_path, module_id)
         # Only get the basic blocks from the lowered file if we successfully
         # lower the bitcode.
         if asm_lowering_output:
-          basic_blocks.extend(get_basic_blocks(asm_output_path))
+          basic_blocks.extend(get_basic_blocks(asm_output_path, module_id))
 
   return list(set(basic_blocks))
 
@@ -140,12 +92,14 @@ def process_modules_batch(modules_batch):
     project_path, bitcode_module = bitcode_module_info
     module_data = dataset_corpus.load_file_from_corpus(project_path,
                                                        bitcode_module)
+    module_id = f'{project_path}:{bitcode_module}'
     if module_data is None:
       continue
 
     with tempfile.NamedTemporaryFile() as temp_bc_file:
       temp_bc_file.write(module_data)
-      basic_blocks.extend(process_bitcode_file(temp_bc_file.file.name))
+      basic_blocks.extend(
+          process_bitcode_file(temp_bc_file.file.name, module_id))
 
   return list(set(basic_blocks))
 
