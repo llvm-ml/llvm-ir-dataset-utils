@@ -599,7 +599,7 @@ def get_module_statistics_batch(project_dir,
     module_path = f'{project_dir}:{relative_module_path}'
     if statistics_type == 'parsing':
       parse_result = test_parsing(bitcode_file)
-      if parse_result[1] == True:
+      if parse_result[1]:
         statistics.append((None, parse_result[1], module_path))
       else:
         statistics.append((parse_result[0], parse_result[1], module_path))
