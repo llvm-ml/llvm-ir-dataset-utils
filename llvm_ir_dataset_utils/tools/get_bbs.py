@@ -12,7 +12,6 @@ from absl import flags
 
 import ray
 
-from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import parallel
 
