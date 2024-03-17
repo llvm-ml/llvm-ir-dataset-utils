@@ -45,7 +45,7 @@ def dedeuplicate_repositories(crates_list):
   # TODO(boomanaiden154): Investigate further whether or not this assumption
   # makes sense.
   for crate in crates_list:
-    if crate['repository'] == None:
+    if crate['repository'] is None:
       new_crates_list.append(crate)
     elif crate['repository'] not in repository_dict:
       repository_dict[crate['repository']] = True
