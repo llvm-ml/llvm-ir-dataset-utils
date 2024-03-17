@@ -100,7 +100,7 @@ def build_package(source_dir, build_dir, corpus_dir, targets, threads,
     if os.path.exists(build_dir):
       try:
         shutil.rmtree(build_dir)
-      except:
+      except Exception:
         logging.warn(
             f'Failed to delete directory {build_dir}, probably deleted by another process.'
         )

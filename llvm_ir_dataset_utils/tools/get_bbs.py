@@ -111,7 +111,7 @@ def process_modules_batch(modules_batch):
 def get_bc_files_in_project(project_path):
   try:
     bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_path)
-  except:
+  except Exception:
     return []
 
   return [(project_path, bitcode_module) for bitcode_module in bitcode_modules]

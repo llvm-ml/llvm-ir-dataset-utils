@@ -79,7 +79,7 @@ def get_run_passes_opt(bitcode_function_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=OPT_TIMEOUT_SECONDS)
-  except:
+  except Exception:
     return ('timeout', None)
   if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
