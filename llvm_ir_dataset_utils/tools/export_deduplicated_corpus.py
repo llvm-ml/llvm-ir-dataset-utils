@@ -113,7 +113,6 @@ def process_module_batch(batch_path, modules_to_process):
   for module_path in modules_to_process:
     file_path_full = module_path[0]
     module_hash = module_path[1]
-    license_info = module_path[3]
     file_path_parts = file_path_full.split(':')
     bitcode_file = dataset_corpus.load_file_from_corpus(file_path_parts[0],
                                                         file_path_parts[1])

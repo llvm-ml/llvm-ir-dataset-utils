@@ -123,7 +123,7 @@ def main(_):
 
   concretized_packages = {}
 
-  erorr_log_file = None
+  error_log_file = None
 
   if FLAGS.error_log is not None:
     error_log_file = open(FLAGS.error_log, 'w')

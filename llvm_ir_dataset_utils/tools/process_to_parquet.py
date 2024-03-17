@@ -137,7 +137,6 @@ def main(_):
     logging.info(
         f'Just finished {len(finished)}, {len(parquet_batch_futures)} remaining.'
     )
-    finished_data = ray.get(finished)
 
 
 if __name__ == '__main__':

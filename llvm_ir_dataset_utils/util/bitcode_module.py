@@ -312,25 +312,24 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
 
 def get_bitcode_module_function_statistics(bitcode_module, statistics_type,
                                            module_path):
-  with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    function_symbols_expected = get_function_symbols(bitcode_module)
+  function_symbols_expected = get_function_symbols(bitcode_module)
 
-    if function_symbols_expected[0]:
-      return [(function_symbols_expected[0], None, module_path)]
+  if function_symbols_expected[0]:
+    return [(function_symbols_expected[0], None, module_path)]
 
-    function_symbols = function_symbols_expected[1]
+  function_symbols = function_symbols_expected[1]
 
-    statistics_futures = []
-    batches = parallel.split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
-    for batch in batches:
-      statistics_futures.append(
-          get_function_statistics_batch.remote(bitcode_module, batch,
-                                               statistics_type, module_path))
+  statistics_futures = []
+  batches = parallel.split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
+  for batch in batches:
+    statistics_futures.append(
+        get_function_statistics_batch.remote(bitcode_module, batch,
+                                             statistics_type, module_path))
 
-    statistics_chunks = ray.get(statistics_futures)
-    statistics = []
-    for statistics_chunk in statistics_chunks:
-      statistics.extend(statistics_chunk)
+  statistics_chunks = ray.get(statistics_futures)
+  statistics = []
+  for statistics_chunk in statistics_chunks:
+    statistics.extend(statistics_chunk)
   return statistics
 
 
