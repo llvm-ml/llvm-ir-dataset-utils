@@ -71,8 +71,7 @@ def main(_):
 
   logging.info(
       f'Found {valid_licenses} packages with valid license information and'
-      f'{invalid_licenses} packages with invalid license information'
-  )
+      f'{invalid_licenses} packages with invalid license information')
 
   logging.info(
       f'A total of {total_usable_bitcode} is usable given the current licensing constraints.'

@@ -204,8 +204,7 @@ def build_package(dependency_futures,
     if not dependency_future['targets'][0]['success']:
       logging.warning(
           f'Dependency {dependency_future["targets"][0]["name"]} failed to build'
-          f'for package{package_name}, not building.'
-      )
+          f'for package{package_name}, not building.')
       if cleanup_build:
         cleanup(
             package_name, package_spec, corpus_dir, build_dir, uninstall=False)
