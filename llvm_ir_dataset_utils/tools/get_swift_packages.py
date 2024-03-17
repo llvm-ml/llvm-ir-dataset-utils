@@ -90,7 +90,6 @@ def main(_):
     ray.init()
 
     repo_license_futures = []
-    repo_name_license_map = {}
 
     for package_dict in output_package_list:
       if package_dict['license'] == 'NOASSERTION':

@@ -33,8 +33,8 @@ flags.DEFINE_boolean(
 )
 flags.DEFINE_multi_string(
     'project_license_info', [],
-    'A JSON file containing license information on a set of projects. Setting this flag will force the script to validate license information'
-)
+    'A JSON file containing license information on a set of projects.'
+    'Setting this flag will force the script to validate license information')
 
 flags.mark_flag_as_required('module_hash_list')
 flags.mark_flag_as_required('output_path')
@@ -112,7 +112,6 @@ def process_module_batch(batch_path, modules_to_process):
   for module_path in modules_to_process:
     file_path_full = module_path[0]
     module_hash = module_path[1]
-    license_info = module_path[3]
     file_path_parts = file_path_full.split(':')
     bitcode_file = dataset_corpus.load_file_from_corpus(file_path_parts[0],
                                                         file_path_parts[1])
@@ -237,8 +236,8 @@ def check_and_add_module_licenses(module_hash_map, license_info_map):
       validated_module_hash_map[
           module_hash] = module_hash_map[module_hash] + extra_license_info
   logging.info(
-      f'Finished checking module licenses, ended up with {len(validated_module_hash_map)} out of {len(module_hash_map)} original modules.'
-  )
+      f'Finished checking module licenses, ended up with {len(validated_module_hash_map)}'
+      f'out of {len(module_hash_map)} original modules.')
   return validated_module_hash_map
 
 

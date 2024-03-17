@@ -47,7 +47,7 @@ def process_single_batch(batch_dirs, dataset_path, corpus_name):
       license_information.update(
           dataset_corpus.load_json_from_corpus(batch_dir,
                                                './license_info.json'))
-    except:
+    except Exception:
       logging.warning('Failed to get bitcode_paths')
       continue
 
@@ -137,7 +137,6 @@ def main(_):
     logging.info(
         f'Just finished {len(finished)}, {len(parquet_batch_futures)} remaining.'
     )
-    finished_data = ray.get(finished)
 
 
 if __name__ == '__main__':

@@ -76,7 +76,7 @@ def process_single_project(project_dir, statistics_type, language_filter,
   statistics = []
   try:
     bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_dir)
-  except:
+  except Exception:
     return []
 
   module_futures = []

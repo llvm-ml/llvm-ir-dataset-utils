@@ -54,7 +54,7 @@ def main(_):
       break
   license_information = ray.get(license_futures)
 
-  logging.info(f'Processing license information')
+  logging.info('Processing license information')
 
   valid_licenses = 0
   invalid_licenses = 0
@@ -70,8 +70,8 @@ def main(_):
       invalid_licenses += 1
 
   logging.info(
-      f'Found {valid_licenses} packages with valid license information and {invalid_licenses} packages with invalid license information'
-  )
+      f'Found {valid_licenses} packages with valid license information and'
+      f'{invalid_licenses} packages with invalid license information')
 
   logging.info(
       f'A total of {total_usable_bitcode} is usable given the current licensing constraints.'

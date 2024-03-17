@@ -171,7 +171,7 @@ def parse_and_build_from_description(corpus_description,
       logging.warn('Cargo builder detected no targets from git repository, '
                    'retrying with tar archive.')
       shutil.rmtree(source_dir)
-      # The git repositry is always guaranteed to be the first source as long
+      # The git repository is always guaranteed to be the first source as long
       # as parse_crates_database.py was the source
       corpus_description['sources'].pop(0)
       build_future = get_build_future(corpus_description, source_base_dir,

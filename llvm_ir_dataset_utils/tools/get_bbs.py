@@ -12,7 +12,6 @@ from absl import flags
 
 import ray
 
-from llvm_ir_dataset_utils.util import bitcode_module
 from llvm_ir_dataset_utils.util import dataset_corpus
 from llvm_ir_dataset_utils.util import parallel
 
@@ -33,8 +32,6 @@ PROJECT_MODULE_CHUNK_SIZE = 8
 
 
 def get_basic_blocks(input_file_path, module_id):
-  basic_blocks = []
-
   command_vector = ['PrintBasicBlocks', input_file_path]
   command_output = subprocess.run(
       command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -111,7 +108,7 @@ def process_modules_batch(modules_batch):
 def get_bc_files_in_project(project_path):
   try:
     bitcode_modules = dataset_corpus.get_bitcode_file_paths(project_path)
-  except:
+  except Exception:
     return []
 
   return [(project_path, bitcode_module) for bitcode_module in bitcode_modules]
@@ -169,8 +166,6 @@ def main(_):
   for corpus_dir in FLAGS.corpus_dir:
     for project_dir in os.listdir(corpus_dir):
       project_dirs.append(os.path.join(corpus_dir, project_dir))
-
-  basic_blocks = get_bbs_from_projects(project_dirs, FLAGS.output_file)
 
 
 if __name__ == '__main__':

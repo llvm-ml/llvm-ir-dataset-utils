@@ -79,7 +79,7 @@ def get_run_passes_opt(bitcode_function_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=OPT_TIMEOUT_SECONDS)
-  except:
+  except Exception:
     return ('timeout', None)
   if opt_process.returncode != 0:
     return (opt_process.stdout.replace('\n', ''), None)
@@ -312,25 +312,24 @@ def get_function_statistics_batch(bitcode_module, function_symbols,
 
 def get_bitcode_module_function_statistics(bitcode_module, statistics_type,
                                            module_path):
-  with tempfile.TemporaryDirectory() as extracted_functions_dir:
-    function_symbols_expected = get_function_symbols(bitcode_module)
+  function_symbols_expected = get_function_symbols(bitcode_module)
 
-    if function_symbols_expected[0]:
-      return [(function_symbols_expected[0], None, module_path)]
+  if function_symbols_expected[0]:
+    return [(function_symbols_expected[0], None, module_path)]
 
-    function_symbols = function_symbols_expected[1]
+  function_symbols = function_symbols_expected[1]
 
-    statistics_futures = []
-    batches = parallel.split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
-    for batch in batches:
-      statistics_futures.append(
-          get_function_statistics_batch.remote(bitcode_module, batch,
-                                               statistics_type, module_path))
+  statistics_futures = []
+  batches = parallel.split_batches(function_symbols, BITCODE_FILE_CHUNK_SIZE)
+  for batch in batches:
+    statistics_futures.append(
+        get_function_statistics_batch.remote(bitcode_module, batch,
+                                             statistics_type, module_path))
 
-    statistics_chunks = ray.get(statistics_futures)
-    statistics = []
-    for statistics_chunk in statistics_chunks:
-      statistics.extend(statistics_chunk)
+  statistics_chunks = ray.get(statistics_futures)
+  statistics = []
+  for statistics_chunk in statistics_chunks:
+    statistics.extend(statistics_chunk)
   return statistics
 
 
@@ -599,7 +598,7 @@ def get_module_statistics_batch(project_dir,
     module_path = f'{project_dir}:{relative_module_path}'
     if statistics_type == 'parsing':
       parse_result = test_parsing(bitcode_file)
-      if parse_result[1] == True:
+      if parse_result[1]:
         statistics.append((None, parse_result[1], module_path))
       else:
         statistics.append((parse_result[0], parse_result[1], module_path))
@@ -661,7 +660,8 @@ def get_module_statistics_batch(project_dir,
         statistics.append((properties_tuple[0], None, module_path))
       else:
         statistics.append((None, properties_tuple[1], module_path))
-    elif statistics_type == 'module_instruction_distribution' or statistics_type == 'module_instruction_distribution_O3':
+    elif statistics_type == 'module_instruction_distribution' or \
+      statistics_type == 'module_instruction_distribution_O3':
       additional_passes = '' if statistics_type == 'module_instruction_distribution' else 'default<O3>'
       instruction_hist_or_error = get_instruction_histogram(
           bitcode_file, additional_passes)

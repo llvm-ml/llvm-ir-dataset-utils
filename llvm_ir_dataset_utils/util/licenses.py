@@ -103,7 +103,7 @@ def get_detected_license_from_repo(repo_url, repo_name):
     os.mkdir(corpus_dir)
     source_status = git_source.download_source_code(repo_url, repo_name, None,
                                                     base_dir, corpus_dir)
-    if source_status['success'] == False:
+    if not source_status['success']:
       return 'NOASSERTION'
     project_dir = os.path.join(base_dir, repo_name)
     return get_detected_license_from_dir(project_dir)
