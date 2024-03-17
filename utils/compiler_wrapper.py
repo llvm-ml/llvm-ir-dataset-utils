@@ -30,7 +30,7 @@ def save_preprocessed_source(mode, compiler_arguments):
   # succeeded.
   output_index = compiler_arguments.index('-o') + 1
   arguments_copy = compiler_arguments.copy()
-  output_path = arguments_copy[output_index] + f'.preprocessed_source'
+  output_path = arguments_copy[output_index] + '.preprocessed_source'
   arguments_copy[output_index] = output_path
 
   # Add -E to the compiler invocation to run just the preprocessor.
@@ -42,7 +42,7 @@ def save_preprocessed_source(mode, compiler_arguments):
 def save_source(source_files, output_file, mode, compiler_arguments):
   assert (len(source_files) <= 1)
   for source_file in source_files:
-    new_file_name = output_file + f'.source'
+    new_file_name = output_file + '.source'
     shutil.copy(source_file, new_file_name)
 
     save_preprocessed_source(mode, compiler_arguments)

@@ -54,7 +54,7 @@ def main(_):
       break
   license_information = ray.get(license_futures)
 
-  logging.info(f'Processing license information')
+  logging.info('Processing license information')
 
   valid_licenses = 0
   invalid_licenses = 0
