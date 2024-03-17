@@ -54,3 +54,6 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["F401", "E731"]
+
+[tool.codespell]
+ignore-words-list = "crate,"

@@ -54,7 +54,7 @@ def dedeuplicate_repositories(crates_list):
 
 
 def canonicalize_license(license_string):
-  # Some of the licenses include / as a seperator. This is equivalent to OR
+  # Some of the licenses include / as a separator. This is equivalent to OR
   # within the rust crates index, but not standard in the SPDX format.
   license_string = license_string.replace('/', ' OR ')
   return license_string
