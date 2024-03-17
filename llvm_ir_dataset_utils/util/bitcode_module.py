@@ -661,7 +661,8 @@ def get_module_statistics_batch(project_dir,
         statistics.append((properties_tuple[0], None, module_path))
       else:
         statistics.append((None, properties_tuple[1], module_path))
-    elif statistics_type == 'module_instruction_distribution' or statistics_type == 'module_instruction_distribution_O3':
+    elif statistics_type == 'module_instruction_distribution' or \
+      statistics_type == 'module_instruction_distribution_O3':
       additional_passes = '' if statistics_type == 'module_instruction_distribution' else 'default<O3>'
       instruction_hist_or_error = get_instruction_histogram(
           bitcode_file, additional_passes)

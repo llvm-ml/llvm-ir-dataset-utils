@@ -70,7 +70,8 @@ def main(_):
       invalid_licenses += 1
 
   logging.info(
-      f'Found {valid_licenses} packages with valid license information and {invalid_licenses} packages with invalid license information'
+      f'Found {valid_licenses} packages with valid license information and'
+      f'{invalid_licenses} packages with invalid license information'
   )
 
   logging.info(

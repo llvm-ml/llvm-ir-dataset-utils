@@ -33,7 +33,8 @@ flags.DEFINE_boolean(
 )
 flags.DEFINE_multi_string(
     'project_license_info', [],
-    'A JSON file containing license information on a set of projects. Setting this flag will force the script to validate license information'
+    'A JSON file containing license information on a set of projects.'
+    'Setting this flag will force the script to validate license information'
 )
 
 flags.mark_flag_as_required('module_hash_list')
@@ -237,7 +238,8 @@ def check_and_add_module_licenses(module_hash_map, license_info_map):
       validated_module_hash_map[
           module_hash] = module_hash_map[module_hash] + extra_license_info
   logging.info(
-      f'Finished checking module licenses, ended up with {len(validated_module_hash_map)} out of {len(module_hash_map)} original modules.'
+      f'Finished checking module licenses, ended up with {len(validated_module_hash_map)}'
+      f'out of {len(module_hash_map)} original modules.'
   )
   return validated_module_hash_map
 
