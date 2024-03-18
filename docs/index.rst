@@ -71,3 +71,4 @@ Features
    installation
    quickstart
    building_corpora
+   API Reference <_autosummary/llvm_ir_dataset_utils>
