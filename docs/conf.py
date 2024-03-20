@@ -41,6 +41,16 @@ intersphinx_mapping = {
 intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
+autodoc_mock_imports = [
+    "absl",
+    "ray",
+    "mlgo",
+    "spack",
+    "toml",
+    "pandas",
+    "pyarrow",
+    "huggingface_hub",
+]
 
 # -- Options for HTML output
 
@@ -59,7 +69,6 @@ html_theme_options = {
     "use_issues_button": True,  # add an 'Open an Issue' button
     "path_to_docs":
         ("docs"),  # used to compute the path to launch notebooks in colab
-    "prev_next_buttons_location": None,
     "show_navbar_depth": 1,
 }
 
