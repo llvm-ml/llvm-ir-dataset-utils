@@ -243,6 +243,13 @@ RUN curl \
 RUN mv swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION-RELEASE-ubuntu22.04/usr/ /opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/
 ENV PATH="${PATH}:/opt/swift-5.$SWIFT_MAJOR_VERSION.$SWIFT_MINOR_VERSION/bin/"
 
+# Install Zig
+RUN curl \
+    https://ziglang.org/builds/zig-linux-x86_64-0.12.0-dev.3405+31791ae15.tar.xz \
+    | tar -xz
+RUN mv zig-linux-x86_64-0.12.0-dev.3405+31791ae15 /opt/zig-0.12.0-dev.3405+31791ae15/
+ENV PATH="${PATH}:/opt/zig-0.12.0-dev.3405+31791ae15/"
+
 # Set up the Python dependencies
 COPY Pipfile* ./
 RUN pip3 install pipenv \
