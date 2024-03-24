@@ -17,6 +17,8 @@ flags.DEFINE_string('dataset_path', None, 'The dataset path to validate')
 
 
 def main(_):
+  total_rows = 0
+
   for file_name in os.listdir(FLAGS.dataset_path):
     full_file_path = os.path.join(FLAGS.dataset_path, file_name)
 
@@ -31,6 +33,7 @@ def main(_):
     warning_count = 0
 
     for index, module_instance in current_table.iterrows():
+      total_rows += 1
       if len(module_instance['license_expression']) == 0:
         warning_count += 1
         logging.info('License expression empty')
@@ -48,6 +51,8 @@ def main(_):
         logging.info('Language field empty')
 
     logging.info('Finished processing individual dataset file.')
+
+  logging.info(f'Finished processing dataset, found {total_rows} rows.')
 
 
 if __name__ == '__main__':
