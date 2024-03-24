@@ -88,15 +88,22 @@ def process_single_batch(batch_dirs, dataset_path, corpus_name):
 
 
 def main(_):
-  projects_list = []
+  corpus_projects_list = {}
 
   for corpus_dir in FLAGS.corpus_dir:
     new_projects_list = os.listdir(corpus_dir)
     corpus_name = os.path.basename(os.path.abspath(corpus_dir))
+    corpus_projects_list[corpus_name] = []
     for project_path in new_projects_list:
-      projects_list.append((corpus_dir, corpus_name, project_path))
+      corpus_projects_list[corpus_name].append((corpus_dir, project_path))
 
-  logging.info(f'Processing {len(projects_list)} projects')
+    # Create directories for each of the output corpora
+    os.mkdir(os.path.join(FLAGS.output_path, corpus_name))
+
+  total_project_count = 0
+  for corpus_name in corpus_projects_list:
+    total_project_count += len(corpus_projects_list[corpus_name])
+  logging.info(f'Processing {total_project_count} projects')
 
   current_parquet_size = 0
   current_parquet_paths = []
@@ -104,22 +111,32 @@ def main(_):
 
   parquet_batches = []
 
-  for index, project_info in enumerate(projects_list):
-    corpus_dir, corpus_name, project_dir = project_info
-    batch_path = os.path.join(corpus_dir, project_dir)
-    batch_size = os.stat(batch_path).st_size / (2**20)
-    current_parquet_paths.append(batch_path)
-    current_parquet_size += batch_size
+  for corpus_name in corpus_projects_list:
+    for index, project_info in enumerate(corpus_projects_list[corpus_name]):
+      corpus_dir, project_dir = project_info
+      batch_path = os.path.join(corpus_dir, project_dir)
+      batch_size = os.stat(batch_path).st_size / (2**20)
+      current_parquet_paths.append(batch_path)
+      current_parquet_size += batch_size
 
-    if current_parquet_size > FLAGS.chunk_size:
+      if current_parquet_size > FLAGS.chunk_size:
+        parquet_batches.append(
+            (current_parquet_index, current_parquet_paths, corpus_name))
+        current_parquet_index += 1
+        current_parquet_paths = []
+        current_parquet_size = 0
+
+      if index >= FLAGS.max_batches:
+        break
+
+    # If we've finished a corpus and haven't already put everything into a
+    # parquet file, we need to flush everything at this point.
+    if len(current_parquet_paths) > 0:
       parquet_batches.append(
           (current_parquet_index, current_parquet_paths, corpus_name))
       current_parquet_index += 1
       current_parquet_paths = []
       current_parquet_size = 0
-
-    if index >= FLAGS.max_batches:
-      break
 
   parquet_batch_futures = []
 
@@ -128,8 +145,8 @@ def main(_):
     parquet_batch_futures.append(
         process_single_batch.remote(
             parquet_paths,
-            os.path.join(FLAGS.output_path, f'train-{parquet_index}.parquet'),
-            corpus_name))
+            os.path.join(FLAGS.output_path, corpus_name,
+                         f'train-{parquet_index}.parquet'), corpus_name))
 
   while len(parquet_batch_futures) > 0:
     finished, parquet_batch_futures = ray.wait(parquet_batch_futures, timeout=5)
