@@ -25,7 +25,8 @@ flags.DEFINE_string('start_after', None, 'A specific path to start at.')
 flags.DEFINE_integer('operations_per_commit', 50,
                      'The number of operations to cache before committing')
 
-flags.mark_flag_as_required('dataset_dir', 'commit_message')
+flags.mark_flag_as_required('dataset_dir')
+flags.mark_flag_as_required('commit_message')
 
 
 @ray.remote(num_cpus=4)
@@ -49,14 +50,19 @@ def main(_):
 
   file_upload_futures = []
 
-  for file_to_upload in os.listdir(FLAGS.dataset_dir):
-    if FLAGS.start_after and file_to_upload <= FLAGS.start_after:
-      logging.info(f'Skipping uploading {file_to_upload}')
-      continue
+  for language_folder in os.listdir(FLAGS.dataset_dir):
+    for file_name in os.listdir(
+        os.path.join(FLAGS.dataset_dir, language_folder)):
+      if FLAGS.start_after and file_to_upload <= FLAGS.start_after:
+        logging.info(f'Skipping uploading {file_to_upload}')
+        continue
 
-    full_file_path = os.path.join(FLAGS.dataset_dir, file_to_upload)
-    file_upload_futures.append(
-        upload_file.remote(api, full_file_path, file_to_upload))
+      full_file_path = os.path.join(FLAGS.dataset_dir, language_folder,
+                                    file_name)
+
+      file_to_upload = os.path.join(language_folder, file_name)
+      file_upload_futures.append(
+          upload_file.remote(api, full_file_path, file_to_upload))
 
   current_operations = []
 
