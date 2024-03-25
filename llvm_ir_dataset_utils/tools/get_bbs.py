@@ -47,7 +47,7 @@ def output_optimized_bc(input_file_path, pass_list, output_file_path):
   ]
   opt_output = subprocess.run(
       opt_command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  assert (opt_output.returncode == 0)
+  return opt_output.returncode == 0
 
 
 def get_asm_lowering(input_file_path, opt_level, output_file_path, module_id):
@@ -68,7 +68,13 @@ def process_bitcode_file(bitcode_file_path, module_id):
   with tempfile.TemporaryDirectory() as temp_dir:
     for index, opt_pass in enumerate(OPT_PASS_LIST):
       bc_output_path = os.path.join(temp_dir, f'{index}.bc')
-      output_optimized_bc(bitcode_file_path, opt_pass, bc_output_path)
+      opt_return = output_optimized_bc(bitcode_file_path, opt_pass,
+                                       bc_output_path)
+      # If we run into an error (output_optimized_bc returns false), continue onto
+      # the next iteration and log a warning.
+      if not opt_return:
+        logging.warning(f'Failed to optimized {module_id}')
+        continue
       for index, llc_level in enumerate(LLC_OPT_LEVELS):
         asm_output_path = f'{bc_output_path}.{index}.o'
         asm_lowering_output = get_asm_lowering(bc_output_path, llc_level,
