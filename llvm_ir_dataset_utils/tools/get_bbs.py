@@ -32,7 +32,7 @@ PROJECT_MODULE_CHUNK_SIZE = 8
 
 
 def get_basic_blocks(input_file_path, module_id):
-  command_vector = ['PrintBasicBlocks', input_file_path]
+  command_vector = ['extract_bbs_from_obj', input_file_path]
   command_output = subprocess.run(
       command_vector, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   if (command_output.returncode != 0):
@@ -166,6 +166,8 @@ def main(_):
   for corpus_dir in FLAGS.corpus_dir:
     for project_dir in os.listdir(corpus_dir):
       project_dirs.append(os.path.join(corpus_dir, project_dir))
+
+  get_bbs_from_projects(project_dirs, FLAGS.output_file)
 
 
 if __name__ == '__main__':
