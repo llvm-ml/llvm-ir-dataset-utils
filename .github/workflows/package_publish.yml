@@ -28,9 +28,5 @@ jobs:
         poetry config virtualenvs.in-project false
         poetry config virtualenvs.path ~/.virtualenvs
         poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
-    - name: Build package
-      run: |
-        poetry build
-    - name: Publish package to PyPI
-      run: |
-        poetry publish
+    - name: Build & publish package
+        poetry publish --build
