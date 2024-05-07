@@ -9,18 +9,13 @@ permissions:
 
 jobs:
   package-and-deploy:
-    name: ${{ matrix.python_version }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python_version: ["3.9", "3.10"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: "{{ matrix.python_version }}"
+        python-version: 3.9
     - name: Install Poetry
       run: |
         python -m pip install --upgrade pip
