@@ -1,52 +1,40 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "llvm-ir-dataset-utils"
 description = "Infrastructure to build LLVM IR-based Datasets."
 readme = "README.md"
 authors = [
-    {name="Aiden Grossman", email="aidengrossmanpso@gmail.com"},
-    {name="Ludger Paehler", email="ludger.paehler@tum.de"}
+    "Aiden Grossman <aidengrossmanpso@gmail.com>",
+    "Ludger Paehler <ludger.paehler@tum.de>"
 ]
 version = "0.2"
-license = {text="Apache-2.0"}
+license = "Apache-2.0"
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Development Status :: 2 - Pre-Alpha Copy",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache-2.0",
 ]
-requires-python = ">=3.8"
-dependencies = [
-  "absl-py>=1.4.0",
-  "ml-compiler-opt>=0.0.1.dev202308100007",
-  "ray>=2.5.1",
-  "toml>=0.10.2",
-  "pandas>=2.0.3",
-  "plotly>=5.16.1",
-  "kaleido>=0.2.1",
-  "umap-learn>=0.5.3",
+include = [
+    { path = "llvm_ir_dataset_utils" },
 ]
 
-[project.optional-dependencies]
-dev = [
-    "yapf>=0.33.0",
-    "ruff>=0.3.3",
-    "pytest>=7.4.0"
-]
+[tool.poetry.dependencies]
+python = ">=3.9, <3.11"
+ml-compiler-opt = "^0.0.1.dev202401270006"
+absl-py = "^2.1.0"
+ray = "^2.20.0"
+toml = "^0.10.2"
+pandas = "^2.2.2"
 
-[tool.setuptools.packages.find]
-include = ["llvm_ir_dataset_utils"]
+[tool.poetry.group.dev.dependencies]
+yapf = "^0.40.2"
+pytest = "^8.2.0"
+ruff = "^0.4.3"
 
 [tool.yapf]
-based_on_style = "yapf"  # Google open-source format
+based_on_style = "yapf"
+indent_width = 2
 
 [tool.ruff]
 line-length = 120
@@ -57,3 +45,7 @@ ignore = ["F401", "E731"]
 
 [tool.codespell]
 ignore-words-list = "crate,"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
