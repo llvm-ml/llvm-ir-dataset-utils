@@ -5,7 +5,13 @@ multiple sources.
 
 ## Getting Started
 
-To get started with the dataset construction utilities, we'd suggest to use the packaged [pipenv](https://pipenv.pypa.io) to isolate the Python from your system isolation or other environments. To install, you then have to
+To get started with the dataset construction utilities, we'd suggest to use the
+packaged [pipenv](https://pipenv.pypa.io), or the packaged [poetry](https://python-poetry.org/)
+to isolate the Python from your system isolation or other environments.
+
+### Pipenv
+
+To get started with pipenv, you then have to
 
 ```bash
 pipenv install
@@ -27,6 +33,27 @@ In case you want to develop the package, this becomes
 
 ```bash
 pipenv shell && pip install -e .
+```
+
+### Poetry
+
+To get started with poetry, you then have to
+
+```bash
+poetry install
+```
+
+which will draw the exact software version from the packaged lockfile, and install the editable version of the
+dataset construction utilities into the environment. To only install the dependencies, you can run
+
+```bash
+poetry install --no-root
+```
+
+To then develop inside of poetry's virtual environment, we can launch a shell with
+
+```bash
+poetry shell
 ```
 
 ## Creating First Data
