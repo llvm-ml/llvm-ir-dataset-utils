@@ -53,8 +53,8 @@ def main(_):
   for language_folder in os.listdir(FLAGS.dataset_dir):
     for file_name in os.listdir(
         os.path.join(FLAGS.dataset_dir, language_folder)):
-      if FLAGS.start_after and file_to_upload <= FLAGS.start_after:
-        logging.info(f'Skipping uploading {file_to_upload}')
+      if FLAGS.start_after and file_name <= FLAGS.start_after:
+        logging.info(f'Skipping uploading {file_name}')
         continue
 
       full_file_path = os.path.join(FLAGS.dataset_dir, language_folder,
