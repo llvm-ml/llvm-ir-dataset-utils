@@ -290,13 +290,7 @@ def parse_pass_analysis_exec(
         else:
             data = read_data(output_file_path, bitcode_file, opt).split("\n")
 
-        if relative:  # include both relative and absolute
-            result = {
-                "pass-exec": None,
-                "analysis-exec": None,
-            }
-        else:
-            result = {"pass-exec": None, "analysis-exec": None}
+        result = {"pass-exec": None, "analysis-exec": None}
 
         line_start = find_start_line(data)
         if line_start is None:
@@ -334,7 +328,7 @@ Output:
 
 def read_data(file_path: str, bitcode_file: bool, opt: str):
     command = [
-        "/p/lustre1/khoidng/LLVM/build/bin/opt",
+        "opt",
         "-" + opt,
         "--stats",
         "--disable-output",
@@ -359,13 +353,12 @@ def read_data(file_path: str, bitcode_file: bool, opt: str):
 
 def read_data_bc(bitcode_module, opt: str):
     command = [
-        "/p/lustre1/khoidng/LLVM/build/bin/opt",
+        "opt",
         "-" + opt,
         "--stats",
         "--disable-output",
         "--time-passes",
-    ]  # TODO: replace the hardcoded opt path with something more flexible
-
+    ]
     with subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -394,7 +387,6 @@ def sampling(
     bitcode_file: bool = False,
     opt: str = "O3",
 ):
-    # available_pass_list = import_pass_from_file('./opt_passes.txt')
     wall_time = {k: [] for k in OPT_O3_PASS_LIST}
     passes = set(OPT_O3_PASS_LIST)
     files = listdir(dir_path)
@@ -459,6 +451,19 @@ def sampling_csv(
     return result
 
 
+"""
+source_dir: source directory of bitcode files
+fp: name for output csv file
+nsamples: number of files to sample
+ncols: number of columns for output file table
+relative (deprecated, don't use): output whether data table is relative time or absolute time
+col_labels: list of labels for the output data table (recommend: []abs_time, rel_time, pass])
+bitcode_file: whether type of files in source_dir bitcode file
+opt: optimization pipeline
+data_type: output transformation pass ('pass-exec') or analysis pass ('analysis-exec') data
+"""
+
+
 def sample_then_export_csv(
     source_dir: str,
     fp: str,
@@ -473,27 +478,6 @@ def sample_then_export_csv(
     assert ncols == len(col_labels)
     o = sampling_csv(source_dir, nsamples, relative, bitcode_file, opt, data_type)
     return export_to_csv(o, fp, ncols, col_labels)
-
-
-def export_pass_name(pass_collection: list[str], fp, append=True):
-    # append_cond = lambda append: 'a' if append else 'w'
-    def append_cond(append):
-        if append:
-            return "a"
-        return "w"
-
-    with open(fp, append_cond) as f:
-        for i in pass_collection:
-            f.write(i)
-            f.write("\n")
-    return 0
-
-
-def import_pass_from_file(fp, delimeter="\n"):
-    data = None
-    with open(fp, "r") as f:
-        data = f.read().split(delimeter)
-    return data
 
 
 def export_to_json(data: Union[str, list[float]], fn: str = "", indent: int = 2):
@@ -659,7 +643,7 @@ def cat_encode(data: Union[str, list[float]]):
     return (result, encoding)
 
 
-def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
+def download_bitcode(target_dir: str, languages: list[str], n: int = -1, random=False):
     if not isinstance(languages, list):
         print("languages arg has to be list type")
         return 1
@@ -685,6 +669,7 @@ def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
     print("converted to python iterable")
     counter = 0
     spin_text = "Downloading bitcode files"
+
     with yaspin(text=spin_text) as sp:
         while (n != -1 and counter < n) or (row is not None and n == -1):
             if row["language"] in lang_set:
