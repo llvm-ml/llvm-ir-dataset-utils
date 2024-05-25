@@ -2,20 +2,21 @@ import subprocess
 from collections import Counter
 import os
 from os import listdir
-from os.path import isfile, join
+from os.path import join
 from typing import List, Union, Callable
 import pandas as pd
-
 import parallelbar
+import ray
 from itertools import repeat
 
-from opt_analysis_tools import parse_pass_analysis_exec, read_data_bc
+from opt_analysis_tools import parse_pass_analysis_exec
 
-# Source: https://codegolf.stackexchange.com/questions/4707/outputting-ordinal-numbers-1st-2nd-3rd#answer-4712
-ordinal = lambda n: "%d%s" % (
-    n,
-    "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10 :: 4],
-)
+import psutil
+import time
+import re
+
+num_cpus = psutil.cpu_count(logical=False)
+
 
 """
     inputs:
@@ -30,7 +31,7 @@ def remove_fn(i: int, src: str, dst: str):
         print("invalid file path in either src or dst argument")
         return None
     command = [
-        "/p/lustre1/khoidng/LLVM/build/bin/opt",
+        "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
         f"-passes=remove-fn-body<i={i}>",
         src,
         "-o",
@@ -59,7 +60,10 @@ def remove_fn_bc(i: int, bc):
         return None
     try:
         with subprocess.Popen(
-            ["/p/lustre1/khoidng/LLVM/build/bin/opt", f"-passes=remove-fn-body<i={i}>"],
+            [
+                "/p/lustre1/khoidng/LLVM/build/bin/opt",
+                f"-passes=remove-fn-body<i={i}>",
+            ],  # TODO: replace this
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
@@ -82,7 +86,7 @@ def get_n_functions(file_path: str):
     try:
         with subprocess.Popen(
             [
-                "/p/lustre1/khoidng/LLVM/build/bin/opt",
+                "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
                 "-passes=remove-fn-body<i=-1>",
                 "--disable-output",
             ],
@@ -105,7 +109,7 @@ def get_n_functions(file_path: str):
 def get_ir(bitcode_module):
     with subprocess.Popen(
         [
-            "/p/lustre1/khoidng/LLVM/build/bin/opt",
+            "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
             "-passes=remove-fn-body<i=-1>",
             "-S",
         ],
@@ -166,14 +170,11 @@ def get_outliers(file_path: str, opt: str, outlier_threshold=1, quantile=0.95):
 
         if outlier_status:
             remove_fn(i, src_path, tmp_path)
-            # print(f"removed {ordinal(i)} function as non-outlier")
             n_removed += 1
             src_path = tmp_path
 
         print(f"i: {i}. n_removed: {n_removed}. src_path={src_path}")
         fraction_outliers.append(fraction_outlier)
-    # print(f"{n_removed}/{n_functions} functions are removed.")
-    # print(get_ir(bc))
     return (n_removed, n_functions, sum(fraction_outliers) / len(fraction_outliers))
 
 
@@ -216,18 +217,11 @@ def is_outlier(
         total=data_len,
     )
 
-    # # check for all passes in data
-    # for i in range(len(data["pass-exec"])):
-    #     time, pass_name = data["pass-exec"][i]
-    #     tmp = ref_data.loc[ref_data[pass_col] == pass_name]
-    #     outliers.append(time > tmp[time_col].quantile(q=quantile))
-
     print(Counter(outliers)[True] / len(outliers))
     return (
         Counter(outliers)[True] / len(outliers) >= threshold,
         Counter(outliers)[True] / len(outliers),
     )
-    # return Counter(outliers)[True] / len(outliers) >= threshold
 
 
 """
@@ -240,21 +234,10 @@ Inputs:
 
 
 def preserve_outliers_dir(dir_path: str, opt: str, outlier_threshold=1):
-    # bc_module_files = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
-    # for f in bc_module_files:
-    #     fp = join(dir_path, f)
-    #     get_outliers(fp, opt)
-    #     print(f"Finished processing file: {f}")
-
     files = listdir(dir_path)
     fp = parallelbar.progress_starmap(
         join, zip(repeat(dir_path), files), total=len(files)
     )
-    # data = parallelbar.progress_starmap(
-    #     get_outliers,
-    #     zip(fp, repeat(opt), repeat(outlier_threshold)),
-    #     total=len(files),
-    # )
 
     data = []
     for f in fp:
@@ -264,15 +247,47 @@ def preserve_outliers_dir(dir_path: str, opt: str, outlier_threshold=1):
     return data
 
 
+"""
+Given path to bitcode module file and a pass name, write new file with 
+outlier functions extracted.
+
+Inputs:
+- file_path: path to bitcode module file.
+- opt: optimization pipeline in {O1,O2,O3,Oz}.
+- pass_name: pass name in which outlier threshold used to extract
+  outlier functions.
+- quantile (optional): percentile used as outlier threshold with range [0,1].
+- ref_data (optional): pandas.DataFrame object used as reference for outlier extraction.
+- dst (optional): If empty, write file to a directory '_tmp'. Else, write file to directory dst.
+- abs_threshold (optional): In seconds, absolute wall time threshold to consider for outlier extraction. 
+  Used to minimize noise.
+
+Output:
+- If bitcode module file is an outlier, return a tuple
+  (number of functions removed, total number of functions in module).
+- If bitcode module file is an outlier but unexpected error from retrieving outlier data, returns (-2, -2).
+- If pass_name is not in opt time-pass analysis of the file, return (-3,-3).
+- If bitcode module file is not outlier, return (0, number of functions).
+"""
+
+
+@ray.remote
 def get_outliers_pass_specific(
-    file_path: str, opt: str, pass_name: str, quantile: float = 0.95
+    file_path: str,
+    opt: str,
+    pass_name: str,
+    quantile: float = 0.95,
+    ref_data: pd.DataFrame = None,
+    dst="",
+    abs_threshold=0.005,
 ):
     tmp_path = file_path.split("/")
-    tmp_path[-2] = "_tmp"
+    tmp_path[-2] = "_tmp" if dst == "" else dst
     tmp_path = "/".join(tmp_path)
     os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
 
-    ref_data = pd.read_csv(f"{opt.lower()}_cpp.csv")  # TODO: optimize this away
+    if ref_data is None:
+        ref_data = pd.read_csv(f"{opt.lower()}_cpp.csv")  # TODO: optimize this away
 
     bc = None
     n_removed = 0
@@ -281,29 +296,26 @@ def get_outliers_pass_specific(
     analysis = parse_pass_analysis_exec(
         src_path, True, True, opt, bitcode_module=None, dict_format=True
     )
-
     if analysis is not None:
         analysis = analysis["pass-exec"]
     else:
-        # print("[get_outliers_pass_specified] parse_pass_analysis_exec returns None!")
         return None
 
-    groups = ref_data.groupby("pass").quantile(q=quantile)
+    groups = ref_data.groupby("pass").quantile(
+        q=quantile
+    )  # TODO: replace "pass" with parameter
 
     if pass_name in analysis:
-        time = analysis[pass_name]
+        abs_time, rel_time = analysis[pass_name]
     else:
-        # print(f"There's no {pass_name} in this module!")
         return (-3, -3)  # TODO: come up with better error signals
 
-    # print(
-    #     f"Initial checking if {pass_name} with time={time} is an outlier in this module..."
-    # )
-    if check_outliers(time, pass_name, groups):  # is an outlier
-        # print(
-        #     f"{pass_name} is an outlier ({time} >= {ordinal(int(quantile*100))} quantile={groups.loc[pass_name]['fraction_total_time']})"
-        # )
-        n_functions = get_n_functions(file_path=file_path)
+    n_functions = get_n_functions(file_path=file_path)
+
+    if (
+        check_outliers(rel_time, pass_name, groups, time_col="rel_time")
+        and abs_time >= abs_threshold
+    ):
         try:
             for i in range(n_functions):
                 if n_removed > 0:
@@ -318,63 +330,127 @@ def get_outliers_pass_specific(
                 if analysis is not None:
                     analysis = analysis["pass-exec"]
                 else:
-                    # print("[inside for loop] parse_pass_analysis_exec returns None!")
-                    return (-2, -2)
-                if check_outliers(analysis[pass_name], pass_name, groups):
+                    return (-2, -2)  # deprecated. should never happen.
+
+                if pass_name in analysis and check_outliers(
+                    analysis[pass_name][1], pass_name, groups, time_col="rel_time"
+                ):
                     remove_fn(i, src_path, tmp_path)
                     n_removed += 1
                     src_path = tmp_path
-                # print(f"i: {i}. n_removed: {n_removed}. src_path={src_path}")
             return (n_removed, n_functions)
-        except KeyError as e:
-            # print(f"KeyError: arguments {e.args}")
-            return (-1, -1)
-    # print(
-    #     f"{pass_name} is not outlier for bitcode module file {file_path} (outlier={groups.loc[pass_name]['fraction_total_time']})"
-    # )
-    return (0, 0)
+        except KeyError:
+            return (
+                -1,
+                -1,
+            )  # deprecated since if statement above check for this condition
+
+    return (0, n_functions)
 
 
+"""
+Given a directory of all bitcode module files and a pass name, 
+output all outlier modules with outlier functions being preserved.
+
+Inputs:
+- dir_path: path to directory containing bitcode module files.
+- opt: optimization pipeline option in {O1,O2,O3,Oz}.
+- pass_name: name of pass.
+- quantile (optional): threshold to consider which time being an outlier.
+- fp_list (optional): List of bitcode module files to process outlier 
+  preservation. Default: get all files in dir_path directory.
+- ref_data (optional): pandas.DataFrame object as a reference for 
+  getting outlier data from pass_name.
+- dst (optional): destination path to write module file with 
+  outlier functions preserved to.
+
+Output: dictionary type with key being pass_name and value being a list of 
+tuples. Each tuple represents number of functions removed (1st element) 
+and total number of functions (2nd element) of a module.
+"""
+
+
+@ray.remote
 def preserve_outliers_dir_pass_specific(
-    dir_path: str, opt: str, pass_name: str, quantile: float = 0.95, fp_list: List = []
+    dir_path: str,
+    opt: str,
+    pass_name: str,
+    quantile: float = 0.95,
+    fp_list: List = [],
+    ref_data: pd.DataFrame = None,
+    dst: str = "",
 ):
     if len(fp_list) > 0:
         fp = fp_list
     else:
         files = listdir(dir_path)
-        fp = parallelbar.progress_starmap(
-            join, zip(repeat(dir_path), files), total=len(files)
+        fp = [join(dir_path, files[i]) for i in range(len(files))]
+    if ref_data is not None:
+        df = ref_data
+    else:
+        df = pd.read_csv(f"{opt.lower()}_cpp.csv")  # TODO: change this
+    data = []
+    s = time.time()
+    results = [
+        get_outliers_pass_specific.remote(
+            fp[i], opt, pass_name, quantile, ref_data=df, dst=dst
         )
-    data = parallelbar.progress_starmap(
-        get_outliers_pass_specific,
-        zip(fp, repeat(opt), repeat(pass_name), repeat(quantile)),
-        total=len(fp),
-    )
+        for i in range(len(fp))
+    ]
 
-    return data
+    unfinished = results
+    while unfinished:
+        finished, unfinished = ray.wait(unfinished, num_returns=1)
+        data.extend(ray.get(finished))
+    print(f"{pass_name}: time elapsed={time.time() - s}", flush=True)
+
+    return {pass_name: data}
+
+
+"""
+Check if the number of outlier modules modified fit with the number of outlier modules 
+given by `quantile`. 
+
+Inputs:
+- dir_path: absolute path to source directory.
+- ref_data: pandas.DataFrame
+- opt: optimization option.
+- quantile (optional): threshold to be considered as outlier for relative time.
+- pass_col (optional): label of categorical column storing all pass names in `ref_data`.
+- pass_list (optional): passes to check. If empty, check all passes in `ref_data`.
+"""
 
 
 def check_correctness(
-    dir_path: str, ref_data: str, opt: str, quantile: float = 0.95, pass_col="pass"
+    dir_path: str,
+    ref_data: pd.DataFrame,
+    opt: str,
+    quantile: float = 0.95,
+    pass_col="pass",
+    pass_list=[],
 ):
-    # 1. get all the passes
-    # 2.1 for each pass, run preserve_outliers_dir_pass_specific
-    # 2.2 during each pass in 2.1, calculate Q = N files in _tmp / N files total
-    # 2.3 add Q, and whether |Q| > 5% (error of percentile), into a list
-
-    # assume ref_data is df of O{1,2,3,z} optimization
-    passes = ref_data[pass_col].unique()  # numpy array
+    if len(pass_list) != 0:
+        passes = pass_list
+    else:
+        passes = ref_data[pass_col].unique()  # numpy array
     files = listdir(dir_path)
     n_files = len(files)
-    fp = parallelbar.progress_starmap(join, zip(repeat(dir_path), files), total=n_files)
+    fp = [join(dir_path, files[i]) for i in range(len(files))]
     data = {}
-    for p in passes:
-        print(f"\n{p}:\n")
-        result = preserve_outliers_dir_pass_specific(
-            dir_path, opt, p, quantile, fp_list=fp
+    tmp_dir_names = [f"tmp_{''.join(re.split('<|,|>|llvm::|, ', p))}" for p in passes]
+    results = [
+        preserve_outliers_dir_pass_specific.remote(
+            dir_path, opt, passes[i], quantile, fp_list=fp, dst=tmp_dir_names[i]
         )
-        result_dict = Counter(result)
-        data[p] = (
+        for i in range(len(passes))
+    ]
+    unfinished = results
+    while unfinished:
+        finished, unfinished = ray.wait(unfinished, num_returns=1)
+        result = ray.get(finished[0])
+        pass_name = next(iter(result.keys()))
+        result_dict = Counter(result[pass_name])
+        data[pass_name] = (
             1
             - (
                 result_dict[(0, 0)]
@@ -385,8 +461,117 @@ def check_correctness(
             / n_files
         )
 
+    # for i in range(len(passes)):
+    #     # print(f"{p}", flush=True)
+    #     # tmp_dir_name = f"tmp_{p.split('<')[0]}"
+    #     # print(f"in directory {tmp_dir_name}", flush=True)
+    #     # result = ray.get(
+    #     #     preserve_outliers_dir_pass_specific.remote(
+    #     #         dir_path, opt, p, quantile, fp_list=fp, dst=tmp_dir_name
+    #     #     )
+    #     # )
+    #     result_dict = Counter(results[i])
+    #     data[passes[i]] = (
+    #         1
+    #         - (
+    #             result_dict[(0, 0)]
+    #             + result_dict[(-1, -1)]
+    #             + result_dict[(-2, -2)]
+    #             + result_dict[(-3, -3)]
+    #         )
+    #         / n_files
+    #     )
+
     return data
 
 
-def permutations():
-    pass
+"""
+Same as check_outlier, but return if both relative and absolute wall time of bitcode 
+module file meet the outlier threshold.
+
+Inputs:
+- file_path: path to bitcode module file.
+- pass_name: pass name.
+- opt: optimization pipeline.
+- rel_threshold_value: relative wall time threshold.
+- abs_threshold_value: absolute wall time threshold.
+
+Output: True if `pass_name` of bitcode module file in `opt` pipeline meeet both 
+relative and absolute wall time threshold. False otherwise.
+"""
+
+
+### RELATIVE TIME DATA
+@ray.remote
+def check_outliers2(
+    file_path: str,
+    pass_name: str,
+    opt: str,
+    rel_threshold_value: float,
+    abs_threshold_value: float,
+):
+    analysis = parse_pass_analysis_exec(
+        file_path, True, True, opt, bitcode_module=None, dict_format=True
+    )
+    analysis_abs = parse_pass_analysis_exec(
+        file_path,
+        relative=False,
+        bitcode_file=True,
+        opt=opt,
+        bitcode_module=None,
+        dict_format=True,
+    )
+    if analysis is not None and analysis_abs is not None:
+        analysis = analysis["pass-exec"]
+        analysis_abs = analysis_abs["pass-exec"]
+    else:
+        return None
+
+    if pass_name in analysis and pass_name in analysis_abs:
+        time_rel = analysis[pass_name]
+        time_abs = analysis_abs[pass_name]
+    else:
+        return None
+
+    return time_rel >= rel_threshold_value and time_abs >= abs_threshold_value
+
+
+"""
+Return list of bitcode module files that are outliers for specific pass name.
+Inputs:
+- file_dir: directory to source module files.
+- pass_name: pass name.
+- opt: optimization pipeline.
+- rel_threshold_value: relative wall time threshold.
+- abs_threshold_value: absolute wall time threshold.
+- fp (optional): list of bitcode module files. If empty, function processes all files in `file_dir`.
+"""
+
+
+def get_outliers_pass_specific2(
+    file_dir: str,
+    pass_name: str,
+    opt: str,
+    rel_threshold_value: float,
+    abs_threshold_value: float,
+    fp: List = [],
+):
+    if fp != []:
+        files = fp
+    else:
+        files = listdir(file_dir)
+
+    bools = ray.get(
+        [
+            check_outliers2.remote(
+                join(file_dir, file),
+                pass_name,
+                opt,
+                rel_threshold_value,
+                abs_threshold_value,
+            )
+            for file in files
+        ]
+    )
+
+    return [files[fi] for fi in range(len(files)) if bools[fi] is True]
