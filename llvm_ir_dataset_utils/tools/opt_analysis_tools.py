@@ -1,4 +1,4 @@
-""" Tools working with llvm-opt output data (O3 optimization)."""
+""" Tools working with llvm-opt output data """
 
 from typing import Union
 
@@ -212,17 +212,25 @@ def find_start_line(data):
 def extract_wall_pass_name(
     line_data: list[Union[float, str]], relative: bool, total_wall_time: float
 ):
+    # return [
+    #     line_data[-2] if relative else total_wall_time * line_data[-2],
+    #     line_data[-1],
+    # ]
+
     return [
-        line_data[-2] if relative else total_wall_time * line_data[-2],
+        line_data[-2] * total_wall_time,
+        line_data[-2],
         line_data[-1],
-    ]
+    ]  # [abs_time, rel_time, pass_name]
 
 
 """ Parse section with line line_start (first line containing the correct line input format)
 """
 
 
-def parse_section(data: list[str], line_start: int, relative: bool):
+def parse_section(
+    data: list[str], line_start: int, relative: bool, dict_format: bool = False
+):
     total_wall_time = 0.0
     last_section_line = 0  # line contains total time results for pass execution section
 
@@ -241,11 +249,18 @@ def parse_section(data: list[str], line_start: int, relative: bool):
     try:
         data = data[line_start:last_section_line]
         tmp = [extract_alphanum(d) for d in data]
-        result = [extract_wall_pass_name(t, relative, total_wall_time) for t in tmp]
+        if dict_format:
+            result = {}
+            for t in tmp:
+                abs_time, rel_time, pass_name = extract_wall_pass_name(
+                    t, relative, total_wall_time
+                )
+                result[pass_name] = [abs_time, rel_time]
+        else:
+            result = [extract_wall_pass_name(t, relative, total_wall_time) for t in tmp]
 
     except IndexError:
         print("Index out of range!")
-        print("DEBUG parse_section: index", i, "line:", line_data)
         return None, None
     return result, last_section_line
 
@@ -258,30 +273,63 @@ def parse_section(data: list[str], line_start: int, relative: bool):
 
 
 def parse_pass_analysis_exec(
-    output_file_path: str, relative: bool, bitcode_file: bool, opt: str
+    output_file_path: str,
+    relative: bool,
+    bitcode_file: bool,
+    opt: str,
+    bitcode_module=None,
+    dict_format=False,
 ):
     opt_option = {"O3", "O2", "O1", "Oz"}
     if opt not in opt_option:
         print(f"{opt} not a valid optimization option")
         return None
     try:
-        data = read_data(output_file_path, bitcode_file, opt).split("\n")
-        result = {"pass-exec": None, "analysis-exec": None}
+        if bitcode_module is not None:
+            data = read_data_bc(bitcode_module, opt).split("\n")
+        else:
+            data = read_data(output_file_path, bitcode_file, opt).split("\n")
+
+        if relative:  # include both relative and absolute
+            result = {
+                "pass-exec": None,
+                "analysis-exec": None,
+            }
+        else:
+            result = {"pass-exec": None, "analysis-exec": None}
+
         line_start = find_start_line(data)
         if line_start is None:
             print("line start is none")
             return None
-        result["pass-exec"], pass_end_line = parse_section(data, line_start, relative)
+
+        result["pass-exec"], pass_end_line = parse_section(
+            data, line_start, relative, dict_format=dict_format
+        )
         if pass_end_line is None:
             print("Something's wrong. Check file:", output_file_path)
             return None
-        result["analysis-exec"], _ = parse_section(data, pass_end_line + 8, relative)
+        result["analysis-exec"], _ = parse_section(
+            data, pass_end_line + 8, relative, dict_format=dict_format
+        )
 
         return result
 
     except FileNotFoundError:
         print("File not found. Make sure path to file exists")
         return None
+
+
+"""
+Read opt data from file
+Inputs:
+- file_path: Path to .bc/.ll file
+- bitcode_file: True if file is of .bc extension. False if file is of .ll extension.
+- opt: Optimization option (O1,O2,O3,Oz, etc.)
+
+Output:
+- String of all opt --time-passes and --stats data gathered from source file.
+"""
 
 
 def read_data(file_path: str, bitcode_file: bool, opt: str):
@@ -307,6 +355,25 @@ def read_data(file_path: str, bitcode_file: bool, opt: str):
     else:
         with open(file_path, mode="r", encoding="utf-8") as f:
             return f.read()
+
+
+def read_data_bc(bitcode_module, opt: str):
+    command = [
+        "/p/lustre1/khoidng/LLVM/build/bin/opt",
+        "-" + opt,
+        "--stats",
+        "--disable-output",
+        "--time-passes",
+    ]  # TODO: replace the hardcoded opt path with something more flexible
+
+    with subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    ) as proc:
+        stdout = proc.communicate(input=bitcode_module)[0].decode("utf-8")
+        return stdout
 
 
 def sampling_fp_helper(files: list[str], r: list[int]):
@@ -369,6 +436,7 @@ def sampling_csv(
     relative: bool = False,
     bitcode_file: bool = False,
     opt: str = "O3",
+    data_type: str = "pass-exec",
 ):
     files = listdir(dir_path)
     r = random.sample(range(len(files)), n)
@@ -386,7 +454,8 @@ def sampling_csv(
 
     result = []
     for d in data:
-        result.extend(d["pass-exec"])
+        if d is not None:
+            result.extend(d[data_type])
     return result
 
 
@@ -399,8 +468,10 @@ def sample_then_export_csv(
     relative: bool = False,
     bitcode_file: bool = False,
     opt: str = "O3",
+    data_type: str = "pass-exec",
 ):
-    o = sampling_csv(source_dir, nsamples, relative, bitcode_file, opt)
+    assert ncols == len(col_labels)
+    o = sampling_csv(source_dir, nsamples, relative, bitcode_file, opt, data_type)
     return export_to_csv(o, fp, ncols, col_labels)
 
 
@@ -484,28 +555,38 @@ def convert_to_csv_struct(
     return result
 
 
-def plot(  # deprecating
+def plot(  # deprecated
     samples: Union[str, list[float]],
     export_png: str = "",
-    kind="point",
-    size: int = 5,
     xlabel="",
     ylabel="",
-    xrotation=90,
-    yrotation=0,
     labelsize=10,
 ):
     sns.set(style="darkgrid")
-    # ax = sns.catplot(data=samples, s=10, height=5, aspect=3)
     ax = sns.violinplot(data=samples, orient="h", split=True, inner="quart")
     ax.set(xlabel=xlabel, ylabel=ylabel)
     ax.tick_params(labelsize=labelsize)
-    # ax.set_yticklabels(rotation=yrotation)
-    # ax.set_xticklabels(rotation=xrotation)
+
     if (
         export_png != ""
     ):  # if not empty string, export png with that string value as file name
         plt.savefig(export_png + ".png")
+
+
+"""
+Plot histograms of time distribution of passes from pandas.DataFrame input object
+Inputs:
+- df: pandas.DataFrame object. Should have one category column (pass name) and numerical column (time).
+- num_col: label of numerical column.
+- cat_col: label of category column.
+- ncols: number of columns of histogram plots to display in the figure.
+- suptitle (optional): Suptitle of figure.
+- fontsize (optional): fontsize of labels in all plots.
+- title_size (optional): Size of suptitle.
+- save (optional): File name of figure to be saved. No saving/exporting figure if argument is empty.
+- passes (optional): List of passes to plot. If empty, plot all passes available in df.
+- figsize (optional): Size of figure.
+"""
 
 
 def plot_df(
@@ -514,17 +595,24 @@ def plot_df(
     cat_col: str,
     ncols: int = 4,
     suptitle="",
+    fontsize=20,
+    title_size=12,
     save: str = "",
+    passes=[],
+    figsize=(15, 30),
 ):
-    group_values = list(pd.unique(df[cat_col]))
+    if passes != []:
+        group_values = passes
+    else:
+        group_values = list(pd.unique(df[cat_col]))
 
     # calculate number of rows in the plot
     nrows = len(group_values) // ncols + (len(group_values) % ncols > 0)
 
     # Define the plot
-    plt.figure(figsize=(20, 40))
+    plt.figure(figsize=figsize)
     plt.subplots_adjust(hspace=0.9)
-    plt.suptitle(suptitle, fontsize=16, y=0.95)
+    plt.suptitle(suptitle, y=0.95)
 
     for n, col in enumerate(group_values):
         try:
@@ -535,14 +623,17 @@ def plot_df(
             df_temp = df[df[cat_col] == col]
             df_temp[num_col].hist(ax=ax, bins=50)
             if len(df_temp) > 1:
-                ax2 = df_temp[num_col].plot.kde(ax=ax, secondary_y=True, title=col)
+                ax2 = df_temp[num_col].plot.kde(
+                    ax=ax, secondary_y=True, fontsize=fontsize, title=col
+                )
                 ax2.set_xlim(left=0)
 
             # chart formatting
-            ax.set_title(fill(col, 40), size=12)
-            ax.set_xlabel("% of total time")
+            ax.tick_params(labelsize=fontsize)
+            ax.set_title(fill(col, 40), size=title_size)
+            ax.set_xlabel("% of total time", fontsize=fontsize)
             if n % ncols == 0:
-                ax.set_ylabel("Frequency")
+                ax.set_ylabel("Frequency", fontsize=fontsize)
             else:
                 ax.set_ylabel("")
         except ValueError:  # continue with the loop
@@ -568,12 +659,8 @@ def cat_encode(data: Union[str, list[float]]):
     return (result, encoding)
 
 
-def stats_counter():
-    pass
-
-
 def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
-    if isinstance(languages, list):
+    if not isinstance(languages, list):
         print("languages arg has to be list type")
         return 1
     if not isdir(target_dir):
@@ -615,4 +702,3 @@ def download_bitcode(target_dir: str, languages: list[str], n: int = -1):
 
     print(f"{counter} bitcode files have been downloaded to directory {target_dir}.")
     return 0
-
