@@ -3,7 +3,7 @@ from collections import Counter
 import os
 from os import listdir
 from os.path import join
-from typing import List, Union, Callable
+from typing import List
 import pandas as pd
 import parallelbar
 import ray
@@ -17,6 +17,13 @@ import re
 
 num_cpus = psutil.cpu_count(logical=False)
 
+opt_load_args = [
+    "opt",
+    "-load",
+    "RemoveFunctionBodyPass/build/libRemoveFunctionBody.so",
+    "-load-pass-plugin=RemoveFunctionBodyPass/build/libRemoveFunctionBody.so",
+    "-passes=remove-fn-body",
+]
 
 """
     inputs:
@@ -30,9 +37,9 @@ def remove_fn(i: int, src: str, dst: str):
     if not (os.path.isfile(src) or os.path.exists(os.path.dirname(dst))):
         print("invalid file path in either src or dst argument")
         return None
-    command = [
-        "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
-        f"-passes=remove-fn-body<i={i}>",
+    command = opt_load_args + [
+        "-index",
+        f"{i}",
         src,
         "-o",
         dst,
@@ -55,15 +62,16 @@ def remove_fn(i: int, src: str, dst: str):
 
 
 def remove_fn_bc(i: int, bc):
-    if i == -1:
-        print("Currently not supporting i == -1")
+    if i < 0:
+        print("No negative index!")
         return None
     try:
         with subprocess.Popen(
-            [
-                "/p/lustre1/khoidng/LLVM/build/bin/opt",
-                f"-passes=remove-fn-body<i={i}>",
-            ],  # TODO: replace this
+            opt_load_args
+            + [
+                "-index",
+                f"{i}",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
@@ -85,9 +93,10 @@ def get_n_functions(file_path: str):
         bc = f.read()
     try:
         with subprocess.Popen(
-            [
-                "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
-                "-passes=remove-fn-body<i=-1>",
+            opt_load_args
+            + [
+                "-index",
+                "-1",
                 "--disable-output",
             ],
             stdout=subprocess.PIPE,
@@ -108,9 +117,10 @@ def get_n_functions(file_path: str):
 
 def get_ir(bitcode_module):
     with subprocess.Popen(
-        [
-            "/p/lustre1/khoidng/LLVM/build/bin/opt",  # TODO: replace this
-            "-passes=remove-fn-body<i=-1>",
+        opt_load_args
+        + [
+            "-index",
+            "-1",
             "-S",
         ],
         stdout=subprocess.PIPE,
@@ -121,9 +131,12 @@ def get_ir(bitcode_module):
 
 
 """
-- outlier_check_fn: must be a callable function. Requires at least time analysis data and ref_data as arguments.
-                    must return True if outlier, and False otherwise.
-- Return: number of functions removed, total number of functions, average fraction of passes being outliers if ith function is removed
+Non-optimized version of get outliers.
+Inputs:
+- file_path: path to bitcode file
+- opt: O1, O2, O3, Oz,... optimization options (case-sensitive)
+- outlier_threshold: ratio of number of outlier passes over total number of passes 
+- quantile: percentile of passes given runtime data to be considered outlier for every pass
 """
 
 
@@ -136,9 +149,11 @@ def get_outliers(file_path: str, opt: str, outlier_threshold=1, quantile=0.95):
     os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
 
     ref_data = pd.read_csv(
-        f"{opt.lower()}_cpp.csv"
+        f"pass_runtime/transformations/{opt.lower()}_cpp.csv"
     )  # TODO: filename needs to be abstracted away!
-
+    groups = ref_data.groupby("pass").quantile(
+        q=quantile
+    )  # TODO: put this outside of the loop
     bc = None
     n_removed = 0
     src_path = file_path
@@ -154,11 +169,6 @@ def get_outliers(file_path: str, opt: str, outlier_threshold=1, quantile=0.95):
 
         # this ignores the src_path and only takes the bitcode module
         time_analysis_tmp = parse_pass_analysis_exec(src_path, True, True, opt, tmp)
-
-        # pd.DataFrame consisting of quantiles grouped by passes
-        groups = ref_data.groupby("pass").quantile(
-            q=quantile
-        )  # TODO: put this outside of the loop
 
         # if removed function still results in module being in outlier range,
         # delete that function because it doesn't affect the outliers
@@ -201,8 +211,6 @@ Check if bitcode module (as data) has outlier in any of its pass, return True if
 def is_outlier(
     data,
     ref_data: pd.DataFrame,
-    quantile=0.95,
-    pass_col="pass",
     time_col="fraction_total_time",
     threshold=1,
 ):
@@ -252,7 +260,7 @@ Given path to bitcode module file and a pass name, write new file with
 outlier functions extracted.
 
 Inputs:
-- file_path: path to bitcode module file.
+- file_path: absolute path to bitcode module file.
 - opt: optimization pipeline in {O1,O2,O3,Oz}.
 - pass_name: pass name in which outlier threshold used to extract
   outlier functions.
@@ -287,7 +295,9 @@ def get_outliers_pass_specific(
     os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
 
     if ref_data is None:
-        ref_data = pd.read_csv(f"{opt.lower()}_cpp.csv")  # TODO: optimize this away
+        ref_data = pd.read_csv(
+            f"pass_runtime/transformations/{opt.lower()}_cpp.csv"
+        )  # TODO: abstract this away. currently hard coding transformations pass data
 
     bc = None
     n_removed = 0
@@ -388,7 +398,9 @@ def preserve_outliers_dir_pass_specific(
     if ref_data is not None:
         df = ref_data
     else:
-        df = pd.read_csv(f"{opt.lower()}_cpp.csv")  # TODO: change this
+        df = pd.read_csv(
+            f"pass_runtime/transformations/{opt.lower()}_cpp.csv"
+        )  # TODO: change this
     data = []
     s = time.time()
     results = [
@@ -460,27 +472,6 @@ def check_correctness(
             )
             / n_files
         )
-
-    # for i in range(len(passes)):
-    #     # print(f"{p}", flush=True)
-    #     # tmp_dir_name = f"tmp_{p.split('<')[0]}"
-    #     # print(f"in directory {tmp_dir_name}", flush=True)
-    #     # result = ray.get(
-    #     #     preserve_outliers_dir_pass_specific.remote(
-    #     #         dir_path, opt, p, quantile, fp_list=fp, dst=tmp_dir_name
-    #     #     )
-    #     # )
-    #     result_dict = Counter(results[i])
-    #     data[passes[i]] = (
-    #         1
-    #         - (
-    #             result_dict[(0, 0)]
-    #             + result_dict[(-1, -1)]
-    #             + result_dict[(-2, -2)]
-    #             + result_dict[(-3, -3)]
-    #         )
-    #         / n_files
-    #     )
 
     return data
 
