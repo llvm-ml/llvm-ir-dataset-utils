@@ -1,50 +1,48 @@
 """Utilities related to portage."""
 
 import subprocess
+import shutil
 import os
 
-def get_compiler_version():
-  compiler_command_vector = ['clang', '--version']
-  compiler_version_process = subprocess.run(
-      compiler_command_vector,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
-      check=True)
-  version_line = compiler_version_process.stdout.decode('utf-8').split('\n')[0]
-  version_line_parts = version_line.split(' ')
-  for index, version_line_part in enumerate(version_line_parts):
-    if version_line_part == 'version':
-      return version_line_parts[index + 1]
 
-def get_os_info():
-    import platform
-    return platform.system().lower()
-
-def get_portage_compiler_config():
-    compiler_version = get_compiler_version()
-    os_info = get_os_info()
-    compiler_config = (
-        f"# Compiler Configuration\n"
-        f"CFLAGS=\"-Xclang -fembed-bitcode=all\"\n"
-        f"CXXFLAGS=\"${{CFLAGS}}\"\n"
-        f"FCFLAGS=\"${{CFLAGS}}\"\n"
-        f"# Compiler: Clang {compiler_version}\n"
-        f"# Operating System: {os_info}\n"
-        "CC=\"/usr/bin/clang\"\n"
-        "CXX=\"/usr/bin/clang++\"\n"
-        "FC=\"/usr/bin/gfortran\"\n"
-        "F77=\"/usr/bin/gfortran\"\n"
+def get_portage_compiler_config(filename):
+    content = (
+        'COMMON_FLAGS="-O2 -pipe -Xclang -fembed-bitcode=all"\n'
+        '\n'
+        'CC="/root/ir-dataset/utils/compiler_wrapper"\n'
+        'CXX="/root/ir-dataset/utils/compiler_wrapper++"\n'
+        'CFLAGS="${COMMON_FLAGS}"\n'
+        'CXXFLAGS="${COMMON_FLAGS}"\n'
+        'FCFLAGS="${COMMON_FLAGS}"\n'
+        'FFLAGS="${COMMON_FLAGS}"\n'
+        '\n'
+        'FEATURES="noclean"\n'
+        '\n'
+        'LC_MESSAGES=C.utf8'
     )
-    return compiler_config
+    with open(filename, 'w') as file:
+        file.write(content)
+
+
 
 def portage_setup_compiler(build_dir):
-    # Same as spack, path is variable depending upon the system.
-    # Path to the Portage make.conf file within the build directory
-    make_conf_path = os.path.join(build_dir, "/etc/portage/make.conf")
-    
-    # Ensure the directory for make.conf exists
-    os.makedirs(os.path.dirname(make_conf_path), exist_ok=True)
-    
-    # Write the compiler configuration to make.conf
-    with open(make_conf_path, 'w') as compiler_config_file:
-        compiler_config_file.writelines(get_portage_compiler_config())
+  # Same as spack, path is variable depending upon the system.
+  # Path to the Portage make.conf file within the build directory
+  source_config_folder = '/etc/portage/'
+  config_path = os.path.join(build_dir, "etc/portage")
+  make_conf_path = os.path.join(config_path, "make.conf")
+  make_profile_path = os.path.join(config_path, "make.profile")
+  if os.path.exists(config_path):
+    shutil.rmtree(config_path)
+  shutil.copytree(source_config_folder, config_path)
+
+  # Delete make.profile and make a new soft link to the default profile
+  shutil.rmtree(make_profile_path)
+  os.symlink('/etc/portage/make.profile', make_profile_path)
+  get_portage_compiler_config(make_conf_path)
+
+def clean_binpkg(package_spec):
+  command_vector = ['rm', '-rf', '/var/cache/binpkgs/' + package_spec]
+  subprocess.run(command_vector)
+  sync_command = ['emaint', '--fix', 'binhost']
+  subprocess.run(sync_command)

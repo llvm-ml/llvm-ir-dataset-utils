@@ -2,6 +2,7 @@
 
 import subprocess
 import os
+import glob
 import tempfile
 import logging
 import pathlib
@@ -16,7 +17,6 @@ from llvm_ir_dataset_utils.util import file
 from llvm_ir_dataset_utils.util import portage as portage_utils
 from llvm_ir_dataset_utils.util import extract_source_lib
 
-SPACK_GARBAGE_COLLECTION_TIMEOUT = 300
 
 BUILD_LOG_NAME = './portage_build.log'
 
@@ -26,22 +26,25 @@ def get_spec_command_vector_section(spec):
 
 
 def generate_emerge_command(package_to_build, threads, build_dir):
-    config_root = os.path.join(build_dir, "/etc/portage")
-    command_vector = [
-        'emerge',  # Portage package management command
-        '--jobs={}'.format(threads),  # Set the number of jobs for parallel building
-        '--load-average={}'.format(threads),  # Set the maximum load average for parallel builds
-        '--keep-going',  # Continue with other builds even if one fails
-        '--buildpkg',  # Build binary packages, similar to Spack's build cache
-        '--binpkg-respect-use=y',  # Ensure that binary package installations respect USE flag settings
-        '--quiet-build=y',  # Reduce output during the build process
-        package_to_build  # The package to install
-    ]
+  command_vector = [
+      'emerge',  # Portage package management command
+      '--jobs={}'.format(
+          threads),  # Set the number of jobs for parallel building
+      '--load-average={}'.format(
+          threads),  # Set the maximum load average for parallel builds
+      '--config-root={}'.format(
+          build_dir),  # Set the configuration root directory
+      '--buildpkg',  # Build binary packages, similar to Spack's build cache
+      '--usepkg',  # Use binary packages if available
+      '--binpkg-respect-use=y',  # Ensure that binary package installations respect USE flag settings
+      '--quiet-build=y',  # Reduce output during the build process
+      package_to_build  # The package to install
+  ]
 
-    # Portage does not support setting the build directory directly in the command,
-    # but this can be controlled with the PORTAGE_TMPDIR environment variable
-    # This environment variable needs to be set when calling subprocess, not here directly
-    return command_vector
+  # Portage does not support setting the build directory directly in the command,
+  # but this can be controlled with the PORTAGE_TMPDIR environment variable
+  # This environment variable needs to be set when calling subprocess, not here directly
+  return command_vector
 
 
 def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
@@ -66,19 +69,19 @@ def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
   return True
 
 
-def extract_ir(corpus_dir, build_dir, threads):
+def extract_ir(package_spec, corpus_dir, build_dir, threads):
   build_directory = build_dir + "/portage/"
+  package_spec = package_spec + "*"
+  match = glob.glob(os.path.join(build_directory, package_spec))
+  assert(len(match) == 1)
+  package_name_with_version = os.path.basename(match[0])
+  build_directory = match[0] + "/work/" + package_name_with_version
   if build_directory is not None:
-    current_verbosity = logging.getLogger().getEffectiveLevel()
-    logging.getLogger().setLevel(logging.ERROR)
     objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
-    print(objects)
     relative_output_paths = extract_ir_lib.run_extraction(
         objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
-    print(relative_output_paths)
     extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
                                          corpus_dir)
-    logging.getLogger().setLevel(current_verbosity)
     extract_source_lib.copy_source(build_directory, corpus_dir)
 
 
@@ -96,38 +99,6 @@ def construct_build_log(build_success, package_name):
       }]
   }
 
-def portage_add_local_mirror(build_dir, local_mirror_dir):
-    environment = os.environ.copy()
-    environment['HOME'] = build_dir
-    # Create the file:// URL for the local mirror directory
-    local_mirror_url = f"file://{local_mirror_dir}"
-    
-    # Path to the Portage make.conf file within the build directory
-    make_conf_path = os.path.join(build_dir, "etc/portage/make.conf")
-    
-    # Ensure the make.conf file exists
-    os.makedirs(os.path.dirname(make_conf_path), exist_ok=True)
-    if not os.path.exists(make_conf_path):
-        with open(make_conf_path, 'w') as file:
-            file.write("# Generated make.conf\n")
-    
-    # Read and update the make.conf file
-    with open(make_conf_path, 'r+') as file:
-        lines = file.readlines()
-        file.seek(0)
-        file.truncate()
-        found = False
-        
-        # Update the GENTOO_MIRRORS setting
-        for line in lines:
-            if line.startswith("GENTOO_MIRRORS="):
-                line = f"GENTOO_MIRRORS=\"{local_mirror_url}\"\n"
-                found = True
-            file.write(line)
-        
-        # If GENTOO_MIRRORS was not found, add a new line
-        if not found:
-            file.write(f"GENTOO_MIRRORS=\"{local_mirror_url}\"\n")
 
 def build_package(dependency_futures,
                   package_name,
@@ -139,19 +110,20 @@ def build_package(dependency_futures,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
   for dependency_future in dependency_futures:
-    if dependency_future['targets'][0]['success'] != True:
+    if not dependency_future['targets'][0]['success']:
       logging.warning(
-          f'Dependency {dependency_future["targets"][0]["name"]} failed to build for package {package_name}, not building.'
-      )
+          f"Dependency {dependency_future['targets'][0]['name']} failed to build "
+          f"for package {package_name}, not building.")
       if cleanup_build:
         cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
+  portage_utils.portage_setup_compiler(build_dir)
+  portage_utils.clean_binpkg(package_spec)
   build_command = generate_emerge_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir,
                                build_dir)
   if build_result:
-    extract_ir(corpus_dir, build_dir, threads)
-    # push_to_buildcache(package_spec, buildcache_dir, corpus_dir)
+    extract_ir(package_spec, corpus_dir, build_dir, threads)
     logging.warning(f'Finished building {package_name}')
   if cleanup_build:
     if build_result:

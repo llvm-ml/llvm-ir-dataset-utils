@@ -38,6 +38,7 @@ def save_preprocessed_source(mode, compiler_arguments):
 
   run_compiler_invocation(mode, arguments_copy)
 
+
 def save_preprocessed_source_multi(mode, source_file, compiler_arguments):
   # We shouldn't fail to find the output here if the argument parsing
   # succeeded.
@@ -47,12 +48,14 @@ def save_preprocessed_source_multi(mode, source_file, compiler_arguments):
   arguments_copy[output_index] = output_path
   for arg_idx in range(len(arguments_copy)):
     for recognized_extension in RECOGNIZED_SOURCE_FILE_EXTENSIONS:
-      if arguments_copy[arg_idx].endswith(recognized_extension) and arguments_copy[arg_idx] != source_file:
-        arguments_copy[arg_idx]=''
+      if arguments_copy[arg_idx].endswith(
+          recognized_extension) and arguments_copy[arg_idx] != source_file:
+        arguments_copy[arg_idx] = ''
   arguments_copy = list(filter(None, arguments_copy))
   # Add -E to the compiler invocation to run just the preprocessor.
   arguments_copy.append('-E')
   run_compiler_invocation(mode, arguments_copy)
+
 
 def save_source(source_files, output_file, mode, compiler_arguments):
   if len(source_files) == 1:
@@ -61,7 +64,7 @@ def save_source(source_files, output_file, mode, compiler_arguments):
 
     save_preprocessed_source(mode, compiler_arguments)
     return
-  
+
   for source_file in source_files:
     new_file_name = output_file + '.source'
     shutil.copy(source_file, new_file_name)
@@ -98,7 +101,7 @@ def main(args):
     # In this case, don't copy over any files and just run the compiler
     # invocation.
     mode = parsed_arguments
-    if(len(parsed_arguments) == 1):
+    if len(parsed_arguments) == 1:
       mode = parsed_arguments[0]
     return_code = run_compiler_invocation(mode, args[1:])
     sys.exit(return_code)

@@ -11,16 +11,10 @@ import shutil
 
 import ray
 
-from llvm_ir_dataset_utils.builders import (
-    autoconf_builder,
-    cargo_builder,
-    cmake_builder,
-    julia_builder,
-    manual_builder,
-    spack_builder,
-    swift_builder,
-    portage_builder
-)
+from llvm_ir_dataset_utils.builders import (autoconf_builder, cargo_builder,
+                                            cmake_builder, julia_builder,
+                                            manual_builder, spack_builder,
+                                            swift_builder, portage_builder)
 from llvm_ir_dataset_utils.sources import source
 from llvm_ir_dataset_utils.util import file, licenses
 
