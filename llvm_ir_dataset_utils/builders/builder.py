@@ -19,6 +19,7 @@ from llvm_ir_dataset_utils.builders import (
     manual_builder,
     spack_builder,
     swift_builder,
+    portage_builder
 )
 from llvm_ir_dataset_utils.sources import source
 from llvm_ir_dataset_utils.util import file, licenses
@@ -208,6 +209,21 @@ def parse_and_build_from_description(
         corpus_description["package_name"],
         corpus_description["package_spec"],
         corpus_description["package_hash"],
+        corpus_dir,
+        threads,
+        extra_builder_arguments["buildcache_dir"],
+        build_dir,
+        cleanup,
+    )
+  elif corpus_description["build_system"] == "portage":
+    if "dependency_futures" in extra_builder_arguments:
+      dependency_futures = extra_builder_arguments["dependency_futures"]
+    else:
+      dependency_futures = []
+    build_log = portage_builder.build_package(
+        dependency_futures,
+        corpus_description["package_name"],
+        corpus_description["package_spec"],
         corpus_dir,
         threads,
         extra_builder_arguments["buildcache_dir"],

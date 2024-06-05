@@ -1,0 +1,8 @@
+{
+  "sources": [],
+  "folder_name": "hello",
+  "build_system": "portage",
+  "package_name": "hello",
+  "package_spec": "app-misc/hello",
+  "license": "GPL-3.0-only"
+}
