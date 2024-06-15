@@ -1,0 +1,8 @@
+{
+  "sources": [],
+  "folder_name": "boost",
+  "build_system": "portage",
+  "package_name": "boost",
+  "package_spec": "dev-libs/boost",
+  "license": "GPL-3.0-only"
+}
