@@ -5,7 +5,7 @@ Building a Corpus from an Individual description
 ------------------------------------------------
 
 To build a corpus from an individual description, run the following command from
-the root directory of this repoistory:
+the root directory of this repository:
 
 .. code-block:: bash
 
