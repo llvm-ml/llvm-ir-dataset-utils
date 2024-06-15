@@ -17,7 +17,6 @@ from llvm_ir_dataset_utils.util import file
 from llvm_ir_dataset_utils.util import portage as portage_utils
 from llvm_ir_dataset_utils.util import extract_source_lib
 
-
 BUILD_LOG_NAME = './portage_build.log'
 
 
@@ -73,7 +72,7 @@ def extract_ir(package_spec, corpus_dir, build_dir, threads):
   build_directory = build_dir + "/portage/"
   package_spec = package_spec + "*"
   match = glob.glob(os.path.join(build_directory, package_spec))
-  assert(len(match) == 1)
+  assert (len(match) == 1)
   package_name_with_version = os.path.basename(match[0])
   build_directory = match[0] + "/work/" + package_name_with_version
   if build_directory is not None:

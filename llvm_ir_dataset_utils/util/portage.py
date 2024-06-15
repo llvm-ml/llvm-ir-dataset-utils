@@ -6,23 +6,20 @@ import os
 
 
 def get_portage_compiler_config(filename):
-    content = (
-        'COMMON_FLAGS="-O2 -pipe -Xclang -fembed-bitcode=all"\n'
-        '\n'
-        'CC="/root/ir-dataset/utils/compiler_wrapper"\n'
-        'CXX="/root/ir-dataset/utils/compiler_wrapper++"\n'
-        'CFLAGS="${COMMON_FLAGS}"\n'
-        'CXXFLAGS="${COMMON_FLAGS}"\n'
-        'FCFLAGS="${COMMON_FLAGS}"\n'
-        'FFLAGS="${COMMON_FLAGS}"\n'
-        '\n'
-        'FEATURES="noclean"\n'
-        '\n'
-        'LC_MESSAGES=C.utf8'
-    )
-    with open(filename, 'w') as file:
-        file.write(content)
-
+  content = ('COMMON_FLAGS="-O2 -pipe -Xclang -fembed-bitcode=all"\n'
+             '\n'
+             'CC="/root/ir-dataset/utils/compiler_wrapper"\n'
+             'CXX="/root/ir-dataset/utils/compiler_wrapper++"\n'
+             'CFLAGS="${COMMON_FLAGS}"\n'
+             'CXXFLAGS="${COMMON_FLAGS}"\n'
+             'FCFLAGS="${COMMON_FLAGS}"\n'
+             'FFLAGS="${COMMON_FLAGS}"\n'
+             '\n'
+             'FEATURES="noclean"\n'
+             '\n'
+             'LC_MESSAGES=C.utf8')
+  with open(filename, 'w') as file:
+    file.write(content)
 
 
 def portage_setup_compiler(build_dir):
@@ -40,6 +37,7 @@ def portage_setup_compiler(build_dir):
   shutil.rmtree(make_profile_path)
   os.symlink('/etc/portage/make.profile', make_profile_path)
   get_portage_compiler_config(make_conf_path)
+
 
 def clean_binpkg(package_spec):
   command_vector = ['rm', '-rf', '/var/cache/binpkgs/' + package_spec]
