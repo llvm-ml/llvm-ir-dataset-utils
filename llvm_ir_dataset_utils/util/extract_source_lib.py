@@ -1,4 +1,4 @@
-"""Library functions for extracting ource files produced by the compiler
+"""Library functions for extracting source files produced by the compiler
 wrapper.
 """
 
