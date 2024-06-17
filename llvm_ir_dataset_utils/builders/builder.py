@@ -14,7 +14,8 @@ import ray
 from llvm_ir_dataset_utils.builders import (autoconf_builder, cargo_builder,
                                             cmake_builder, julia_builder,
                                             manual_builder, spack_builder,
-                                            swift_builder, portage_builder)
+                                            swift_builder, portage_builder,
+                                            self_contained_builder)
 from llvm_ir_dataset_utils.sources import source
 from llvm_ir_dataset_utils.util import file, licenses
 
@@ -235,6 +236,10 @@ def parse_and_build_from_description(
         threads,
         corpus_description["package_name"],
     )
+  elif corpus_description["build_system"] == "self_contained":
+    build_log = self_contained_builder.perform_build(
+        corpus_description["source_file_list"], build_dir, corpus_dir)
+    self_contained_builder.extract_ir(build_dir, corpus_dir, threads)
   else:
     raise ValueError(
         f"Build system {corpus_description['build_system']} is not supported")
