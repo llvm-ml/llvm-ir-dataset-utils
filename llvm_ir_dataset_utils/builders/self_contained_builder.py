@@ -3,6 +3,7 @@ C/c++ files."""
 
 import subprocess
 import os
+import logging
 
 from mlgo.corpus import extract_ir_lib
 from mlgo.corpus import make_corpus_lib
@@ -10,11 +11,13 @@ from mlgo.corpus import make_corpus_lib
 
 def compile_file(source_file, object_file):
   command_vector = [
-      'clang', '-Xclang', '-fembed-bitcode=all', source_file, '-o', object_file
+      'clang', '-Xclang', '-fembed-bitcode=all', '-c', source_file, '-o',
+      object_file
   ]
   compile_process = subprocess.run(
       command_vector, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-  assert (compile_process.returncode == 0)
+  if compile_process.returncode != 0:
+    logging.warning('Compiler returned non-zero exit code')
 
 
 def perform_build(source_file_list, build_dir, corpus_dir):
