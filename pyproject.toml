@@ -20,8 +20,8 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.11"
-ml-compiler-opt = "^0.0.1.dev202401270006"
+python = ">=3.9"
+mlgo-utils = ">=19.0.0.dev202407082111"
 absl-py = "^2.1.0"
 ray = "^2.20.0"
 toml = "^0.10.2"
