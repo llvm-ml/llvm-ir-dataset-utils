@@ -1,0 +1,20 @@
+FROM gentoo/stage3
+
+RUN echo 'FEATURES="-ipc-sandbox -network-sandbox -pid-sandbox -sandbox -usersandbox -usersync -userfetch -userpriv"' >> /etc/portage/make.conf
+
+COPY $CUSTOM_CERT /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
+RUN emerge-webrsync --no-pgp-verify \
+    && emerge --update --deep --newuse @world \
+    && emerge app-portage/gentoolkit dev-vcs/git sudo vim app-eselect/eselect-python dev-python/pip cmake dev-build/ninja clang
+
+RUN echo 'export PKGDIR=/data/packages' >> ~/.bashrc \
+    && echo 'export LLVM_PATH="/usr/lib/llvm/17"' >> ~/.bashrc \
+    && echo 'export PATH="${PATH}:${LLVM_PATH}/bin"' >> ~/.bashrc \
+    && echo 'export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${LLVM_PATH}/lib:${LLVM_PATH}/lib64"' >> ~/.bashrc \
+    && echo 'export MANPATH="${MANPATH}:${LLVM_PATH}/share/man"' >> ~/.bashrc
+
+WORKDIR /root
+
+CMD ["/bin/bash"]
