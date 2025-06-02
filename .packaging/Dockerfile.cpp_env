@@ -1,0 +1,63 @@
+ARG UBUNTU_VERSION=22.04
+ARG CUSTOM_CERT
+ARG ENABLE_LEGACY_RENEGOTIATION
+
+FROM ubuntu:$UBUNTU_VERSION
+
+ARG CUSTOM_CERT
+ARG ENABLE_LEGACY_RENEGOTIATION
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install the base dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  python3 \
+  python3-dev \
+  python-is-python3 \
+  wget \
+  curl \
+  ca-certificates \
+  gcc \
+  g++ \
+  gfortran \
+  cmake \
+  ninja-build \
+  git
+
+# Setup a custom certificate/SSL settings depending upon build arguments
+# Include README.md here so that the build doesn't fail if there is no custom
+# certificate specified. Then we just delete it afterwards.
+COPY README.md $CUSTOM_CERT /usr/local/share/ca-certificates/
+RUN rm /usr/local/share/ca-certificates/README.md \
+  && update-ca-certificates
+RUN if [ -n "$ENABLE_LEGACY_RENEGOTIATION" ]; then echo "Options = UnsafeLegacyRenegotiation" >> /etc/ssl/openssl.cnf ; fi
+
+# LLVM Installation
+RUN git clone -b running-fixes --depth=1 https://github.com/llvm-ml/llvm-project \
+    && mkdir /llvm-project/build \
+    && cd /llvm-project/build \
+    && cmake -GNinja \
+         -DCMAKE_BUILD_TYPE=Release \
+         -DLLVM_ENABLE_PROJECTS="clang;lld" \
+         -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" \
+         -DCMAKE_INSTALL_PREFIX=/usr \
+         -DLLVM_TARGETS_TO_BUILD=Native \
+         -DLLVM_ENABLE_ASSERTIONS=ON \
+         ../llvm \
+    && ninja install \
+    && cd / \
+    && rm -rf /llvm-project
+
+# Set up the Python dependencies
+COPY Pipfile* ./
+RUN pip3 install pipenv \
+ && pipenv sync --categories "packages dev-packages" --system \
+ && pipenv --clear \
+ && rm Pipfile*
+
+# Clean up the Docker container to make the image smaller
+RUN apt-get autoremove -y --purge \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV DEBIAN_FRONTEND=
