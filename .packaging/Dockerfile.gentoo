@@ -1,0 +1,45 @@
+FROM gentoo/stage3:latest
+
+# Remove the default profile
+RUN rm -rf /etc/portage/make.profile
+
+# Sync the portage tree
+RUN emerge-webrsync --no-pgp-verify
+
+# Set the profile to the latest stable version
+RUN ln -snf /var/db/repos/gentoo/profiles/default/linux/amd64/23.0 /etc/portage/make.profile  
+RUN rm -rf /etc/portage/etc
+RUN mkdir -p /etc/portage/etc/portage
+
+# Set the profile to the latest stable version
+RUN eselect profile list
+RUN eselect profile set default/linux/amd64/23.0
+
+# Install the necessary packages
+RUN emerge --quiet --oneshot --noreplace \
+        dev-python/pip \
+        sys-devel/gcc \
+        sys-devel/gcc-config \
+        dev-build/cmake \
+        dev-build/ninja \
+        dev-vcs/git \
+        net-misc/curl \
+        net-misc/wget \
+        dev-libs/openssl \
+        app-misc/ca-certificates
+
+RUN git clone -b running-fixes --depth=1 https://github.com/llvm/llvm-project \
+    && mkdir /llvm-project/build \
+    && cd /llvm-project/build \
+    && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
+         -DLLVM_ENABLE_PROJECTS="clang;lld" \
+         -DLLVM_ENABLE_RUNTIMES="compiler-rt;openmp" \
+         -DCMAKE_INSTALL_PREFIX=/usr \
+         -DLLVM_TARGETS_TO_BUILD=Native \
+         -DLLVM_ENABLE_ASSERTIONS=ON \
+         ../llvm \
+    && ninja install \
+    && cd / \
+    && rm -rf /llvm-project
+
+CMD ["/bin/bash"]
