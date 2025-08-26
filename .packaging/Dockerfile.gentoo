@@ -28,7 +28,7 @@ RUN emerge --quiet --oneshot --noreplace \
         dev-libs/openssl \
         app-misc/ca-certificates
 
-RUN git clone -b running-fixes --depth=1 https://github.com/llvm-ml/llvm-project \
+RUN git clone -b running-fixes --depth=1 https://github.com/llvm/llvm-project \
     && mkdir /llvm-project/build \
     && cd /llvm-project/build \
     && cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
