@@ -1,116 +1,241 @@
-#!/bin/python
-"""This script wraps the compiler, taking in the compiler options and saving
-the source files that are used within the compilation step."""
+#!/usr/bin/env python3
+"""Run Clang and retain the source inputs of successful compilations."""
 
 import os
+import shlex
+import shutil
 import subprocess
 import sys
-import shutil
+from dataclasses import dataclass
 
-RECOGNIZED_SOURCE_FILE_EXTENSIONS = ['.c', '.cpp', '.cxx', '.cc']
+SOURCE_FILE_EXTENSIONS = {
+    '.c', '.cc', '.cp', '.cpp', '.cxx', '.c++', '.i', '.ii'
+}
+C_AND_CXX_LANGUAGES = {
+    'c', 'c-header', 'cpp-output', 'c++', 'c++-header', 'c++-cpp-output'
+}
+
+# Options whose following argument is not a compiler input. Joined forms such
+# as -Ifoo do not need special handling because they begin with a dash.
+OPTIONS_WITH_VALUE = {
+    '-arch', '-B', '-D', '-gcc-toolchain', '-I', '-idirafter', '-iframework',
+    '-imacros', '-include', '-iquote', '-isystem', '-isysroot', '-L', '-l',
+    '-mllvm', '-MF', '-MJ', '-MQ', '-MT', '-o', '-resource-dir', '-target',
+    '-U', '-Xassembler', '-Xclang', '-Xlinker', '-Xpreprocessor', '--sysroot',
+    '--gcc-toolchain', '--target'
+}
+
+DEPENDENCY_OPTIONS = {'-M', '-MD', '-MG', '-MM', '-MMD', '-MP'}
+DEPENDENCY_OPTIONS_WITH_VALUE = {'-MF', '-MJ', '-MQ', '-MT'}
+
+
+@dataclass(frozen=True)
+class ParsedInvocation:
+  output_file: str
+  source_files: tuple
+  source_indices: tuple
+  mode: str
+  expanded_arguments: tuple
+
+
+def _compiler_for_mode(mode):
+  return 'clang++' if mode == 'c++' else 'clang'
+
+
+def _compiler_mode(program):
+  return 'c++' if os.path.basename(program).endswith('++') else 'c'
 
 
 def run_compiler_invocation(mode, compiler_arguments):
-  command_vector = []
-
-  if mode == 'c++':
-    command_vector.append('clang++')
-  else:
-    command_vector.append('clang')
-
-  command_vector.extend(compiler_arguments)
-
-  compiler_process = subprocess.run(command_vector)
-
-  return compiler_process.returncode
+  command_vector = [_compiler_for_mode(mode), *compiler_arguments]
+  return subprocess.run(command_vector).returncode
 
 
-def save_preprocessed_source(mode, compiler_arguments):
-  # We shouldn't fail to find the output here if the argument parsing
-  # succeeded.
-  output_index = compiler_arguments.index('-o') + 1
-  arguments_copy = compiler_arguments.copy()
-  output_path = arguments_copy[output_index] + '.preprocessed_source'
-  arguments_copy[output_index] = output_path
+def _expand_response_files(arguments, response_stack=()):
+  """Expand Clang-style response files for inspection and preprocessing."""
+  expanded = []
+  for argument in arguments:
+    if not argument.startswith('@') or len(argument) == 1:
+      expanded.append(argument)
+      continue
 
-  # Add -E to the compiler invocation to run just the preprocessor.
-  arguments_copy.append('-E')
+    response_path = os.path.abspath(argument[1:])
+    if response_path in response_stack:
+      raise ValueError(f'recursive response file: {argument[1:]}')
 
-  run_compiler_invocation(mode, arguments_copy)
-
-
-def save_preprocessed_source_multi(mode, source_file, compiler_arguments):
-  # We shouldn't fail to find the output here if the argument parsing
-  # succeeded.
-  output_index = compiler_arguments.index('-o') + 1
-  arguments_copy = compiler_arguments.copy()
-  output_path = source_file + '.preprocessed_source'
-  arguments_copy[output_index] = output_path
-  for arg_idx in range(len(arguments_copy)):
-    for recognized_extension in RECOGNIZED_SOURCE_FILE_EXTENSIONS:
-      if arguments_copy[arg_idx].endswith(
-          recognized_extension) and arguments_copy[arg_idx] != source_file:
-        arguments_copy[arg_idx] = ''
-  arguments_copy = list(filter(None, arguments_copy))
-  # Add -E to the compiler invocation to run just the preprocessor.
-  arguments_copy.append('-E')
-  run_compiler_invocation(mode, arguments_copy)
+    with open(response_path, encoding='utf-8') as response_file:
+      response_arguments = shlex.split(
+          response_file.read(), comments=False, posix=True)
+    expanded.extend(
+        _expand_response_files(response_arguments,
+                               (*response_stack, response_path)))
+  return expanded
 
 
-def save_source(source_files, output_file, mode, compiler_arguments):
-  if len(source_files) == 1:
-    new_file_name = output_file + '.source'
-    shutil.copy(source_files[0], new_file_name)
+def _output_file(arguments):
+  output_file = None
+  index = 0
+  while index < len(arguments):
+    argument = arguments[index]
+    if argument == '-o':
+      if index + 1 >= len(arguments):
+        return None
+      output_file = arguments[index + 1]
+      index += 2
+      continue
+    if argument.startswith('-o') and len(argument) > 2:
+      output_file = argument[2:]
+    index += 1
+  return output_file
 
-    save_preprocessed_source(mode, compiler_arguments)
-    return
 
-  for source_file in source_files:
-    new_file_name = output_file + '.source'
-    shutil.copy(source_file, new_file_name)
+def _source_inputs(arguments):
+  sources = []
+  source_indices = []
+  language = None
+  index = 0
 
-    save_preprocessed_source_multi(mode, source_file, compiler_arguments)
+  while index < len(arguments):
+    argument = arguments[index]
+    if argument == '-x':
+      if index + 1 >= len(arguments):
+        break
+      language = arguments[index + 1]
+      index += 2
+      continue
+    if argument.startswith('-x') and len(argument) > 2:
+      language = argument[2:]
+      index += 1
+      continue
+    if argument in OPTIONS_WITH_VALUE:
+      index += 2
+      continue
+    if argument.startswith('-'):
+      index += 1
+      continue
+
+    extension = os.path.splitext(argument)[1].lower()
+    explicit_source = language in C_AND_CXX_LANGUAGES
+    if extension in SOURCE_FILE_EXTENSIONS or explicit_source:
+      sources.append(argument)
+      source_indices.append(index)
+    index += 1
+
+  return sources, source_indices
 
 
-def parse_args(arguments_split):
-  mode = 'c++'
-  if not arguments_split[0].endswith('++'):
-    mode = 'c'
-
-  output_file_path = None
+def parse_args(arguments):
+  mode = _compiler_mode(arguments[0])
   try:
-    output_arg_index = arguments_split.index('-o') + 1
-    output_file_path = arguments_split[output_arg_index]
-  except Exception:
-    return (mode,)
+    expanded_arguments = _expand_response_files(arguments[1:])
+  except (OSError, ValueError) as error:
+    _warn(f'cannot inspect compiler arguments: {error}')
+    return None
 
-  input_files = []
+  output_file = _output_file(expanded_arguments)
+  source_files, source_indices = _source_inputs(expanded_arguments)
+  if output_file is None or not source_files:
+    return None
 
-  for argument in arguments_split:
-    for recognized_extension in RECOGNIZED_SOURCE_FILE_EXTENSIONS:
-      if argument.endswith(recognized_extension):
-        input_files.append(argument)
+  return ParsedInvocation(output_file,
+                          tuple(source_files), tuple(source_indices), mode,
+                          tuple(expanded_arguments))
 
-  return (output_file_path, input_files, mode)
+
+def _artifact_paths(output_file, source_count, source_index):
+  if source_count == 1:
+    prefix = output_file
+  else:
+    prefix = f'{output_file}.{source_index}'
+  return prefix + '.source', prefix + '.preprocessed_source'
+
+
+def _preprocessor_arguments(invocation, selected_source_index, output_path):
+  arguments = list(invocation.expanded_arguments)
+  source_indices = set(invocation.source_indices)
+  filtered = []
+  index = 0
+
+  while index < len(arguments):
+    argument = arguments[index]
+    if index in source_indices and index != selected_source_index:
+      index += 1
+      continue
+    if argument in DEPENDENCY_OPTIONS:
+      index += 1
+      continue
+    if argument in DEPENDENCY_OPTIONS_WITH_VALUE:
+      index += 2
+      continue
+    if any(
+        argument.startswith(option) and len(argument) > len(option)
+        for option in DEPENDENCY_OPTIONS_WITH_VALUE):
+      index += 1
+      continue
+    if argument == '-o':
+      filtered.extend(('-o', output_path))
+      index += 2
+      continue
+    if argument.startswith('-o') and len(argument) > 2:
+      filtered.append('-o' + output_path)
+      index += 1
+      continue
+    filtered.append(argument)
+    index += 1
+
+  # -w ensures linker-only options retained from a compile-and-link invocation
+  # cannot turn preprocessing diagnostics into a failure under -Werror.
+  filtered.extend(('-E', '-w'))
+  return filtered
+
+
+def _warn(message):
+  print(f'compiler_wrapper: {message}', file=sys.stderr)
+
+
+def _remove_incomplete_artifact(path):
+  try:
+    os.remove(path)
+  except FileNotFoundError:
+    pass
+  except OSError as error:
+    _warn(f'cannot remove incomplete output {path!r}: {error}')
+
+
+def save_sources(invocation):
+  for artifact_index, (source_file, source_argument_index) in enumerate(
+      zip(invocation.source_files, invocation.source_indices)):
+    source_path, preprocessed_path = _artifact_paths(
+        invocation.output_file, len(invocation.source_files), artifact_index)
+    try:
+      shutil.copyfile(source_file, source_path)
+    except OSError as error:
+      _warn(f'cannot save source {source_file!r}: {error}')
+      _remove_incomplete_artifact(source_path)
+
+    preprocess_arguments = _preprocessor_arguments(invocation,
+                                                   source_argument_index,
+                                                   preprocessed_path)
+    try:
+      preprocess_result = run_compiler_invocation(invocation.mode,
+                                                  preprocess_arguments)
+    except OSError as error:
+      _warn(f'cannot preprocess {source_file!r}: {error}')
+      _remove_incomplete_artifact(preprocessed_path)
+      continue
+    if preprocess_result != 0:
+      _warn(
+          f'failed to preprocess {source_file!r} (exit code {preprocess_result})'
+      )
+      _remove_incomplete_artifact(preprocessed_path)
 
 
 def main(args):
-  parsed_arguments = parse_args(args)
-  if len(parsed_arguments) == 1:
-    # We couldn't parse the arguments. This could be for a varietey of reasons.
-    # In this case, don't copy over any files and just run the compiler
-    # invocation.
-    mode = parsed_arguments
-    if len(parsed_arguments) == 1:
-      mode = parsed_arguments[0]
-    return_code = run_compiler_invocation(mode, args[1:])
-    sys.exit(return_code)
-
-  output_file_path, input_files, mode = parsed_arguments
-
-  save_source(input_files, output_file_path, mode, args[1:])
-
+  mode = _compiler_mode(args[0])
+  invocation = parse_args(args)
   return_code = run_compiler_invocation(mode, args[1:])
+  if return_code == 0 and invocation is not None:
+    save_sources(invocation)
   sys.exit(return_code)
 
 

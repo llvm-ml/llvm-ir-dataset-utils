@@ -1,8 +1,9 @@
 # Building C++ corpora with Gentoo Portage
 
-This workflow runs on a Gentoo host or inside a Gentoo container. Run all
-commands as root inside the Gentoo environment because Portage installs build
-dependencies and the requested package into that environment.
+This workflow is supported inside a disposable or dedicated Gentoo container.
+Do not run it directly on a workstation or production Gentoo host. Run all
+commands as root inside the container because Portage installs build
+dependencies and the requested package into the container's root filesystem.
 
 The repository may be mounted at any absolute path. The Portage builder locates
 `utils/compiler_wrapper` and `utils/compiler_wrapper++` from the checkout at
@@ -36,6 +37,38 @@ python3 -m pip install -e .
 
 The checked-in compiler wrapper entry points are regular executable files. No
 symlink setup or fixed checkout path is required.
+
+## Portage configuration and isolation
+
+The container is the system-isolation boundary. The builder deliberately keeps
+`ROOT=/` so Portage can use the container's installed toolchain and build
+dependencies; pointing `ROOT` and `SYSROOT` at an empty directory would require
+bootstrapping a separate Gentoo system.
+
+For each package, the builder copies `/etc/portage` into its build directory and
+uses that copy as `PORTAGE_CONFIGROOT`. It preserves the container's selected
+profile, `make.conf`, mirrors, licenses, USE settings, and package configuration,
+then appends the Clang wrapper settings. Existing Portage security features such
+as sandbox and userpriv are preserved. Only `keepwork` and `noclean` are added so
+the target work tree remains available for IR extraction.
+
+The emerge operation uses `--oneshot`, so the target is not added to the
+container's world set. It does not automatically unmask packages or accept USE,
+keyword, mask, or license changes. If dependency resolution fails, update the
+appropriate file under the container's `/etc/portage`, inspect the failure, and
+run the command again. The next run copies the updated configuration.
+
+## Compiler wrapper behavior
+
+The C and C++ entry points select `clang` and `clang++` respectively. They
+understand common C/C++ suffixes, explicit `-x c`/`-x c++`, joined or separated
+`-o`, and Clang response files. Multiple source inputs receive distinct capture
+names instead of overwriting each other.
+
+The real compiler runs first and its exit status is authoritative. Source or
+preprocessor capture failures are reported as `compiler_wrapper:` warnings but
+do not turn a successful compilation into a failed package build. Capture is
+performed only for invocations with an explicit output option.
 
 ## Container mounts
 
@@ -106,6 +139,10 @@ therefore rebuilt from source through the Clang wrappers. IR extraction is
 restricted to the target package's Portage `work` directory; dependency build
 directories are not included in its corpus.
 
+By default the build directory is retained for inspection. Pass `--cleanup` to
+remove it after either success or failure. A successful emerge with no extracted
+LLVM IR modules is recorded as a failed corpus build.
+
 ## Outputs and checks
 
 For a description whose `folder_name` is `boost`, the main outputs are:
@@ -132,6 +169,5 @@ On failure, inspect:
 sed -n '1,240p' /data/corpus/boost/portage_build.log
 ```
 
-The current builder installs the target and dependencies into the Gentoo
-environment's root filesystem. Use a disposable or dedicated build container,
-not a production Gentoo host.
+The builder installs the target and dependencies into the Gentoo container's
+root filesystem. Discard or reset the container when the build batch is done.

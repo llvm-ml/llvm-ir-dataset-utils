@@ -28,12 +28,11 @@ def generate_emerge_command(package_to_build, threads, build_dir):
           threads),  # Set the maximum load average for parallel builds
       '--config-root={}'.format(
           build_dir),  # Set the configuration root directory
+      '--oneshot',  # Do not add corpus targets to the container's world set
       '--buildpkg',  # Build binary packages, similar to Spack's build cache
       '--usepkg',  # Use binary packages if available
       '--usepkg-exclude',
       package_to_build,  # Always rebuild the corpus target from source
-      '--binpkg-respect-use=y',  # Ensure that binary package installations respect USE flag settings
-      '--autounmask-write=y',  # Automatically write unmasking changes to the configuration
       package_to_build  # The package to install
   ]
 
@@ -43,16 +42,12 @@ def generate_emerge_command(package_to_build, threads, build_dir):
   return command_vector
 
 
-def perform_build(package_name,
-                  assembled_build_command,
-                  corpus_dir,
-                  build_dir,
-                  retry=False):
-  logging.info(f"Portage building package {package_name} (Retry: {retry})")
+def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
+  logging.info(f"Portage building package {package_name}")
 
   environment = os.environ.copy()
-  environment['DISTDIR'] = build_dir
-  environment['PORTAGE_TMPDIR'] = build_dir
+  environment['DISTDIR'] = str(build_dir)
+  environment['PORTAGE_TMPDIR'] = str(build_dir)
 
   build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
 
@@ -65,21 +60,8 @@ def perform_build(package_name,
           check=True,
           env=environment)
   except subprocess.CalledProcessError:
-    if not retry:
-      logging.warning(
-          f"Failed to build portage package {package_name}, attempting retry with etc-update..."
-      )
-      update_command = ['etc-update', '--automode', '-5']
-      subprocess.run(update_command)
-      return perform_build(
-          package_name,
-          assembled_build_command,
-          corpus_dir,
-          build_dir,
-          retry=True)
-    else:
-      logging.warning(f"Failed again to build portage package {package_name}")
-      return False
+    logging.warning(f"Failed to build portage package {package_name}")
+    return False
 
   logging.info(f"Finished building portage package {package_name}")
   return True
@@ -116,14 +98,25 @@ def extract_ir(package_spec, package_name, corpus_dir, build_dir, threads):
                                                         "llvm-objcopy", None,
                                                         None, ".llvmcmd",
                                                         ".llvmbc")
-  extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
+  extracted_modules = [
+      path for path in relative_output_paths if path is not None
+  ]
+  if not extracted_modules:
+    raise RuntimeError(f'No LLVM IR was extracted for {package_spec}')
+
+  extract_ir_lib.write_corpus_manifest(None, extracted_modules, corpus_dir)
   extract_source_lib.copy_source(build_directory, corpus_dir)
-  return
+  return extracted_modules
 
 
 def cleanup(build_dir):
   shutil.rmtree(build_dir)
-  return
+
+
+def record_failure(corpus_dir, message):
+  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
+  with open(build_log_path, 'a') as build_log_file:
+    build_log_file.write(f'\n{message}\n')
 
 
 def construct_build_log(build_success, package_name):
@@ -150,20 +143,34 @@ def build_package(dependency_futures,
       logging.warning(
           f"Dependency {dependency_future['targets'][0]['name']} failed to build "
           f"for package {package_name}, not building.")
-      #if cleanup_build:
-      #  cleanup(package_name, package_spec, corpus_dir, uninstall=False)
-      return construct_build_log(False, package_name, None)
-  portage_utils.portage_setup_compiler(build_dir)
-  build_command = generate_emerge_command(package_spec, threads, build_dir)
-  build_result = perform_build(package_name, build_command, corpus_dir,
-                               build_dir)
-  if build_result:
-    extract_ir(package_spec, package_name, corpus_dir, build_dir, threads)
-    logging.warning(f'Finished building {package_name}')
+      if cleanup_build:
+        try:
+          cleanup(build_dir)
+        except OSError:
+          logging.exception('Failed to clean Portage build directory %s',
+                            build_dir)
+      return construct_build_log(False, package_name)
 
+  build_result = False
   try:
-    cleanup(build_dir)
-  except Exception:
-    pass
+    portage_utils.portage_setup_compiler(build_dir)
+    build_command = generate_emerge_command(package_spec, threads, build_dir)
+    build_result = perform_build(package_name, build_command, corpus_dir,
+                                 build_dir)
+    if build_result:
+      extract_ir(package_spec, package_name, corpus_dir, build_dir, threads)
+      logging.info(f'Finished building and extracting {package_name}')
+  except Exception as error:
+    build_result = False
+    logging.exception('Failed to build or extract Portage package %s',
+                      package_name)
+    record_failure(corpus_dir, f'{type(error).__name__}: {error}')
+  finally:
+    if cleanup_build:
+      try:
+        cleanup(build_dir)
+      except OSError:
+        logging.exception('Failed to clean Portage build directory %s',
+                          build_dir)
 
   return construct_build_log(build_result, package_name)
