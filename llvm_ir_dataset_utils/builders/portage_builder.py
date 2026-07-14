@@ -2,18 +2,13 @@
 
 import subprocess
 import os
-import glob
-import tempfile
 import logging
 import pathlib
 import shutil
-import re
-import getpass
 import ray
 
 from mlgo.corpus import extract_ir_lib
 
-from llvm_ir_dataset_utils.util import file
 from llvm_ir_dataset_utils.util import portage as portage_utils
 from llvm_ir_dataset_utils.util import extract_source_lib
 
@@ -35,6 +30,8 @@ def generate_emerge_command(package_to_build, threads, build_dir):
           build_dir),  # Set the configuration root directory
       '--buildpkg',  # Build binary packages, similar to Spack's build cache
       '--usepkg',  # Use binary packages if available
+      '--usepkg-exclude',
+      package_to_build,  # Always rebuild the corpus target from source
       '--binpkg-respect-use=y',  # Ensure that binary package installations respect USE flag settings
       '--autounmask-write=y',  # Automatically write unmasking changes to the configuration
       package_to_build  # The package to install
@@ -46,34 +43,19 @@ def generate_emerge_command(package_to_build, threads, build_dir):
   return command_vector
 
 
-def perform_build_again(package_name, assembled_build_command, corpus_dir,
-                        build_dir):
-  logging.info(f"Portage building package {package_name}")
-  environment = os.environ.copy()
-  build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
-  try:
-    with open(build_log_path, 'w') as build_log_file:
-      subprocess.run(
-          assembled_build_command,
-          stdout=build_log_file,
-          stderr=build_log_file,
-          check=True,
-          env=environment)
-  except subprocess.SubprocessError:
-    logging.warn(f"Failed AGAIN to build portage package {package_name}")
-    #cleanup(corpus_dir)
-    return False
-  logging.info(f"Finished build portage package {package_name}")
-  return True
+def perform_build(package_name,
+                  assembled_build_command,
+                  corpus_dir,
+                  build_dir,
+                  retry=False):
+  logging.info(f"Portage building package {package_name} (Retry: {retry})")
 
-
-def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
-  logging.info(f"Portage building package {package_name}")
   environment = os.environ.copy()
-  # Set DISTDIR and PORTAGE_TMPDIR to set the build directory for Portage
   environment['DISTDIR'] = build_dir
   environment['PORTAGE_TMPDIR'] = build_dir
+
   build_log_path = os.path.join(corpus_dir, BUILD_LOG_NAME)
+
   try:
     with open(build_log_path, 'w') as build_log_file:
       subprocess.run(
@@ -83,40 +65,60 @@ def perform_build(package_name, assembled_build_command, corpus_dir, build_dir):
           check=True,
           env=environment)
   except subprocess.CalledProcessError:
-    logging.warn(f"Failed to build portage package {package_name}")
-    update_command = ['etc-update', '--automode', '-5']
-    subprocess.run(update_command)
-    return perform_build_again(package_name, assembled_build_command,
-                               corpus_dir, build_dir)
-  logging.info(f"Finished build portage package {package_name}")
+    if not retry:
+      logging.warning(
+          f"Failed to build portage package {package_name}, attempting retry with etc-update..."
+      )
+      update_command = ['etc-update', '--automode', '-5']
+      subprocess.run(update_command)
+      return perform_build(
+          package_name,
+          assembled_build_command,
+          corpus_dir,
+          build_dir,
+          retry=True)
+    else:
+      logging.warning(f"Failed again to build portage package {package_name}")
+      return False
+
+  logging.info(f"Finished building portage package {package_name}")
   return True
 
 
-def extract_ir(package_spec, corpus_dir, build_dir, threads):
-  # Not using the tmp directory
-  build_directory = build_dir + "/portage/"
-  if os.path.exists(build_directory):
-    objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
-    relative_output_paths = extract_ir_lib.run_extraction(
-        objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
-    extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
-                                         corpus_dir)
-    extract_source_lib.copy_source(build_directory, corpus_dir)
-    return
+def get_package_work_directory(package_spec, package_name, build_dir):
+  if '/' not in package_spec:
+    raise ValueError(
+        f'Portage package spec must contain a category: {package_spec}')
 
-  # Using the tmp directory
-  build_directory = "/var/tmp/portage/"
-  package_spec = package_spec + "*"
-  match = glob.glob(os.path.join(build_directory, package_spec))
-  build_directory = match[0] + "/work"
-  if build_directory is not None:
-    objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
-    relative_output_paths = extract_ir_lib.run_extraction(
-        objects, threads, "llvm-objcopy", None, None, ".llvmcmd", ".llvmbc")
-    extract_ir_lib.write_corpus_manifest(None, relative_output_paths,
-                                         corpus_dir)
-    extract_source_lib.copy_source(build_directory, corpus_dir)
-    shutil.rmtree(build_directory)
+  category = package_spec.lstrip('<>=~').split('/', maxsplit=1)[0]
+  category_build_directory = pathlib.Path(build_dir) / 'portage' / category
+  candidates = [
+      package_directory / 'work'
+      for package_directory in category_build_directory.glob(
+          f'{package_name}-[0-9]*')
+      if (package_directory / 'work').is_dir()
+  ]
+
+  if len(candidates) != 1:
+    candidate_list = ', '.join(str(candidate) for candidate in candidates)
+    raise RuntimeError(
+        f'Expected one Portage work directory for {package_spec}, found '
+        f'{len(candidates)}: {candidate_list}')
+
+  return candidates[0]
+
+
+def extract_ir(package_spec, package_name, corpus_dir, build_dir, threads):
+  build_directory = get_package_work_directory(package_spec, package_name,
+                                               build_dir)
+  objects = extract_ir_lib.load_from_directory(build_directory, corpus_dir)
+  relative_output_paths = extract_ir_lib.run_extraction(objects, threads,
+                                                        "llvm-objcopy", None,
+                                                        None, ".llvmcmd",
+                                                        ".llvmbc")
+  extract_ir_lib.write_corpus_manifest(None, relative_output_paths, corpus_dir)
+  extract_source_lib.copy_source(build_directory, corpus_dir)
+  return
 
 
 def cleanup(build_dir):
@@ -143,7 +145,6 @@ def build_package(dependency_futures,
                   build_dir,
                   cleanup_build=False):
   dependency_futures = ray.get(dependency_futures)
-  #build_backup = build_dir.copy()
   for dependency_future in dependency_futures:
     if not dependency_future['targets'][0]['success']:
       logging.warning(
@@ -153,12 +154,11 @@ def build_package(dependency_futures,
       #  cleanup(package_name, package_spec, corpus_dir, uninstall=False)
       return construct_build_log(False, package_name, None)
   portage_utils.portage_setup_compiler(build_dir)
-  portage_utils.clean_binpkg(package_spec)
   build_command = generate_emerge_command(package_spec, threads, build_dir)
   build_result = perform_build(package_name, build_command, corpus_dir,
                                build_dir)
   if build_result:
-    extract_ir(package_spec, corpus_dir, build_dir, threads)
+    extract_ir(package_spec, package_name, corpus_dir, build_dir, threads)
     logging.warning(f'Finished building {package_name}')
 
   try:

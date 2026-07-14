@@ -1,19 +1,33 @@
 """Utilities related to portage."""
 
-import subprocess
-import shutil
 import os
+import pathlib
+import shutil
 
 
-def get_portage_compiler_config(filename):
+def get_compiler_wrappers():
+  repository_root = pathlib.Path(__file__).resolve().parents[2]
+  wrapper_directory = repository_root / 'utils'
+  c_wrapper = wrapper_directory / 'compiler_wrapper'
+  cxx_wrapper = wrapper_directory / 'compiler_wrapper++'
+
+  for wrapper in (c_wrapper, cxx_wrapper):
+    if not wrapper.is_file() or not os.access(wrapper, os.X_OK):
+      raise FileNotFoundError(
+          f'Portage compiler wrapper is missing or not executable: {wrapper}')
+
+  return c_wrapper, cxx_wrapper
+
+
+def get_portage_compiler_config(filename, c_wrapper, cxx_wrapper):
 
   content = (
       'COMMON_FLAGS="-O2 -pipe -Xclang -fembed-bitcode=all '
       '-Wno-implicit-function-declaration -Wno-reserved-user-defined-literal '
       '-Wno-register -Wno-error -Wno-register"\n'
       '\n'
-      'CC="/data/ir-llvm/utils/compiler_wrapper"\n'
-      'CXX="/data/ir-llvm/utils/compiler_wrapper++"\n'
+      f'CC="{c_wrapper}"\n'
+      f'CXX="{cxx_wrapper}"\n'
       'CFLAGS="${COMMON_FLAGS}"\n'
       'CXXFLAGS="${COMMON_FLAGS}"\n'
       'FCFLAGS="-O2 -pipe "\n'
@@ -40,15 +54,5 @@ def portage_setup_compiler(build_dir):
   shutil.rmtree(make_profile_path)
 
   os.symlink('/etc/portage/make.profile', make_profile_path)
-  get_portage_compiler_config(make_conf_path)
-
-
-def clean_binpkg(package_spec):
-  sync_command = ['emaint', '--fix', 'binhost']
-  subprocess.run(sync_command)
-  pkgpath = '/data/packages/' + package_spec
-  if os.path.exists(pkgpath):
-    command_vector = ['rm', '-rf', pkgpath]
-    subprocess.run(command_vector)
-    sync_command = ['emaint', '--fix', 'binhost']
-    subprocess.run(sync_command)
+  c_wrapper, cxx_wrapper = get_compiler_wrappers()
+  get_portage_compiler_config(make_conf_path, c_wrapper, cxx_wrapper)

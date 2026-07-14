@@ -1,1 +1,9 @@
-/tmp/llvm-ir-dataset-utils/utils/compiler_wrapper.py
+#!/usr/bin/env python3
+"""C++ compiler entry point for the shared compiler wrapper implementation."""
+
+import sys
+
+from compiler_wrapper import main
+
+if __name__ == '__main__':
+  main(sys.argv)
